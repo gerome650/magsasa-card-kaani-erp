@@ -19,6 +19,12 @@ export interface HarvestRecord {
   landAreaHarvested: number; // in hectares
   yieldPerHectare: number;
   notes?: string;
+  photos?: string[]; // Array of photo URLs/base64 strings
+  verificationStatus: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string; // Field Officer ID or name
+  approvedAt?: string; // Timestamp
+  rejectionReason?: string; // Comment for rejection
+  approvalComment?: string; // Optional notes from approver
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +48,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Good harvest season, minimal pest damage',
     createdAt: '2024-09-28T10:30:00Z',
     updatedAt: '2024-09-28T10:30:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H002',
@@ -61,6 +68,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Excellent quality, used hybrid seeds',
     createdAt: '2024-09-29T14:15:00Z',
     updatedAt: '2024-09-29T14:15:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H003',
@@ -80,6 +88,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Drought-resistant variety performed well',
     createdAt: '2024-09-15T09:00:00Z',
     updatedAt: '2024-09-15T09:00:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H004',
@@ -99,6 +108,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Applied Complete Fertilizer 14-14-14, good results',
     createdAt: '2024-09-20T11:45:00Z',
     updatedAt: '2024-09-20T11:45:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H005',
@@ -118,6 +128,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Tomatoes - excellent market demand',
     createdAt: '2024-10-01T08:30:00Z',
     updatedAt: '2024-10-01T08:30:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H006',
@@ -137,6 +148,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Eggplant harvest, good quality',
     createdAt: '2024-09-25T07:20:00Z',
     updatedAt: '2024-09-25T07:20:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H007',
@@ -156,6 +168,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Used organic compost, improved soil quality',
     createdAt: '2024-09-18T13:00:00Z',
     updatedAt: '2024-09-18T13:00:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H008',
@@ -175,6 +188,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Some pest damage affected quality',
     createdAt: '2024-09-22T10:15:00Z',
     updatedAt: '2024-09-22T10:15:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H009',
@@ -194,6 +208,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Bell peppers - premium quality for export',
     createdAt: '2024-10-03T09:45:00Z',
     updatedAt: '2024-10-03T09:45:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H010',
@@ -213,6 +228,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Pioneer variety, good drought resistance',
     createdAt: '2024-09-12T11:30:00Z',
     updatedAt: '2024-09-12T11:30:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H011',
@@ -232,6 +248,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Second harvest of the season',
     createdAt: '2024-09-14T14:00:00Z',
     updatedAt: '2024-09-14T14:00:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: 'H012',
@@ -251,6 +268,7 @@ export const harvestData: HarvestRecord[] = [
     notes: 'Hybrid rice variety, good yield',
     createdAt: '2024-09-26T12:20:00Z',
     updatedAt: '2024-09-26T12:20:00Z',
+    verificationStatus: 'approved' as const,
   },
   {
     id: "H013",
@@ -269,6 +287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -288,6 +307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -307,6 +327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -326,6 +347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -345,6 +367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -364,6 +387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -383,6 +407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -402,6 +427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -421,6 +447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -440,6 +467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -459,6 +487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -478,6 +507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -497,6 +527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -516,6 +547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -535,6 +567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -554,6 +587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -573,6 +607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -592,6 +627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -611,6 +647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -630,6 +667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -649,6 +687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -668,6 +707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -687,6 +727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -706,6 +747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -725,6 +767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -744,6 +787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -763,6 +807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -782,6 +827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -801,6 +847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -820,6 +867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -839,6 +887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -858,6 +907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -877,6 +927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -896,6 +947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -915,6 +967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -934,6 +987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -953,6 +1007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -972,6 +1027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -991,6 +1047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1010,6 +1067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1029,6 +1087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1048,6 +1107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1067,6 +1127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1086,6 +1147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1105,6 +1167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1124,6 +1187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1143,6 +1207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1162,6 +1227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1181,6 +1247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1200,6 +1267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1219,6 +1287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1238,6 +1307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1257,6 +1327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1276,6 +1347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1295,6 +1367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1314,6 +1387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1333,6 +1407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1352,6 +1427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1371,6 +1447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1390,6 +1467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1409,6 +1487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1428,6 +1507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1447,6 +1527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1466,6 +1547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1485,6 +1567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1504,6 +1587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1523,6 +1607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1542,6 +1627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1561,6 +1647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1580,6 +1667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1599,6 +1687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1618,6 +1707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1637,6 +1727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1656,6 +1747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1675,6 +1767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1694,6 +1787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1713,6 +1807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1732,6 +1827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1751,6 +1847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1770,6 +1867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1789,6 +1887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1808,6 +1907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1827,6 +1927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1846,6 +1947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1865,6 +1967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1884,6 +1987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1903,6 +2007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1922,6 +2027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1941,6 +2047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1960,6 +2067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1979,6 +2087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -1998,6 +2107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2017,6 +2127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2036,6 +2147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2055,6 +2167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2074,6 +2187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2093,6 +2207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2112,6 +2227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2131,6 +2247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2150,6 +2267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2169,6 +2287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2188,6 +2307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2207,6 +2327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2226,6 +2347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2245,6 +2367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2264,6 +2387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2283,6 +2407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2302,6 +2427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2321,6 +2447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2340,6 +2467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2359,6 +2487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2378,6 +2507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2397,6 +2527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2416,6 +2547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2435,6 +2567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2454,6 +2587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2473,6 +2607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2492,6 +2627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2511,6 +2647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2530,6 +2667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2549,6 +2687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2568,6 +2707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2587,6 +2727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2606,6 +2747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2625,6 +2767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2644,6 +2787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2663,6 +2807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2682,6 +2827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2701,6 +2847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2720,6 +2867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2739,6 +2887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2758,6 +2907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2777,6 +2927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2796,6 +2947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2815,6 +2967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2834,6 +2987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2853,6 +3007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2872,6 +3027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2891,6 +3047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2910,6 +3067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2929,6 +3087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2948,6 +3107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2967,6 +3127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -2986,6 +3147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3005,6 +3167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3024,6 +3187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3043,6 +3207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3062,6 +3227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3081,6 +3247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3100,6 +3267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3119,6 +3287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3138,6 +3307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3157,6 +3327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3176,6 +3347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3195,6 +3367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3214,6 +3387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3233,6 +3407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3252,6 +3427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3271,6 +3447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3290,6 +3467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3309,6 +3487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3328,6 +3507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3347,6 +3527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3366,6 +3547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3385,6 +3567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3404,6 +3587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3423,6 +3607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3442,6 +3627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3461,6 +3647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3480,6 +3667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3499,6 +3687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3518,6 +3707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3537,6 +3727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3556,6 +3747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3575,6 +3767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3594,6 +3787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3613,6 +3807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3632,6 +3827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3651,6 +3847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3670,6 +3867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3689,6 +3887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3708,6 +3907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3727,6 +3927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3746,6 +3947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3765,6 +3967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3784,6 +3987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3803,6 +4007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3822,6 +4027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3841,6 +4047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3860,6 +4067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3879,6 +4087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3898,6 +4107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3917,6 +4127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3936,6 +4147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3955,6 +4167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3974,6 +4187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -3993,6 +4207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4012,6 +4227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4031,6 +4247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4050,6 +4267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4069,6 +4287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4088,6 +4307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4107,6 +4327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4126,6 +4347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4145,6 +4367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4164,6 +4387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4183,6 +4407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4202,6 +4427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4221,6 +4447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4240,6 +4467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4259,6 +4487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4278,6 +4507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4297,6 +4527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4316,6 +4547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4335,6 +4567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4354,6 +4587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4373,6 +4607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4392,6 +4627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4411,6 +4647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4430,6 +4667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4449,6 +4687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4468,6 +4707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4487,6 +4727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4506,6 +4747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4525,6 +4767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4544,6 +4787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4563,6 +4807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4582,6 +4827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4601,6 +4847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4620,6 +4867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4639,6 +4887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4658,6 +4907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4677,6 +4927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4696,6 +4947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4715,6 +4967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4734,6 +4987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4753,6 +5007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4772,6 +5027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4791,6 +5047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4810,6 +5067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4829,6 +5087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4848,6 +5107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4867,6 +5127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4886,6 +5147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4905,6 +5167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4924,6 +5187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4943,6 +5207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4962,6 +5227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -4981,6 +5247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5000,6 +5267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5019,6 +5287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5038,6 +5307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5057,6 +5327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5076,6 +5347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5095,6 +5367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5114,6 +5387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5133,6 +5407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5152,6 +5427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5171,6 +5447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5190,6 +5467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5209,6 +5487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5228,6 +5507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5247,6 +5527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5266,6 +5547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5285,6 +5567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5304,6 +5587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5323,6 +5607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5342,6 +5627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5361,6 +5647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5380,6 +5667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5399,6 +5687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5418,6 +5707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5437,6 +5727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5456,6 +5747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5475,6 +5767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5494,6 +5787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5513,6 +5807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5532,6 +5827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5551,6 +5847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5570,6 +5867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5589,6 +5887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5608,6 +5907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5627,6 +5927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5646,6 +5947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5665,6 +5967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5684,6 +5987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5703,6 +6007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5722,6 +6027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5741,6 +6047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5760,6 +6067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5779,6 +6087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5798,6 +6107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5817,6 +6127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5836,6 +6147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5855,6 +6167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5874,6 +6187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5893,6 +6207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5912,6 +6227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5931,6 +6247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5950,6 +6267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5969,6 +6287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -5988,6 +6307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6007,6 +6327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6026,6 +6347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6045,6 +6367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6064,6 +6387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6083,6 +6407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6102,6 +6427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6121,6 +6447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6140,6 +6467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6159,6 +6487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6178,6 +6507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6197,6 +6527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6216,6 +6547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6235,6 +6567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6254,6 +6587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6273,6 +6607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6292,6 +6627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6311,6 +6647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6330,6 +6667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6349,6 +6687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6368,6 +6707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6387,6 +6727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6406,6 +6747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6425,6 +6767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6444,6 +6787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6463,6 +6807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6482,6 +6827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6501,6 +6847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6520,6 +6867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6539,6 +6887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6558,6 +6907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6577,6 +6927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6596,6 +6947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6615,6 +6967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6634,6 +6987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6653,6 +7007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6672,6 +7027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6691,6 +7047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6710,6 +7067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6729,6 +7087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6748,6 +7107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6767,6 +7127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6786,6 +7147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6805,6 +7167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6824,6 +7187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6843,6 +7207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6862,6 +7227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6881,6 +7247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6900,6 +7267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6919,6 +7287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6938,6 +7307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6957,6 +7327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6976,6 +7347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -6995,6 +7367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7014,6 +7387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7033,6 +7407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7052,6 +7427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7071,6 +7447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7090,6 +7467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7109,6 +7487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7128,6 +7507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7147,6 +7527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7166,6 +7547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7185,6 +7567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7204,6 +7587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7223,6 +7607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7242,6 +7627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7261,6 +7647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7280,6 +7667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7299,6 +7687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7318,6 +7707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7337,6 +7727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7356,6 +7747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7375,6 +7767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7394,6 +7787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7413,6 +7807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7432,6 +7827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7451,6 +7847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7470,6 +7867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7489,6 +7887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7508,6 +7907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7527,6 +7927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7546,6 +7947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7565,6 +7967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7584,6 +7987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7603,6 +8007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7622,6 +8027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7641,6 +8047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7660,6 +8067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7679,6 +8087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7698,6 +8107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7717,6 +8127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7736,6 +8147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7755,6 +8167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7774,6 +8187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7793,6 +8207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7812,6 +8227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7831,6 +8247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7850,6 +8267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7869,6 +8287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7888,6 +8307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7907,6 +8327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7926,6 +8347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7945,6 +8367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7964,6 +8387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -7983,6 +8407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8002,6 +8427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8021,6 +8447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8040,6 +8467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8059,6 +8487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8078,6 +8507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8097,6 +8527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8116,6 +8547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8135,6 +8567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8154,6 +8587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8173,6 +8607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8192,6 +8627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8211,6 +8647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8230,6 +8667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8249,6 +8687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8268,6 +8707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8287,6 +8727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8306,6 +8747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8325,6 +8767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8344,6 +8787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8363,6 +8807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8382,6 +8827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8401,6 +8847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8420,6 +8867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8439,6 +8887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8458,6 +8907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8477,6 +8927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8496,6 +8947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8515,6 +8967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8534,6 +8987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8553,6 +9007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8572,6 +9027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8591,6 +9047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8610,6 +9067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8629,6 +9087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8648,6 +9107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8667,6 +9127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8686,6 +9147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8705,6 +9167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8724,6 +9187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8743,6 +9207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8762,6 +9227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8781,6 +9247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8800,6 +9267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8819,6 +9287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8838,6 +9307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8857,6 +9327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8876,6 +9347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8895,6 +9367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8914,6 +9387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8933,6 +9407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8952,6 +9427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8971,6 +9447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -8990,6 +9467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9009,6 +9487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9028,6 +9507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9047,6 +9527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9066,6 +9547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9085,6 +9567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9104,6 +9587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9123,6 +9607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9142,6 +9627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9161,6 +9647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9180,6 +9667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9199,6 +9687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9218,6 +9707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9237,6 +9727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9256,6 +9747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9275,6 +9767,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9294,6 +9787,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9313,6 +9807,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9332,6 +9827,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9351,6 +9847,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9370,6 +9867,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9389,6 +9887,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9408,6 +9907,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9427,6 +9927,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9446,6 +9947,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9465,6 +9967,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9484,6 +9987,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9503,6 +10007,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9522,6 +10027,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9541,6 +10047,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9560,6 +10067,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9579,6 +10087,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9598,6 +10107,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9617,6 +10127,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9636,6 +10147,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9655,6 +10167,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9674,6 +10187,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9693,6 +10207,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9712,6 +10227,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9731,6 +10247,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9750,6 +10267,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9769,6 +10287,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9788,6 +10307,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9807,6 +10327,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9826,6 +10347,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9845,6 +10367,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9864,6 +10387,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9883,6 +10407,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9902,6 +10427,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9921,6 +10447,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9940,6 +10467,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9959,6 +10487,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9978,6 +10507,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -9997,6 +10527,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10016,6 +10547,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10035,6 +10567,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10054,6 +10587,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10073,6 +10607,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10092,6 +10627,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10111,6 +10647,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10130,6 +10667,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10149,6 +10687,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10168,6 +10707,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10187,6 +10727,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10206,6 +10747,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10227,6 +10769,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10246,6 +10789,7 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
   },
   {
@@ -10265,7 +10809,125 @@ export const harvestData: HarvestRecord[] = [
     farmLocation: "Auto-generated",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
+    verificationStatus: 'approved' as const,
     notes: ""
+  },
+  // Pending harvests for verification workflow testing
+  {
+    id: "H761",
+    farmerId: "F001",
+    farmerName: "Maria Santos",
+    crop: "Tomato",
+    harvestDate: "2024-11-15",
+    quantity: 850,
+    unit: "kg",
+    qualityGrade: "Grade A",
+    pricePerUnit: 45,
+    totalValue: 38250,
+    landAreaHarvested: 1.5,
+    yieldPerHectare: 566.67,
+    farmId: "FARM001",
+    farmLocation: "Brgy. San Isidro, Calauan, Laguna",
+    photos: [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    ],
+    verificationStatus: 'pending' as const,
+    createdAt: "2024-11-15T08:30:00Z",
+    updatedAt: "2024-11-15T08:30:00Z",
+    notes: "Fresh tomato harvest, good quality"
+  },
+  {
+    id: "H762",
+    farmerId: "F002",
+    farmerName: "Juan Dela Cruz",
+    crop: "Rice",
+    harvestDate: "2024-11-14",
+    quantity: 2500,
+    unit: "kg",
+    qualityGrade: "Premium",
+    pricePerUnit: 28,
+    totalValue: 70000,
+    landAreaHarvested: 2.0,
+    yieldPerHectare: 1250,
+    farmId: "FARM002",
+    farmLocation: "Brgy. Dayap, Calauan, Laguna",
+    photos: [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKQAAAABJRU5ErkJggg==",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwAChAJ/lnFO5wAAAABJRU5ErkJggg=="
+    ],
+    verificationStatus: 'pending' as const,
+    createdAt: "2024-11-14T14:20:00Z",
+    updatedAt: "2024-11-14T14:20:00Z",
+    notes: "Premium quality rice, dry season harvest"
+  },
+  {
+    id: "H763",
+    farmerId: "F003",
+    farmerName: "Rosa Reyes",
+    crop: "Corn",
+    harvestDate: "2024-11-13",
+    quantity: 1800,
+    unit: "kg",
+    qualityGrade: "Grade A",
+    pricePerUnit: 18,
+    totalValue: 32400,
+    landAreaHarvested: 1.2,
+    yieldPerHectare: 1500,
+    farmId: "FARM003",
+    farmLocation: "Brgy. Imok, Calauan, Laguna",
+    photos: [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYGD4DwABBAEAW9EJRQAAAABJRU5ErkJggg=="
+    ],
+    verificationStatus: 'pending' as const,
+    createdAt: "2024-11-13T10:15:00Z",
+    updatedAt: "2024-11-13T10:15:00Z",
+    notes: "Yellow corn, good moisture content"
+  },
+  {
+    id: "H764",
+    farmerId: "F004",
+    farmerName: "Pedro Garcia",
+    crop: "Eggplant",
+    harvestDate: "2024-11-12",
+    quantity: 450,
+    unit: "kg",
+    qualityGrade: "Grade A",
+    pricePerUnit: 35,
+    totalValue: 15750,
+    landAreaHarvested: 0.5,
+    yieldPerHectare: 900,
+    farmId: "FARM004",
+    farmLocation: "Brgy. Lamot 1, Calauan, Laguna",
+    verificationStatus: 'pending' as const,
+    createdAt: "2024-11-12T09:00:00Z",
+    updatedAt: "2024-11-12T09:00:00Z",
+    notes: "No photos attached"
+  },
+  {
+    id: "H765",
+    farmerId: "F005",
+    farmerName: "Ana Mendoza",
+    crop: "Cabbage",
+    harvestDate: "2024-11-11",
+    quantity: 600,
+    unit: "kg",
+    qualityGrade: "Premium",
+    pricePerUnit: 30,
+    totalValue: 18000,
+    landAreaHarvested: 0.8,
+    yieldPerHectare: 750,
+    farmId: "FARM005",
+    farmLocation: "Brgy. Balayhangin, Calauan, Laguna",
+    photos: [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEhAJ/8xDhwQAAAABJRU5ErkJggg==",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+    ],
+    verificationStatus: 'pending' as const,
+    createdAt: "2024-11-11T11:45:00Z",
+    updatedAt: "2024-11-11T11:45:00Z",
+    notes: "Organic cabbage, pesticide-free"
   }
 ];
 

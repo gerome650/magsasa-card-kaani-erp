@@ -423,3 +423,43 @@
 - [x] Handle harvests without photos gracefully (no photo section shown)
 - [x] Test photo display with Tomato harvest that has 3 photos attached (green, blue, orange)
 - [x] Verify photo thumbnails are clickable and open in lightbox (tested: click thumbnail → lightbox opens → Next arrow: 1/3 → 2/3)
+
+
+## New Feature: Harvest Approval Workflow for Field Officers
+
+### Data Structure Updates
+- [x] Add verificationStatus field to harvest records (pending, approved, rejected)
+- [x] Add approvedBy field (Field Officer ID/name)
+- [x] Add approvedAt field (timestamp)
+- [x] Add rejectionReason field (comment text)
+- [x] Add approvalComment field (optional notes)
+
+### Pending Harvests Section
+- [x] Create Pending Harvests section in Field Officer dashboard
+- [x] Display list of harvests with verificationStatus: "pending"
+- [x] Show harvest details (farmer, crop, quantity, date, photos)
+- [x] Display pending count badge ("4 Pending" after approval)
+
+### Harvest Review Dialog
+- [x] Create HarvestReviewDialog component with comprehensive harvest details
+- [x] Display farmer information (name, ID, location)
+- [x] Show harvest data (crop, quantity, quality grade, land area, yield/ha, estimated value)
+- [x] Show all uploaded photos in gallery with lightbox (2 photos: green, blue)
+- [x] Display farmer's notes section
+- [x] Create approval form with required comment textarea
+- [x] Add Approve and Reject action buttons with proper styling
+
+### Approval Actions
+- [x] Implement approve action (update status to "approved", save approver info, timestamp)
+- [x] Implement reject action (update status to "rejected", save rejection reason)
+- [x] Add toast notifications for successful approval/rejection
+- [x] Update pending harvests count in real-time (5 → 4 after approval)
+- [x] Remove approved/rejected harvests from pending list
+- [x] Validate comment field before allowing approval/rejection
+
+### Testing
+- [x] Test approving harvest with photos (Maria Santos Tomato 850kg with 2 photos)
+- [x] Add approval comment: "Harvest verified. Quality looks excellent based on photos. Quantity matches expected yield for 1.5 hectares."
+- [x] Verify pending count updates correctly (5 → 4)
+- [x] Verify harvest removed from pending list after approval
+- [x] Test photo viewer in review dialog (lightbox opens with navigation)

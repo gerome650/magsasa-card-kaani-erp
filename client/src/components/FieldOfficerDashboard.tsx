@@ -8,6 +8,9 @@ import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone, Plus, Filte
 import { useState } from "react";
 import FarmerQuickView from "@/components/FarmerQuickView";
 import AddTaskDialog from "@/components/AddTaskDialog";
+import HarvestReviewDialog from "@/components/HarvestReviewDialog";
+import { HarvestRecord } from "@/data/harvestData";
+import { toast } from "sonner";
 
 interface Task {
   id: number;
@@ -37,6 +40,11 @@ export default function FieldOfficerDashboard() {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   
+  // Harvest review state
+  const [harvests, setHarvests] = useState<HarvestRecord[]>(harvestData);
+  const [selectedHarvest, setSelectedHarvest] = useState<HarvestRecord | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  
   const handleFarmerClick = (farmer: any) => {
     setSelectedFarmer(farmer);
     setIsQuickViewOpen(true);
@@ -52,7 +60,7 @@ export default function FieldOfficerDashboard() {
   );
   
   // Get harvests for assigned farmers
-  const assignedHarvests = harvestData.filter((h: any) => 
+  const assignedHarvests = harvests.filter((h: any) => 
     assignedFarmers.some((f: any) => f.id === h.farmerId)
   );
   
@@ -110,6 +118,42 @@ export default function FieldOfficerDashboard() {
       status: 'pending',
     };
     setTasks([...tasks, newTask]);
+  };
+  
+  // Harvest review handlers
+  const handleReviewHarvest = (harvest: HarvestRecord) => {
+    setSelectedHarvest(harvest);
+    setIsReviewDialogOpen(true);
+  };
+  
+  const handleApproveHarvest = (harvestId: string, comment: string) => {
+    setHarvests(harvests.map(h => 
+      h.id === harvestId 
+        ? { 
+            ...h, 
+            verificationStatus: 'approved' as const,
+            approvedBy: user?.name || 'Field Officer',
+            approvedAt: new Date().toISOString(),
+            approvalComment: comment
+          }
+        : h
+    ));
+    toast.success('Harvest approved successfully!');
+  };
+  
+  const handleRejectHarvest = (harvestId: string, reason: string) => {
+    setHarvests(harvests.map(h => 
+      h.id === harvestId 
+        ? { 
+            ...h, 
+            verificationStatus: 'rejected' as const,
+            approvedBy: user?.name || 'Field Officer',
+            approvedAt: new Date().toISOString(),
+            rejectionReason: reason
+          }
+        : h
+    ));
+    toast.error('Harvest rejected');
   };
   
   // Barangay performance
@@ -344,6 +388,66 @@ export default function FieldOfficerDashboard() {
         </CardContent>
       </Card>
 
+      {/* Pending Harvests for Verification */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Pending Harvests</CardTitle>
+              <CardDescription>Review and verify harvest submissions</CardDescription>
+            </div>
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+              {assignedHarvests.filter((h: any) => h.verificationStatus === 'pending').length} Pending
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {assignedHarvests
+              .filter((h: any) => h.verificationStatus === 'pending')
+              .slice(0, 5)
+              .map((harvest: any) => (
+                <div key={harvest.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                      <AlertCircle className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{harvest.farmerName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {harvest.crop} • {harvest.quantity.toLocaleString()} {harvest.unit}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(harvest.harvestDate).toLocaleDateString()}
+                        {harvest.photos && harvest.photos.length > 0 && (
+                          <span className="ml-2">📷 {harvest.photos.length} photos</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">₱{(harvest.totalValue / 1000).toFixed(1)}K</p>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="mt-2"
+                      onClick={() => handleReviewHarvest(harvest)}
+                    >
+                      Review
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            {assignedHarvests.filter((h: any) => h.verificationStatus === 'pending').length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                <p>No pending harvests to verify</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Barangay Performance */}
       <Card>
         <CardHeader>
@@ -447,6 +551,15 @@ export default function FieldOfficerDashboard() {
         isOpen={isAddTaskOpen}
         onClose={() => setIsAddTaskOpen(false)}
         onAddTask={handleAddTask}
+      />
+      
+      {/* Harvest Review Dialog */}
+      <HarvestReviewDialog
+        open={isReviewDialogOpen}
+        onOpenChange={setIsReviewDialogOpen}
+        harvest={selectedHarvest}
+        onApprove={handleApproveHarvest}
+        onReject={handleRejectHarvest}
       />
     </div>
   );
