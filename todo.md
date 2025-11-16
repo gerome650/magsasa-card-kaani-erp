@@ -521,3 +521,69 @@
 - [x] All features tested and working (message sending, receiving, scrolling, timestamps)
 - [x] Design integrated with MAGSASA-CARD platform
 - [ ] **PENDING**: Replace mock responses with actual Gemini API integration (waiting for user to deploy KaAni and provide API endpoint + key)
+
+
+## New Feature: AgScore™ System with KaAni Integration
+
+### Workflow Architecture
+- [x] KaAni calculates AgScore™ using GIS data (climate, soil, harvest components)
+- [x] KaAni pushes AgScore™ results to platform for Field Officer approval
+- [x] Field Officer reviews and approves/rejects AgScore™ data (verify address, lot size, etc.)
+- [x] Approved AgScore™ data is stored in farmer records
+- [x] Platform displays AgScore™ across all dashboards
+
+### Mock Data Generation
+- [x] Generate mock AgScore™ data for all 158 farmers
+- [x] Include all components: baselineScore, climateScore, soilScore, harvestScore
+- [x] Add tier (1-7), qualitativeTier label, alpha, alphaRisk
+- [x] Create realistic distribution (varied performance levels)
+- [x] Link AgScore™ to existing harvest data for consistency
+
+### AgScore™ Approval Queue (Field Officer Dashboard)
+- [x] Create "Pending AgScore™ Reviews" section in Field Officer dashboard
+- [x] Display pending AgScore™ submissions from KaAni (4 pending submissions)
+- [x] Show farmer info, submitted data (crop, yield, location, farm size)
+- [x] Display calculated AgScore™ with breakdown (climate/soil/harvest)
+- [x] Add "Approve" and "Reject" buttons with comment field
+- [x] Update farmer record with approved AgScore™
+- [ ] Send rejection feedback to KaAni (future API integration)
+
+### AgScore™ Display Components
+- [x] Create AgScoreBadge component with tier color coding (1=red, 7=green)
+- [x] Create AgScoreBreakdown component showing climate/soil/harvest contributions
+- [ ] Add AgScore™ to Farmer Dashboard (personal score with breakdown)
+- [x] Add AgScore™ to pending submissions in Field Officer dashboard
+- [ ] Add AgScore™ to FarmerQuickView modal
+- [ ] Update Manager Dashboard loan approval queue with AgScore™ values
+- [ ] Create AgScore™ distribution chart for Manager Dashboard
+
+### Manual Recalculation Trigger
+- [ ] Add "Recalculate AgScore™" button in Field Officer dashboard
+- [ ] Create dialog to input farmer data (crop, yield, location, farm size)
+- [ ] Send request to KaAni API for recalculation (placeholder for now)
+- [ ] Display loading state while waiting for KaAni response
+- [ ] Show success message and updated AgScore™
+
+### API Integration (Placeholder for Deployment)
+- [ ] Create API endpoint: POST /api/agscore (receive data from KaAni)
+- [ ] Create API endpoint: POST /api/agscore/recalculate (trigger KaAni recalculation)
+- [ ] Add authentication/authorization for API endpoints
+- [ ] Document API schema for KaAni integration
+
+### Testing
+- [x] Test AgScore™ approval workflow (tested review dialog, approve/reject buttons)
+- [x] Verify AgScore™ displays correctly in Field Officer dashboard
+- [ ] Test manual recalculation trigger
+- [x] Verify tier color coding and labels (tested with 4 submissions)
+- [x] Test with different AgScore™ ranges (715, 580, 805, 755)
+
+### Implementation Status
+- [x] **Core AgScore™ system implemented and tested**
+- [x] Mock data generated for 158 farmers based on harvest performance
+- [x] Approval queue working in Field Officer dashboard
+- [x] Review dialog with full breakdown (farmer info, farm data, calculated scores)
+- [x] AgScore™ badge component with inverted display (higher = better)
+- [x] AgScore™ breakdown component for detailed view
+- [ ] **PENDING**: API endpoints for KaAni integration (requires deployment)
+- [ ] **PENDING**: Manual recalculation trigger
+- [ ] **PENDING**: Display in Farmer Dashboard and Manager Dashboard

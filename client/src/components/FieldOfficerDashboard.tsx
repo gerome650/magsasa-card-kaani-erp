@@ -4,13 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone, Plus, Filter, Check, X, Edit, Trash2 } from "lucide-react";
+import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone, Plus, Filter, Check, X, Edit, Trash2, Award } from "lucide-react";
 import { useState } from "react";
 import FarmerQuickView from "@/components/FarmerQuickView";
 import AddTaskDialog from "@/components/AddTaskDialog";
 import HarvestReviewDialog from "@/components/HarvestReviewDialog";
 import { HarvestRecord } from "@/data/harvestData";
 import { toast } from "sonner";
+import AgScoreReviewDialog from "@/components/AgScoreReviewDialog";
+import { pendingAgScoreSubmissions, PendingAgScoreSubmission, getPendingAgScoresForOfficer } from "@/data/pendingAgScores";
+import AgScoreBadge from "@/components/AgScoreBadge";
 
 interface Task {
   id: number;
@@ -45,6 +48,11 @@ export default function FieldOfficerDashboard() {
   const [selectedHarvest, setSelectedHarvest] = useState<HarvestRecord | null>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   
+  // AgScore review state
+  const [agScoreSubmissions, setAgScoreSubmissions] = useState<PendingAgScoreSubmission[]>(pendingAgScoreSubmissions);
+  const [selectedAgScore, setSelectedAgScore] = useState<PendingAgScoreSubmission | null>(null);
+  const [isAgScoreReviewOpen, setIsAgScoreReviewOpen] = useState(false);
+  
   const handleFarmerClick = (farmer: any) => {
     setSelectedFarmer(farmer);
     setIsQuickViewOpen(true);
@@ -69,6 +77,12 @@ export default function FieldOfficerDashboard() {
   const activeFarmers = assignedFarmers.filter((f: any) => f.status === 'active').length;
   const pendingVerifications = Math.floor(assignedHarvests.length * 0.15); // 15% pending
   const totalHarvest = assignedHarvests.reduce((sum: number, h: any) => sum + h.quantity, 0);
+  
+  // Filter pending AgScore submissions for assigned municipalities
+  const pendingAgScores = agScoreSubmissions.filter(s => 
+    assignedBarangays.includes(s.submittedData.municipality) && s.status === 'pending'
+  );
+  const pendingAgScoreCount = pendingAgScores.length;
   
   // Recent farmers needing attention
   const recentFarmers = assignedFarmers.slice(0, 8);
@@ -154,6 +168,42 @@ export default function FieldOfficerDashboard() {
         : h
     ));
     toast.error('Harvest rejected');
+  };
+  
+  // AgScore review handlers
+  const handleReviewAgScore = (submission: PendingAgScoreSubmission) => {
+    setSelectedAgScore(submission);
+    setIsAgScoreReviewOpen(true);
+  };
+  
+  const handleApproveAgScore = (submissionId: string, comment: string) => {
+    setAgScoreSubmissions(agScoreSubmissions.map(s => 
+      s.id === submissionId
+        ? {
+            ...s,
+            status: 'approved' as const,
+            reviewedBy: user?.name || 'Field Officer',
+            reviewedDate: new Date().toISOString(),
+            reviewComment: comment
+          }
+        : s
+    ));
+    // In production, this would also update the farmer's AgScore in the database
+  };
+  
+  const handleRejectAgScore = (submissionId: string, comment: string) => {
+    setAgScoreSubmissions(agScoreSubmissions.map(s => 
+      s.id === submissionId
+        ? {
+            ...s,
+            status: 'rejected' as const,
+            reviewedBy: user?.name || 'Field Officer',
+            reviewedDate: new Date().toISOString(),
+            reviewComment: comment
+          }
+        : s
+    ));
+    // In production, this would send feedback to KaAni
   };
   
   // Barangay performance
@@ -388,6 +438,73 @@ export default function FieldOfficerDashboard() {
         </CardContent>
       </Card>
 
+      {/* Pending AgScore Reviews */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-green-600" />
+                Pending AgScore™ Reviews
+              </CardTitle>
+              <CardDescription>AgScore™ submissions from KaAni awaiting approval</CardDescription>
+            </div>
+            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+              {pendingAgScoreCount} pending
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {pendingAgScores.map((submission) => (
+              <div key={submission.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <p className="font-medium">{submission.farmerName}</p>
+                    <Badge variant="outline" className="text-xs">
+                      {submission.farmerId}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <p>📍 {submission.submittedData.barangay}, {submission.submittedData.municipality}</p>
+                    <p>🌾 {submission.submittedData.cropType} ({submission.submittedData.systemOrVariety})</p>
+                    <p>📏 {submission.submittedData.areaSizeHa} ha</p>
+                    <p>📊 {submission.submittedData.projectedYieldPerHa} MT/ha</p>
+                  </div>
+                  <div className="mt-2">
+                    <AgScoreBadge 
+                      score={submission.calculatedScore.baselineScore}
+                      tier={submission.calculatedScore.tier}
+                      qualitativeTier={submission.calculatedScore.qualitativeTier}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {new Date(submission.submittedDate).toLocaleDateString()}
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="border-green-200 text-green-600 hover:bg-green-50"
+                    onClick={() => handleReviewAgScore(submission)}
+                  >
+                    Review
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {pendingAgScores.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                <p>No pending AgScore™ reviews</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Pending Harvests for Verification */}
       <Card>
         <CardHeader>
@@ -560,6 +677,15 @@ export default function FieldOfficerDashboard() {
         harvest={selectedHarvest}
         onApprove={handleApproveHarvest}
         onReject={handleRejectHarvest}
+      />
+      
+      {/* AgScore Review Dialog */}
+      <AgScoreReviewDialog
+        open={isAgScoreReviewOpen}
+        onOpenChange={setIsAgScoreReviewOpen}
+        submission={selectedAgScore}
+        onApprove={handleApproveAgScore}
+        onReject={handleRejectAgScore}
       />
     </div>
   );
