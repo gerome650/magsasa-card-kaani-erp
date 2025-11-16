@@ -358,3 +358,12 @@
 - [x] Add task delete functionality
 - [x] Display task count badges for each filter
 - [x] Test adding, completing, and deleting tasks
+
+
+## Bug Fix: FarmerDashboard toLocaleString Error
+
+- [x] Fix undefined toLocaleString() error at line 579 in FarmerDashboard
+- [x] Add null/undefined checks for harvest data properties
+- [x] Fix property name mismatch (estimatedValue → totalValue)
+- [x] Test FarmerDashboard with Farmer role login
+- [x] Verify all data displays correctly without errors

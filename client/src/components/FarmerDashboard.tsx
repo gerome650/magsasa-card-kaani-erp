@@ -16,7 +16,7 @@ export default function FarmerDashboard() {
   
   // Calculate metrics
   const totalHarvest = farmerHarvests.length > 0 ? farmerHarvests.reduce((sum: number, h: any) => sum + h.quantity, 0) : 0;
-  const totalEarnings = farmerHarvests.length > 0 ? farmerHarvests.reduce((sum: number, h: any) => sum + h.estimatedValue, 0) : 0;
+  const totalEarnings = farmerHarvests.length > 0 ? farmerHarvests.reduce((sum: number, h: any) => sum + (h.totalValue || 0), 0) : 0;
   const avgYield = farmerProfile.totalLandArea > 0 && totalHarvest > 0 ? totalHarvest / farmerProfile.totalLandArea : 0;
   
   // Get crop distribution
@@ -210,7 +210,7 @@ export default function FarmerDashboard() {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">{harvest.quantity} {harvest.unit}</p>
-                    <p className="text-sm text-muted-foreground">₱{harvest.estimatedValue.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">₱{(harvest.totalValue || 0).toLocaleString()}</p>
                   </div>
                 </div>
               ))
