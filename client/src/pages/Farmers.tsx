@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, MapPin, Phone, Mail, Calendar } from 'lucide-react';
+import { Link } from 'wouter';
+import { Search, MapPin, Phone, Mail, Calendar, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
@@ -142,6 +143,13 @@ export default function Farmers() {
                 </span>
               ))}
             </div>
+
+            <Link href={`/farmers/${farmer.id}`}>
+              <button className="w-full mt-4 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                <Eye className="w-4 h-4" />
+                View Profile
+              </button>
+            </Link>
           </Card>
         ))}
       </div>

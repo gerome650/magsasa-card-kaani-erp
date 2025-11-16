@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
+import FarmerProfile from "./pages/FarmerProfile";
 import HarvestTracking from "./pages/HarvestTracking";
 import PriceComparison from "./components/PriceComparison";
 import OrderCalculator from "./pages/OrderCalculator";
@@ -17,6 +18,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/farmers" component={Farmers} />
+        <Route path="/farmers/:id" component={FarmerProfile} />
         <Route path="/harvest-tracking" component={HarvestTracking} />
         <Route path="/price-comparison" component={PriceComparison} />
         <Route path="/order-calculator" component={OrderCalculator} />

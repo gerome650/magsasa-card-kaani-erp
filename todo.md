@@ -150,3 +150,40 @@
 - [x] Create demo harvest data for testing (12 sample records)
 - [x] Link harvest records to farmer profiles
 - [ ] Update dashboard to show recent harvests (future enhancement)
+
+
+## New Feature Request: Farmer Profile Integration with Harvest Data
+
+### Farmer Profile Detail Page
+- [x] Create farmer profile detail page accessible from farmer cards
+- [x] Display farmer basic information (name, ID, location, contact, farm size)
+- [x] Add profile header with farmer photo and key metrics
+- [x] Implement breadcrumb navigation (Farmers > Farmer Name)
+- [x] Add tabs for different sections (Overview, Harvest History, Analytics)
+
+### Harvest History Integration
+- [x] Display complete harvest history for the farmer
+- [x] Show harvest timeline with chronological order
+- [x] Display harvest details (date, crop, quantity, quality, value)
+- [x] Calculate and display total harvests count
+- [ ] Add filtering by crop type and date range (future enhancement)
+
+### Harvest Analytics for Individual Farmer
+- [x] Create summary cards (total harvest, total earnings, average yield)
+- [x] Add harvest by crop distribution chart
+- [x] Add quality grade distribution chart
+- [x] Calculate average yield per hectare across all harvests
+- [x] Display best performing crop for the farmer
+- [ ] Show earnings trend over time (future enhancement)
+
+### Performance Metrics
+- [x] Calculate farmer's ranking compared to others
+- [x] Add badges or achievements for top performers (Top 3, Top 5)
+- [ ] Show performance score or rating (future enhancement)
+- [ ] Display improvement trends (month-over-month, year-over-year) (future enhancement)
+
+### Navigation and UX
+- [x] Add "View Profile" button to farmer cards
+- [x] Implement smooth transitions between pages
+- [x] Add back navigation to farmers list
+- [x] Ensure responsive design for mobile viewing
