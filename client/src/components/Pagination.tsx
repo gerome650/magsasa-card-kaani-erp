@@ -65,20 +65,30 @@ export default function Pagination({
       <div className="flex items-center gap-2">
         {/* First Page */}
         <button
-          onClick={() => onPageChange(1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(1);
+          }}
           disabled={currentPage === 1}
           className="p-2 rounded-lg border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="First page"
+          type="button"
         >
           <ChevronsLeft className="w-4 h-4" />
         </button>
 
         {/* Previous Page */}
         <button
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(currentPage - 1);
+          }}
           disabled={currentPage === 1}
           className="p-2 rounded-lg border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
+          type="button"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -88,8 +98,15 @@ export default function Pagination({
           {getPageNumbers().map((page, index) => (
             <button
               key={index}
-              onClick={() => typeof page === 'number' && onPageChange(page)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof page === 'number') {
+                  onPageChange(page);
+                }
+              }}
               disabled={page === '...'}
+              type="button"
               className={`min-w-[40px] h-10 px-3 rounded-lg border transition-colors ${
                 page === currentPage
                   ? 'bg-primary text-primary-foreground border-primary font-medium'
@@ -105,20 +122,30 @@ export default function Pagination({
 
         {/* Next Page */}
         <button
-          onClick={() => onPageChange(currentPage + 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(currentPage + 1);
+          }}
           disabled={currentPage === totalPages}
           className="p-2 rounded-lg border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
+          type="button"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
 
         {/* Last Page */}
         <button
-          onClick={() => onPageChange(totalPages)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(totalPages);
+          }}
           disabled={currentPage === totalPages}
           className="p-2 rounded-lg border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Last page"
+          type="button"
         >
           <ChevronsRight className="w-4 h-4" />
         </button>

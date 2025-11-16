@@ -12,6 +12,9 @@ export default function Farmers() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
+  // Debug logging
+  console.log('Farmers component render - currentPage:', currentPage);
+
   const barangays = ['all', ...Array.from(new Set(farmersData.map(f => f.barangay)))];
 
   const filteredFarmers = farmersData.filter(farmer => {
@@ -28,8 +31,16 @@ export default function Farmers() {
 
   // Scroll to top when page changes
   useEffect(() => {
+    console.log('Page changed to:', currentPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentPage]);
+
+  // Wrapper function to log page changes
+  const handlePageChange = (page: number) => {
+    console.log('handlePageChange called with page:', page);
+    setCurrentPage(page);
+    console.log('setCurrentPage called');
+  };
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredFarmers.length / itemsPerPage);
@@ -48,6 +59,9 @@ export default function Farmers() {
       <div>
         <h1 className="text-3xl font-bold">Farmers</h1>
         <p className="text-muted-foreground mt-1">Manage and monitor farmer information</p>
+        <div className="mt-2 px-3 py-1 bg-yellow-100 border border-yellow-400 rounded inline-block text-sm">
+          DEBUG: Current Page = {currentPage} | Total Pages = {totalPages} | Showing farmers {startIndex + 1}-{Math.min(endIndex, filteredFarmers.length)}
+        </div>
       </div>
 
       {/* Filters */}
@@ -178,7 +192,7 @@ export default function Farmers() {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={setCurrentPage}
+          onPageChange={handlePageChange}
           totalItems={filteredFarmers.length}
           itemsPerPage={itemsPerPage}
         />
