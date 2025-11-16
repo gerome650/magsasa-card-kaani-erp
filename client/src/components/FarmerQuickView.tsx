@@ -2,6 +2,7 @@ import { X, MapPin, Phone, Mail, Calendar, TrendingUp, Award } from 'lucide-reac
 import { useState } from 'react';
 import type { Farmer } from '../data/farmersData';
 import { harvestData } from '../data/harvestData';
+import { ImageLightbox } from './ImageLightbox';
 
 interface FarmerQuickViewProps {
   farmer: Farmer | null;
@@ -11,6 +12,9 @@ interface FarmerQuickViewProps {
 
 export default function FarmerQuickView({ farmer, isOpen, onClose }: FarmerQuickViewProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'harvest' | 'analytics'>('overview');
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   if (!isOpen || !farmer) return null;
 
@@ -275,6 +279,26 @@ export default function FarmerQuickView({ farmer, isOpen, onClose }: FarmerQuick
                             <p className="font-medium">{harvest.yieldPerHectare.toFixed(0)} kg/ha</p>
                           </div>
                         </div>
+                        {harvest.photos && harvest.photos.length > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <p className="text-xs text-muted-foreground mb-2">📷 {harvest.photos.length} photo{harvest.photos.length > 1 ? 's' : ''}</p>
+                            <div className="flex gap-2">
+                              {harvest.photos.map((photo: string, index: number) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Harvest photo ${index + 1}`}
+                                  className="h-20 w-20 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => {
+                                    setLightboxImages(harvest.photos);
+                                    setLightboxIndex(index);
+                                    setIsLightboxOpen(true);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -380,6 +404,14 @@ export default function FarmerQuickView({ farmer, isOpen, onClose }: FarmerQuick
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+      />
     </>
   );
 }

@@ -5,11 +5,15 @@ import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrendingUp, Sprout, DollarSign, Award, Calendar, MapPin, Phone, Mail } from "lucide-react";
 import AddHarvestDialog from "@/components/AddHarvestDialog";
+import { ImageLightbox } from "@/components/ImageLightbox";
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
   const [isAddHarvestOpen, setIsAddHarvestOpen] = useState(false);
   const [harvests, setHarvests] = useState(harvestData);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   
   // Find the farmer profile for the logged-in user
   // For demo, we'll use the first farmer (Maria Santos) for the Farmer role
@@ -205,22 +209,44 @@ export default function FarmerDashboard() {
           <div className="space-y-4">
             {recentHarvests.length > 0 ? (
               recentHarvests.map((harvest: any) => (
-                <div key={harvest.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <Sprout className="h-5 w-5 text-[#00C805]" />
+                <div key={harvest.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Sprout className="h-5 w-5 text-[#00C805]" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{harvest.crop}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(harvest.harvestDate).toLocaleDateString()} • {harvest.quality}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{harvest.crop}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(harvest.harvestDate).toLocaleDateString()} • {harvest.quality}
-                      </p>
+                    <div className="text-right">
+                      <p className="font-semibold">{harvest.quantity} {harvest.unit}</p>
+                      <p className="text-sm text-muted-foreground">₱{(harvest.totalValue || 0).toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{harvest.quantity} {harvest.unit}</p>
-                    <p className="text-sm text-muted-foreground">₱{(harvest.totalValue || 0).toLocaleString()}</p>
-                  </div>
+                  {harvest.photos && harvest.photos.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">📷 {harvest.photos.length} photo{harvest.photos.length > 1 ? 's' : ''}</span>
+                      <div className="flex gap-2">
+                        {harvest.photos.slice(0, 3).map((photo: string, index: number) => (
+                          <img
+                            key={index}
+                            src={photo}
+                            alt={`Harvest photo ${index + 1}`}
+                            className="h-16 w-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => {
+                              setLightboxImages(harvest.photos);
+                              setLightboxIndex(index);
+                              setIsLightboxOpen(true);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -264,6 +290,14 @@ export default function FarmerDashboard() {
         onAdd={handleAddHarvest}
         farmerId={farmerProfile.id}
         farmerName={farmerProfile.name}
+      />
+
+      {/* Image Lightbox */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
       />
     </div>
   );

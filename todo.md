@@ -409,3 +409,17 @@
 - [x] Update harvest record schema to include photos array
 - [x] Test complete workflow: upload 3 photos → see thumbnails with 1/3, 2/3, 3/3 badges → submit harvest → photos attached to record
 - [x] Verify harvest with photos updates dashboard metrics correctly (Total Harvests: 2→3, Earnings: ₱442.1K→₱467.1K)
+
+
+## New Feature: Display Harvest Photos in Activity Cards and History
+
+- [x] Add photo thumbnail display to Recent Harvest Activity cards in FarmerDashboard
+- [x] Show up to 3 photo thumbnails in a horizontal row below harvest details
+- [x] Add photo count indicator if photos exist (e.g., "📷 3 photos")
+- [x] Update Harvest History tab in FarmerQuickView modal to show photos
+- [x] Add photo gallery grid in harvest history entries
+- [x] Implement lightbox/image viewer (ImageLightbox component) for full-size photo viewing on click
+- [x] Add navigation controls in lightbox (prev/next arrows, close button, thumbnail nav, keyboard support)
+- [x] Handle harvests without photos gracefully (no photo section shown)
+- [x] Test photo display with Tomato harvest that has 3 photos attached (green, blue, orange)
+- [x] Verify photo thumbnails are clickable and open in lightbox (tested: click thumbnail → lightbox opens → Next arrow: 1/3 → 2/3)
