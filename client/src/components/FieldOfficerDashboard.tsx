@@ -1,16 +1,41 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone } from "lucide-react";
+import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone, Plus, Filter, Check, X, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 import FarmerQuickView from "@/components/FarmerQuickView";
+import AddTaskDialog from "@/components/AddTaskDialog";
+
+interface Task {
+  id: number;
+  type: string;
+  farmer: string;
+  location: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'pending' | 'in-progress' | 'completed';
+  date: string;
+  description?: string;
+}
 
 export default function FieldOfficerDashboard() {
   const { user } = useAuth();
   const [selectedBarangay, setSelectedBarangay] = useState<string>("All");
   const [selectedFarmer, setSelectedFarmer] = useState<any>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  
+  // Task management state
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: 1, type: "Harvest Verification", farmer: "Maria Santos", location: "San Pedro", priority: "high", status: "pending", date: "2024-10-15", description: "Verify rice harvest records" },
+    { id: 2, type: "Farm Visit", farmer: "Juan Dela Cruz", location: "Biñan", priority: "medium", status: "in-progress", date: "2024-10-16", description: "Conduct quarterly farm inspection" },
+    { id: 3, type: "Document Review", farmer: "Pedro Garcia", location: "Santa Rosa", priority: "low", status: "pending", date: "2024-10-17", description: "Review land title documents" },
+    { id: 4, type: "Harvest Verification", farmer: "Rosa Reyes", location: "Cabuyao", priority: "high", status: "pending", date: "2024-10-18", description: "Verify corn harvest quantity" },
+  ]);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   
   const handleFarmerClick = (farmer: any) => {
     setSelectedFarmer(farmer);
@@ -40,13 +65,52 @@ export default function FieldOfficerDashboard() {
   // Recent farmers needing attention
   const recentFarmers = assignedFarmers.slice(0, 8);
   
-  // Pending tasks
-  const pendingTasks = [
-    { id: 1, type: "Harvest Verification", farmer: "Maria Santos", location: "San Pedro", priority: "high", date: "2024-10-15" },
-    { id: 2, type: "Farm Visit", farmer: "Juan Dela Cruz", location: "Biñan", priority: "medium", date: "2024-10-16" },
-    { id: 3, type: "Document Review", farmer: "Pedro Garcia", location: "Santa Rosa", priority: "low", date: "2024-10-17" },
-    { id: 4, type: "Harvest Verification", farmer: "Rosa Reyes", location: "Cabuyao", priority: "high", date: "2024-10-18" },
-  ];
+  // Filter tasks
+  const filteredTasks = tasks.filter(task => {
+    const matchesStatus = taskFilter === 'all' || task.status === taskFilter;
+    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    return matchesStatus && matchesPriority;
+  });
+  
+  // Task actions
+  const handleCompleteTask = (taskId: number) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, status: 'completed' as const } : task
+    ));
+  };
+  
+  const handleDeleteTask = (taskId: number) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+  };
+  
+  const handleToggleTaskStatus = (taskId: number) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        const newStatus = task.status === 'pending' ? 'in-progress' : 
+                         task.status === 'in-progress' ? 'completed' : 'pending';
+        return { ...task, status: newStatus as Task['status'] };
+      }
+      return task;
+    }));
+  };
+  
+  // Count tasks by status
+  const taskCounts = {
+    all: tasks.length,
+    pending: tasks.filter(t => t.status === 'pending').length,
+    inProgress: tasks.filter(t => t.status === 'in-progress').length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+  };
+  
+  // Add new task
+  const handleAddTask = (newTaskData: Omit<Task, 'id' | 'status'>) => {
+    const newTask: Task = {
+      ...newTaskData,
+      id: Math.max(...tasks.map(t => t.id), 0) + 1,
+      status: 'pending',
+    };
+    setTasks([...tasks, newTask]);
+  };
   
   // Barangay performance
   const barangayStats = assignedBarangays.map(barangay => {
@@ -130,14 +194,92 @@ export default function FieldOfficerDashboard() {
       {/* Pending Tasks */}
       <Card>
         <CardHeader>
-          <CardTitle>Pending Tasks</CardTitle>
-          <CardDescription>Tasks requiring your attention</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Task Management</CardTitle>
+              <CardDescription>Manage your field officer tasks</CardDescription>
+            </div>
+            <Button onClick={() => setIsAddTaskOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Filter Controls */}
+          <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
+            <div className="flex gap-2">
+              <Badge 
+                variant={taskFilter === 'all' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setTaskFilter('all')}
+              >
+                All ({taskCounts.all})
+              </Badge>
+              <Badge 
+                variant={taskFilter === 'pending' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setTaskFilter('pending')}
+              >
+                Pending ({taskCounts.pending})
+              </Badge>
+              <Badge 
+                variant={taskFilter === 'in-progress' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setTaskFilter('in-progress')}
+              >
+                In Progress ({taskCounts.inProgress})
+              </Badge>
+              <Badge 
+                variant={taskFilter === 'completed' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setTaskFilter('completed')}
+              >
+                Completed ({taskCounts.completed})
+              </Badge>
+            </div>
+            <div className="flex gap-2 ml-auto">
+              <Badge 
+                variant={priorityFilter === 'all' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setPriorityFilter('all')}
+              >
+                All Priority
+              </Badge>
+              <Badge 
+                variant={priorityFilter === 'high' ? 'default' : 'outline'}
+                className="cursor-pointer bg-red-100 text-red-700 hover:bg-red-200"
+                onClick={() => setPriorityFilter('high')}
+              >
+                High
+              </Badge>
+              <Badge 
+                variant={priorityFilter === 'medium' ? 'default' : 'outline'}
+                className="cursor-pointer bg-orange-100 text-orange-700 hover:bg-orange-200"
+                onClick={() => setPriorityFilter('medium')}
+              >
+                Medium
+              </Badge>
+              <Badge 
+                variant={priorityFilter === 'low' ? 'default' : 'outline'}
+                className="cursor-pointer bg-blue-100 text-blue-700 hover:bg-blue-200"
+                onClick={() => setPriorityFilter('low')}
+              >
+                Low
+              </Badge>
+            </div>
+          </div>
+
+          {/* Task List */}
           <div className="space-y-3">
-            {pendingTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                <div className="flex items-center gap-4">
+            {filteredTasks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No tasks found matching the selected filters.</p>
+              </div>
+            ) : (
+              filteredTasks.map((task: Task) => (
+                <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-all">
+                <div className="flex items-center gap-4 flex-1">
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
                     task.priority === 'high' ? 'bg-red-100' : task.priority === 'medium' ? 'bg-orange-100' : 'bg-blue-100'
                   }`}>
@@ -150,18 +292,54 @@ export default function FieldOfficerDashboard() {
                     <p className="text-sm text-muted-foreground">{task.farmer} • {task.location}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{new Date(task.date).toLocaleDateString()}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    task.priority === 'high' ? 'bg-red-100 text-red-700' : 
-                    task.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {task.priority}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{new Date(task.date).toLocaleDateString()}</p>
+                    <div className="flex gap-1 mt-1">
+                      <Badge className={`text-xs ${
+                        task.priority === 'high' ? 'bg-red-100 text-red-700' : 
+                        task.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {task.priority}
+                      </Badge>
+                      <Badge className={`text-xs ${
+                        task.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                        task.status === 'in-progress' ? 'bg-yellow-100 text-yellow-700' : 
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {task.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleToggleTaskStatus(task.id)}
+                      className="h-8 w-8 p-0"
+                      title={task.status === 'completed' ? 'Reopen task' : 'Mark as complete'}
+                    >
+                      {task.status === 'completed' ? (
+                        <X className="h-4 w-4 text-gray-600" />
+                      ) : (
+                        <Check className="h-4 w-4 text-green-600" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="h-8 w-8 p-0"
+                      title="Delete task"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -263,6 +441,13 @@ export default function FieldOfficerDashboard() {
           onClose={() => setIsQuickViewOpen(false)}
         />
       )}
+      
+      {/* Add Task Dialog */}
+      <AddTaskDialog
+        isOpen={isAddTaskOpen}
+        onClose={() => setIsAddTaskOpen(false)}
+        onAddTask={handleAddTask}
+      />
     </div>
   );
 }
