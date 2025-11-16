@@ -4,10 +4,18 @@ import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
 import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone } from "lucide-react";
 import { useState } from "react";
+import FarmerQuickView from "@/components/FarmerQuickView";
 
 export default function FieldOfficerDashboard() {
   const { user } = useAuth();
   const [selectedBarangay, setSelectedBarangay] = useState<string>("All");
+  const [selectedFarmer, setSelectedFarmer] = useState<any>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  
+  const handleFarmerClick = (farmer: any) => {
+    setSelectedFarmer(farmer);
+    setIsQuickViewOpen(true);
+  };
   
   // For demo, Field Officer is assigned to specific barangays
   // In production, this would come from the user's profile
@@ -194,7 +202,11 @@ export default function FieldOfficerDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recentFarmers.map((farmer: any) => (
-              <div key={farmer.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+              <div 
+                key={farmer.id} 
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-all hover:shadow-md"
+                onClick={() => handleFarmerClick(farmer)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-lg font-semibold text-emerald-700">
@@ -242,6 +254,15 @@ export default function FieldOfficerDashboard() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Farmer Quick View Modal */}
+      {selectedFarmer && (
+        <FarmerQuickView
+          farmer={selectedFarmer}
+          isOpen={isQuickViewOpen}
+          onClose={() => setIsQuickViewOpen(false)}
+        />
+      )}
     </div>
   );
 }

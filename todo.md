@@ -335,3 +335,13 @@
 - [ ] Ensure proper logout and session cleanup
 - [ ] Test session persistence across page refreshes
 - [ ] Document RBAC system usage and configuration
+
+
+## New Feature: Interactive Farmer Cards in Field Officer Dashboard
+
+- [x] Import FarmerQuickView modal component into FieldOfficerDashboard
+- [x] Add state management for modal visibility and selected farmer
+- [x] Add click handlers to farmer cards to open detailed profile popup
+- [x] Style farmer cards with hover effects to indicate interactivity
+- [x] Test modal opening with different farmers from the dashboard
+- [x] Verify modal displays correct farmer data and harvest history
