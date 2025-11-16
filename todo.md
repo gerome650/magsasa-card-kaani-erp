@@ -187,3 +187,18 @@
 - [x] Implement smooth transitions between pages
 - [x] Add back navigation to farmers list
 - [x] Ensure responsive design for mobile viewing
+
+
+## New Task: Expand Dataset with 150 Additional Farmer Profiles
+
+- [x] Generate 150 new farmer profiles with realistic data
+- [x] Include diverse barangays and municipalities in Laguna (32 barangays)
+- [x] Vary farm sizes (0.5 ha to 10 ha)
+- [x] Assign different crop combinations (Rice, Corn, Vegetables)
+- [x] Create realistic contact information
+- [x] Set varied CARD membership dates (2020-2024)
+- [x] Generate corresponding harvest records (2-5 per farmer, ~600 total)
+- [x] Ensure realistic harvest quantities and values
+- [x] Vary quality grades distribution
+- [x] Test system performance with 158 total farmers
+- [x] Verify pagination and search functionality
