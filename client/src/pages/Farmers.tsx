@@ -5,12 +5,15 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
 import Pagination from '@/components/Pagination';
+import FarmerQuickView from '@/components/FarmerQuickView';
 
 export default function Farmers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBarangay, setSelectedBarangay] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
+  const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
   // Debug logging
   console.log('Farmers component render - currentPage:', currentPage);
@@ -177,12 +180,23 @@ export default function Farmers() {
               ))}
             </div>
 
-            <Link href={`/farmers/${farmer.id}`}>
-              <button className="w-full mt-4 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setSelectedFarmer(farmer);
+                  setIsQuickViewOpen(true);
+                }}
+                className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
                 <Eye className="w-4 h-4" />
-                View Profile
+                Quick View
               </button>
-            </Link>
+              <Link href={`/farmers/${farmer.id}`}>
+                <button className="py-2 px-4 border border-green-600 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors">
+                  Full Profile
+                </button>
+              </Link>
+            </div>
           </Card>
         ))}
       </div>
@@ -203,6 +217,16 @@ export default function Farmers() {
           <p className="text-muted-foreground">No farmers found matching your search criteria.</p>
         </Card>
       )}
+
+      {/* Quick View Modal */}
+      <FarmerQuickView
+        farmer={selectedFarmer}
+        isOpen={isQuickViewOpen}
+        onClose={() => {
+          setIsQuickViewOpen(false);
+          setSelectedFarmer(null);
+        }}
+      />
     </div>
   );
 }
