@@ -7,7 +7,8 @@ import {
   ShoppingCart, 
   Menu, 
   X,
-  Leaf
+  Leaf,
+  Wheat
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -21,6 +22,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Farmers', href: '/farmers', icon: Users },
+    { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart },
   ];

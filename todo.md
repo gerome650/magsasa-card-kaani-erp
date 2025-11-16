@@ -114,3 +114,39 @@
 4. **Global State**: Implement Context API or Redux for CARD Member status
 5. **Order Submission**: Complete checkout flow with delivery options
 6. **Data Persistence**: Connect to PostgreSQL database for farmer and order data
+
+
+## New Feature Request: Harvest Tracking Module
+
+### Harvest Data Entry
+- [x] Create harvest entry form with fields (farmer, farm, crop, harvest date, quantity, unit, quality grade, notes)
+- [x] Add form validation for required fields
+- [x] Implement date picker for harvest date selection
+- [x] Add dropdown for crop selection
+- [x] Add dropdown for quality grade (Premium, Grade A, Grade B, Grade C)
+- [x] Calculate estimated value based on quantity and market price
+- [x] Add success/error notifications after form submission
+
+### Harvest History View
+- [x] Create harvest records list with table/card view toggle
+- [x] Add search functionality by farmer name or crop
+- [x] Add filtering by date range, crop type, and farmer
+- [x] Display harvest details (date, crop, quantity, quality, value)
+- [x] Add export to CSV functionality
+- [ ] Add edit and delete functionality for harvest records (future enhancement)
+- [ ] Implement pagination for large datasets (future enhancement)
+
+### Harvest Analytics Dashboard
+- [x] Create total harvest metrics card (total quantity, total value)
+- [x] Add crop-wise harvest distribution chart with progress bars
+- [x] Add quality distribution chart with progress bars
+- [x] Add top performing farmers leaderboard (top 5)
+- [x] Add average yield per hectare calculation
+- [ ] Add harvest trends chart (monthly/seasonal) - future enhancement
+- [ ] Add year-over-year comparison - future enhancement
+
+### Integration
+- [x] Add Harvest Tracking to sidebar navigation
+- [x] Create demo harvest data for testing (12 sample records)
+- [x] Link harvest records to farmer profiles
+- [ ] Update dashboard to show recent harvests (future enhancement)
