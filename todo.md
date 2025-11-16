@@ -395,3 +395,17 @@
 - [x] Integrate dialog with FarmerDashboard "Record New Harvest" button
 - [x] Test complete workflow: select Tomato → see ₱45/kg price → enter 500kg/1.5ha → see ₱22,500 value + 333.33 kg/ha yield → submit → harvest added
 - [x] Verify dashboard metrics update correctly (Total Harvests: 2→3, Total Earnings: ₱442.1K→₱464.6K, Savings: ₱13,263→₱13,938)
+
+
+## New Feature: Harvest Photo Upload
+
+- [x] Add file input state management for photo uploads in AddHarvestDialog
+- [x] Create image preview component with thumbnail display (3-column grid with counter badges)
+- [x] Implement drag-and-drop file upload UI with click-to-browse fallback
+- [x] Add file validation (image types: JPG, PNG, WebP; max size: 5MB each)
+- [x] Support multiple photo uploads (up to 3 photos per harvest)
+- [x] Add remove photo functionality from preview (X button on hover)
+- [x] Convert uploaded images to base64 data URLs for storage
+- [x] Update harvest record schema to include photos array
+- [x] Test complete workflow: upload 3 photos → see thumbnails with 1/3, 2/3, 3/3 badges → submit harvest → photos attached to record
+- [x] Verify harvest with photos updates dashboard metrics correctly (Total Harvests: 2→3, Earnings: ₱442.1K→₱467.1K)

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getAvailableCrops, getMarketPrice, calculateHarvestValue } from "@/data/marketPrices";
-import { TrendingUp, TrendingDown, Minus, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, DollarSign, Upload, X, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddHarvestDialogProps {
@@ -24,6 +24,8 @@ export default function AddHarvestDialog({ open, onOpenChange, onAdd, farmerId, 
   const [qualityGrade, setQualityGrade] = useState<string>("Grade A");
   const [harvestDate, setHarvestDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState<string>("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   
   const availableCrops = getAvailableCrops();
   const marketPrice = selectedCrop ? getMarketPrice(selectedCrop) : null;
@@ -41,8 +43,76 @@ export default function AddHarvestDialog({ open, onOpenChange, onAdd, farmerId, 
       setQualityGrade("Grade A");
       setHarvestDate(new Date().toISOString().split('T')[0]);
       setNotes("");
+      setPhotos([]);
     }
   }, [open]);
+
+  // Handle file upload
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    
+    processFiles(Array.from(files));
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    
+    const files = event.dataTransfer.files;
+    if (!files) return;
+    
+    processFiles(Array.from(files));
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const processFiles = (files: File[]) => {
+    const maxPhotos = 3;
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (photos.length >= maxPhotos) {
+      toast.error(`Maximum ${maxPhotos} photos allowed`);
+      return;
+    }
+
+    const remainingSlots = maxPhotos - photos.length;
+    const filesToProcess = files.slice(0, remainingSlots);
+
+    filesToProcess.forEach(file => {
+      // Validate file type
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`${file.name}: Only JPG, PNG, and WebP images are allowed`);
+        return;
+      }
+
+      // Validate file size
+      if (file.size > maxSize) {
+        toast.error(`${file.name}: File size must be less than 5MB`);
+        return;
+      }
+
+      // Read file and convert to base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPhotos(prev => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = () => {
     // Validation
@@ -80,6 +150,7 @@ export default function AddHarvestDialog({ open, onOpenChange, onAdd, farmerId, 
       landAreaHarvested: landAreaNum,
       yieldPerHectare,
       notes,
+      photos,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -235,6 +306,64 @@ export default function AddHarvestDialog({ open, onOpenChange, onAdd, farmerId, 
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
             />
+          </div>
+
+          {/* Photo Upload */}
+          <div className="space-y-2">
+            <Label>Harvest Photos (Optional)</Label>
+            <p className="text-sm text-muted-foreground">Upload up to 3 photos for verification (JPG, PNG, WebP, max 5MB each)</p>
+            
+            {/* Drag and Drop Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                isDragging ? 'border-[#00C805] bg-emerald-50' : 'border-gray-300 hover:border-[#00C805]'
+              } ${photos.length >= 3 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => photos.length < 3 && document.getElementById('photo-upload')?.click()}
+            >
+              <Upload className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm font-medium mb-1">Drag and drop photos here</p>
+              <p className="text-xs text-muted-foreground">or click to browse</p>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                disabled={photos.length >= 3}
+              />
+            </div>
+
+            {/* Photo Previews */}
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={photo}
+                      alt={`Harvest photo ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePhoto(index);
+                      }}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-2 py-0.5 rounded">
+                      {index + 1}/3
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
