@@ -14,6 +14,7 @@ import HarvestTracking from "./pages/HarvestTracking";
 import PriceComparison from "./components/PriceComparison";
 import OrderCalculator from "./pages/OrderCalculator";
 import Login from "./pages/Login";
+import KaAniChat from "./pages/KaAniChat";
 
 function Router() {
   return (
@@ -66,6 +67,14 @@ function Router() {
         <ProtectedRoute>
           <Layout>
             <OrderCalculator />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/kaani">
+        <ProtectedRoute>
+          <Layout>
+            <KaAniChat />
           </Layout>
         </ProtectedRoute>
       </Route>

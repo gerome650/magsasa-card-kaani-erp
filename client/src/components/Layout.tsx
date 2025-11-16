@@ -9,7 +9,8 @@ import {
   X,
   Leaf,
   Wheat,
-  LogOut
+  LogOut,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart },
+    { name: 'Ask KaAni', href: '/kaani', icon: MessageCircle },
   ];
 
   const isActive = (href: string) => {

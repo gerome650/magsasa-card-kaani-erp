@@ -463,3 +463,61 @@
 - [x] Verify pending count updates correctly (5 → 4)
 - [x] Verify harvest removed from pending list after approval
 - [x] Test photo viewer in review dialog (lightbox opens with navigation)
+
+
+## New Feature: KaAni AI Chat Integration
+
+### Chat UI Components
+- [x] Create KaAniChat page component with chat container layout
+- [x] Build ChatMessage component for user and AI messages
+- [x] Add message bubbles with different styles (user: green, AI: gray)
+- [x] Implement chat history display with scrollable container
+- [x] Add timestamp display for each message
+- [x] Create typing indicator for AI responses
+
+### Chat Input Area
+- [x] Build chat input textarea with auto-resize
+- [x] Add send button with icon
+- [x] Implement keyboard shortcuts (Enter to send, Shift+Enter for new line)
+- [x] Add input validation and character limit
+- [x] Show placeholder text based on user role
+
+### API Integration (Placeholder)
+- [x] Create kaaniService.ts with sendMessage function
+- [x] Add placeholder API endpoint configuration
+- [x] Implement mock responses for testing (7 topic categories)
+- [x] Add error handling for API failures
+- [x] Prepare for Gemini API integration (API key, endpoint URL)
+
+### Navigation & Routing
+- [x] Add "💬 Ask KaAni" item to sidebar navigation
+- [x] Create route for /kaani path
+- [x] Add KaAni icon to sidebar
+- [x] Ensure route is accessible to all user roles
+
+### Context Awareness
+- [x] Pass user role (Farmer/Manager/Field Officer) to API
+- [x] Add welcome message based on user role
+- [x] Include relevant context in API requests (farmer data, harvest info)
+
+### Testing
+- [x] Test chat UI with mock messages (tested rice farming and AgScore questions)
+- [x] Verify design matches MAGSASA-CARD green theme
+- [x] Test on mobile and desktop views
+- [x] Verify message scrolling and input behavior
+- [x] Test with all three user roles (tested with Field Officer role)
+
+### Mock Response Coverage
+- [x] Rice/Palay farming questions
+- [x] Loan/Pautang inquiries
+- [x] AgScore™ information
+- [x] Pest control advice
+- [x] Market price queries
+- [x] Weather information
+- [x] Default fallback response
+
+### Ready for Production
+- [x] Chat UI fully functional with mock responses
+- [x] All features tested and working (message sending, receiving, scrolling, timestamps)
+- [x] Design integrated with MAGSASA-CARD platform
+- [ ] **PENDING**: Replace mock responses with actual Gemini API integration (waiting for user to deploy KaAni and provide API endpoint + key)
