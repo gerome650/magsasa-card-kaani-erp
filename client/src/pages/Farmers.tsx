@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { Search, MapPin, Phone, Mail, Calendar, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
+import Pagination from '@/components/Pagination';
 
 export default function Farmers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBarangay, setSelectedBarangay] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const barangays = ['all', ...Array.from(new Set(farmersData.map(f => f.barangay)))];
 
@@ -17,6 +20,22 @@ export default function Farmers() {
     const matchesBarangay = selectedBarangay === 'all' || farmer.barangay === selectedBarangay;
     return matchesSearch && matchesBarangay;
   });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedBarangay]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredFarmers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedFarmers = filteredFarmers.slice(startIndex, endIndex);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,7 +95,7 @@ export default function Farmers() {
 
       {/* Farmers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredFarmers.map((farmer) => (
+        {paginatedFarmers.map((farmer) => (
           <Card key={farmer.id} className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -153,6 +172,17 @@ export default function Farmers() {
           </Card>
         ))}
       </div>
+
+      {/* Pagination */}
+      {filteredFarmers.length > 0 && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredFarmers.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
 
       {filteredFarmers.length === 0 && (
         <Card className="p-12 text-center">
