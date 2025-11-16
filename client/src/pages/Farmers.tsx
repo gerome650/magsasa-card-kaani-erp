@@ -4,8 +4,11 @@ import { Search, MapPin, Phone, Mail, Calendar, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
+import { harvestData } from '@/data/harvestData';
 import Pagination from '@/components/Pagination';
 import FarmerQuickView from '@/components/FarmerQuickView';
+import AdvancedFilters, { type FilterOptions } from '@/components/AdvancedFilters';
+import { applyFarmerFilters, getActiveFilterCount, getFilterSummary } from '@/utils/farmerFilters';
 
 export default function Farmers() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,23 +17,33 @@ export default function Farmers() {
   const itemsPerPage = 25;
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    landArea: 'all',
+    cropType: 'all',
+    membershipYear: 'all',
+    performance: 'all',
+  });
 
   // Debug logging
   console.log('Farmers component render - currentPage:', currentPage);
 
   const barangays = ['all', ...Array.from(new Set(farmersData.map(f => f.barangay)))];
 
-  const filteredFarmers = farmersData.filter(farmer => {
-    const matchesSearch = farmer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         farmer.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBarangay = selectedBarangay === 'all' || farmer.barangay === selectedBarangay;
-    return matchesSearch && matchesBarangay;
-  });
+  // Apply all filters including advanced filters
+  let filteredFarmers = applyFarmerFilters(farmersData, harvestData, filters, searchQuery);
+  
+  // Apply barangay filter
+  if (selectedBarangay !== 'all') {
+    filteredFarmers = filteredFarmers.filter(farmer => farmer.barangay === selectedBarangay);
+  }
+
+  const activeFilterCount = getActiveFilterCount(filters);
+  const filterSummary = getFilterSummary(filters, filteredFarmers.length, farmersData.length);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedBarangay]);
+  }, [searchQuery, selectedBarangay, filters]);
 
   // Scroll to top when page changes
   useEffect(() => {
@@ -67,7 +80,14 @@ export default function Farmers() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Advanced Filters */}
+      <AdvancedFilters
+        filters={filters}
+        onFilterChange={setFilters}
+        activeFilterCount={activeFilterCount}
+      />
+
+      {/* Search and Barangay Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -88,6 +108,11 @@ export default function Farmers() {
             <option key={barangay} value={barangay}>{barangay}</option>
           ))}
         </select>
+      </div>
+
+      {/* Filter Summary */}
+      <div className="mb-4 text-sm text-gray-600">
+        {filterSummary}
       </div>
 
       {/* Stats Summary */}

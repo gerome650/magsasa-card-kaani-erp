@@ -264,3 +264,34 @@
 - [x] Test on mobile devices for touch interactions
 - [ ] Add loading state while fetching farmer details (future enhancement)
 - [ ] Implement keyboard navigation (Tab, ESC, Arrow keys) (future enhancement)
+
+
+## New Feature: Advanced Search Filters
+
+### Filter Components
+- [x] Create AdvancedFilters component with dropdown selects
+- [x] Add Land Area Range filter (0-2ha, 2-5ha, 5-10ha, 10+ha, All)
+- [x] Add Crop Type filter (All, Rice, Corn, Vegetables, Multiple crops)
+- [x] Add Membership Year filter (All, 2020, 2021, 2022, 2023, 2024)
+- [x] Add Harvest Performance filter (All, Top 25%, Above Average, Below Average, Bottom 25%)
+- [x] Style filters to match Robinhood theme with green accents
+- [x] Add "Clear All Filters" button
+- [x] Show active filter count badge
+
+### Filter Logic Implementation
+- [x] Implement land area range filtering logic
+- [x] Implement crop type filtering (single or multiple crops)
+- [x] Implement membership year filtering
+- [x] Calculate harvest performance percentiles for filtering
+- [x] Combine multiple active filters with AND logic
+- [x] Update farmer count display based on active filters
+- [x] Reset pagination to page 1 when filters change
+
+### Integration and UX
+- [x] Integrate filters with existing search functionality
+- [x] Add filter summary text ("Showing 28 of 158 farmers with 2-5 ha land area, growing Rice")
+- [x] Ensure filters work with pagination (tested: 158 → 58 → 28 farmers)
+- [x] Test all filter combinations with 158 farmers
+- [ ] Add filter persistence in URL query parameters (future enhancement)
+- [ ] Show "No farmers found" message when filters return empty results (future enhancement)
+- [ ] Add responsive design for mobile filter view (future enhancement)
