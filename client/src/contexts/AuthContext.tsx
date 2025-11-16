@@ -64,6 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('magsasa_user');
+    window.location.href = '/login';
   };
 
   const hasRole = (role: UserRole | UserRole[]): boolean => {
