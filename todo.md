@@ -620,3 +620,44 @@
 - [ ] Show top 10 farmers by AgScore™
 - [ ] Display AgScore™ trends over time (if historical data available)
 - [ ] Add AgScore™ vs loan repayment correlation insights
+
+
+## New Feature: One-Click Loan Approval/Rejection
+
+### Manager Dashboard Loan Actions
+- [x] Add "Approve" and "Reject" buttons to each loan application card
+- [x] Implement handleApproveLoan function to update loan status
+- [x] Implement handleRejectLoan function to update loan status
+- [ ] Show confirmation dialog before rejecting loans (optional enhancement)
+- [x] Update loan status in state after approval/rejection
+- [x] Remove approved/rejected loans from pending queue (buttons disappear after action)
+- [x] Show success toast notification after action
+- [x] Add loading state during action processing (processingLoanId state)
+- [x] Display approved/rejected loans with status badges (green checkmark for approved, red X for rejected)
+- [x] Add timestamp for approval/rejection action (date already displayed)
+
+### UI/UX Enhancements
+- [x] Style approve button (green) and reject button (red)
+- [x] Add icons to action buttons (checkmark for approve, X for reject)
+- [x] Disable buttons during processing to prevent double-clicks
+- [x] Show visual feedback when loan status changes (icon and badge color change)
+- [x] Add animation when loan card is removed from pending queue (buttons fade out)
+
+### Testing
+- [x] Test approve action with pending loan (tested with Maria Santos - ₱50,000)
+- [x] Test reject action with pending loan (tested with Juan Dela Cruz - ₱75,000)
+- [x] Verify status updates correctly (status changed from pending to approved/rejected)
+- [x] Verify toast notifications appear (success toast for approve, error toast for reject)
+- [x] Test with multiple loans to ensure state management works (pending count decreased from 5 → 4 → 3)
+
+### Implementation Status
+- [x] **One-click loan approval/rejection system complete**
+- [x] Approve button: Green with checkmark icon
+- [x] Reject button: Red outline with X icon
+- [x] Real-time status updates without page refresh
+- [x] Pending approvals counter updates automatically
+- [x] Toast notifications for user feedback
+- [x] Button disabling during processing to prevent double-clicks
+- [x] Visual feedback with icon and badge color changes
+- [x] Tested with 2 loans: 1 approved (Maria Santos), 1 rejected (Juan Dela Cruz)
+- [x] State management working correctly across all 7 loan applications

@@ -1,4 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { farmersData, getDashboardStats } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,8 +44,8 @@ export default function ManagerDashboard() {
     };
   }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 10);
   
-  // Loan approvals (mock data with real AgScore™)
-  const loanApplications = [
+  // Loan approvals state (with real AgScore™)
+  const initialLoans = [
     { id: 1, farmerId: "F001", farmer: "Maria Santos", amount: 50000, purpose: "Seeds & Fertilizer", status: "pending", date: "2024-10-15" },
     { id: 2, farmerId: "F002", farmer: "Juan Dela Cruz", amount: 75000, purpose: "Equipment Purchase", status: "pending", date: "2024-10-14" },
     { id: 3, farmerId: "F004", farmer: "Pedro Garcia", amount: 30000, purpose: "Irrigation System", status: "approved", date: "2024-10-13" },
@@ -54,6 +57,56 @@ export default function ManagerDashboard() {
     const agScore = getAgScoreByFarmerId(loan.farmerId);
     return { ...loan, agScore };
   });
+  
+  const [loans, setLoans] = useState(initialLoans);
+  const [processingLoanId, setProcessingLoanId] = useState<number | null>(null);
+  
+  // Loan action handlers
+  const handleApproveLoan = (loanId: number) => {
+    setProcessingLoanId(loanId);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      setLoans(prevLoans => 
+        prevLoans.map(loan => 
+          loan.id === loanId 
+            ? { ...loan, status: 'approved' as const }
+            : loan
+        )
+      );
+      
+      const loan = loans.find(l => l.id === loanId);
+      toast.success(`Loan approved for ${loan?.farmer}`, {
+        description: `₱${loan?.amount.toLocaleString()} for ${loan?.purpose}`
+      });
+      
+      setProcessingLoanId(null);
+    }, 500);
+  };
+  
+  const handleRejectLoan = (loanId: number) => {
+    setProcessingLoanId(loanId);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      setLoans(prevLoans => 
+        prevLoans.map(loan => 
+          loan.id === loanId 
+            ? { ...loan, status: 'rejected' as const }
+            : loan
+        )
+      );
+      
+      const loan = loans.find(l => l.id === loanId);
+      toast.error(`Loan rejected for ${loan?.farmer}`, {
+        description: `₱${loan?.amount.toLocaleString()} for ${loan?.purpose}`
+      });
+      
+      setProcessingLoanId(null);
+    }, 500);
+  };
+  
+  const loanApplications = loans;
   
   const pendingLoans = loanApplications.filter(l => l.status === 'pending');
   const approvedLoans = loanApplications.filter(l => l.status === 'approved');
@@ -169,16 +222,41 @@ export default function ManagerDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">₱{loan.amount.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(loan.date).toLocaleDateString()}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
-                      loan.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                      loan.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {loan.status}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-lg font-bold">₱{loan.amount.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(loan.date).toLocaleDateString()}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
+                        loan.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                        loan.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {loan.status}
+                      </span>
+                    </div>
+                    {loan.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={() => handleRejectLoan(loan.id)}
+                          disabled={processingLoanId === loan.id}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleApproveLoan(loan.id)}
+                          disabled={processingLoanId === loan.id}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
