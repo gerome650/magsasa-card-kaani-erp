@@ -17,3 +17,9 @@
 - [x] Loading states and skeleton screens
 - [ ] Product detail view (future enhancement)
 - [ ] Order summary and checkout flow (future enhancement)
+
+## Bug Fixes
+
+- [x] Fix API connection error when backend is unavailable (add demo data fallback)
+- [x] Update API service to gracefully handle offline mode
+- [x] Show appropriate status indicator when using demo data

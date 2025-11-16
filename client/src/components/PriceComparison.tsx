@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, TrendingDown, Package, Search, Filter } from 'lucide-react';
 import { pricingAPI, type Product } from '@/services/pricingAPI';
+import { demoProducts } from '@/services/demoData';
 import { toast } from 'sonner';
 
 export default function PriceComparison() {
@@ -38,9 +39,27 @@ export default function PriceComparison() {
         searchQuery || undefined
       );
       setProducts(data);
+      setApiStatus('online');
     } catch (error) {
-      toast.error('Failed to load products. Please try again.');
-      console.error('Error fetching products:', error);
+      console.warn('API unavailable, using demo data:', error);
+      // Use demo data as fallback
+      let filteredProducts = demoProducts;
+      
+      if (selectedCategory) {
+        filteredProducts = filteredProducts.filter(p => p.category === selectedCategory);
+      }
+      
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filteredProducts = filteredProducts.filter(p => 
+          p.name.toLowerCase().includes(query) ||
+          p.description.toLowerCase().includes(query) ||
+          p.brand.toLowerCase().includes(query)
+        );
+      }
+      
+      setProducts(filteredProducts);
+      setApiStatus('offline');
     } finally {
       setLoading(false);
     }
@@ -73,7 +92,9 @@ export default function PriceComparison() {
         {/* API Status */}
         <Badge variant={apiStatus === 'online' ? 'default' : 'secondary'}>
           {apiStatus === 'checking' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-          {apiStatus === 'online' ? '🟢 Live Data' : '🔴 Offline'}
+          {apiStatus === 'online' && '🟢 Live Data'}
+          {apiStatus === 'offline' && '📊 Demo Data'}
+          {apiStatus === 'checking' && 'Checking...'}
         </Badge>
       </div>
 
