@@ -1,18 +1,27 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrendingUp, Sprout, DollarSign, Award, Calendar, MapPin, Phone, Mail } from "lucide-react";
+import AddHarvestDialog from "@/components/AddHarvestDialog";
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
+  const [isAddHarvestOpen, setIsAddHarvestOpen] = useState(false);
+  const [harvests, setHarvests] = useState(harvestData);
   
   // Find the farmer profile for the logged-in user
   // For demo, we'll use the first farmer (Maria Santos) for the Farmer role
   const farmerProfile = farmersData.find((f: any) => f.email === user?.email) || farmersData[0];
   
   // Get harvests for this farmer
-  const farmerHarvests = harvestData.filter((h: any) => h.farmerId === farmerProfile.id);
+  const farmerHarvests = harvests.filter((h: any) => h.farmerId === farmerProfile.id);
+  
+  // Handle adding new harvest
+  const handleAddHarvest = (newHarvest: any) => {
+    setHarvests([newHarvest, ...harvests]);
+  };
   
   // Calculate metrics
   const totalHarvest = farmerHarvests.length > 0 ? farmerHarvests.reduce((sum: number, h: any) => sum + h.quantity, 0) : 0;
@@ -229,7 +238,10 @@ export default function FarmerDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors">
+            <button 
+              className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors"
+              onClick={() => setIsAddHarvestOpen(true)}
+            >
               <p className="font-medium">📝 Record New Harvest</p>
               <p className="text-sm text-muted-foreground mt-1">Add your latest harvest data</p>
             </button>
@@ -244,6 +256,15 @@ export default function FarmerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Harvest Dialog */}
+      <AddHarvestDialog
+        open={isAddHarvestOpen}
+        onOpenChange={setIsAddHarvestOpen}
+        onAdd={handleAddHarvest}
+        farmerId={farmerProfile.id}
+        farmerName={farmerProfile.name}
+      />
     </div>
   );
 }

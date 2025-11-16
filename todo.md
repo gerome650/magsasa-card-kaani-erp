@@ -367,3 +367,31 @@
 - [x] Fix property name mismatch (estimatedValue → totalValue)
 - [x] Test FarmerDashboard with Farmer role login
 - [x] Verify all data displays correctly without errors
+
+
+## New Feature: Harvest Data Entry Form with Auto Market Price
+
+- [ ] Create market price data structure for different crops (Rice, Corn, Vegetables, etc.)
+- [ ] Build AddHarvestDialog component with form fields (crop, quantity, quality, date)
+- [ ] Implement automatic market price display when crop type is selected
+- [ ] Add automatic total value calculation (quantity × price per unit)
+- [ ] Add form validation for required fields and numeric inputs
+- [ ] Implement harvest record creation and state management
+- [ ] Integrate "Record New Harvest" button in FarmerDashboard with dialog
+- [ ] Test complete workflow: select crop → see price → enter quantity → calculate value → save
+- [ ] Display success message and update harvest list after submission
+
+
+## Feature Complete: Harvest Data Entry Form with Auto Market Price
+
+- [x] Create market price data structure with prices for 10+ crops (Rice, Corn, Tomato, Eggplant, Cabbage, Lettuce, Carrot, Banana, Mango, Pineapple)
+- [x] Build AddHarvestDialog component with form fields (crop, quantity, land area, quality, date, notes)
+- [x] Implement automatic market price display when crop is selected (shows price, trend, last updated)
+- [x] Show price trend indicators (up/down/stable with icons)
+- [x] Add automatic total value calculation (quantity × price per kg)
+- [x] Add automatic yield per hectare calculation (quantity ÷ land area)
+- [x] Implement form validation for required fields
+- [x] Add harvest record creation and state update
+- [x] Integrate dialog with FarmerDashboard "Record New Harvest" button
+- [x] Test complete workflow: select Tomato → see ₱45/kg price → enter 500kg/1.5ha → see ₱22,500 value + 333.33 kg/ha yield → submit → harvest added
+- [x] Verify dashboard metrics update correctly (Total Harvests: 2→3, Total Earnings: ₱442.1K→₱464.6K, Savings: ₱13,263→₱13,938)
