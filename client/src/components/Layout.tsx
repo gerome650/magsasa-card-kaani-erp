@@ -8,8 +8,11 @@ import {
   Menu, 
   X,
   Leaf,
-  Wheat
+  Wheat,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +21,34 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+
+  const getRoleDisplay = (role: string) => {
+    switch (role) {
+      case 'farmer': return 'Farmer';
+      case 'field_officer': return 'Field Officer';
+      case 'manager': return 'Manager';
+      default: return role;
+    }
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'farmer': return 'bg-blue-100 text-blue-700';
+      case 'field_officer': return 'bg-green-100 text-green-700';
+      case 'manager': return 'bg-purple-100 text-purple-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -119,15 +150,28 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* User Profile */}
           <div className="px-6 py-4 border-t">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <span className="text-sm font-bold text-green-600">JD</span>
+                <span className="text-sm font-bold text-green-600">
+                  {user ? getUserInitials(user.name) : 'U'}
+                </span>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Juan Dela Cruz</p>
-                <p className="text-xs text-muted-foreground">Field Officer</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+                <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${user ? getRoleBadgeColor(user.role) : 'bg-gray-100'}`}>
+                  {user ? getRoleDisplay(user.role) : 'Guest'}
+                </span>
               </div>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full" 
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>

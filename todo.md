@@ -295,3 +295,42 @@
 - [ ] Add filter persistence in URL query parameters (future enhancement)
 - [ ] Show "No farmers found" message when filters return empty results (future enhancement)
 - [ ] Add responsive design for mobile filter view (future enhancement)
+
+
+## New Feature: Role-Based Access Control (RBAC) System
+
+### Phase 1: Authentication Infrastructure
+- [x] Create user data models with role field (Farmer, Manager, Field Officer)
+- [x] Set up demo users for each role with credentials
+- [x] Create authentication context for managing user state
+- [x] Implement localStorage for session persistence
+- [x] Create auth utility functions (login, logout, getUser, hasRole)
+
+### Phase 2: Login System
+- [x] Create Login page with email/password form
+- [x] Implement JWT token generation (mock for frontend-only)
+- [x] Add login validation and error handling
+- [x] Create protected route wrapper component
+- [x] Implement automatic redirect to login for unauthenticated users
+
+### Phase 3: Role-Specific Dashboards
+- [ ] Create FarmerDashboard component (farm performance, marketplace, activities)
+- [ ] Create ManagerDashboard component (team metrics, loan approvals, AgScore monitoring)
+- [ ] Create FieldOfficerDashboard component (farmer list, registrations, AgScore filtering)
+- [ ] Implement role-based routing logic
+- [ ] Update navigation menu based on user role
+
+### Phase 4: Permission Management
+- [ ] Create permissions configuration for each role
+- [ ] Implement permission check hooks (usePermission, useHasPermission)
+- [ ] Add permission guards to sensitive components
+- [ ] Hide/show UI elements based on permissions
+- [ ] Add role badges to user profile display
+
+### Phase 5: Testing & Integration
+- [ ] Test login flow for all three roles
+- [ ] Verify role-specific dashboard access
+- [ ] Test permission checks across all pages
+- [ ] Ensure proper logout and session cleanup
+- [ ] Test session persistence across page refreshes
+- [ ] Document RBAC system usage and configuration
