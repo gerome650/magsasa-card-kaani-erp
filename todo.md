@@ -587,3 +587,36 @@
 - [ ] **PENDING**: API endpoints for KaAni integration (requires deployment)
 - [ ] **PENDING**: Manual recalculation trigger
 - [ ] **PENDING**: Display in Farmer Dashboard and Manager Dashboard
+
+
+## Manager Dashboard: AgScore™ Integration
+
+### Loan Approval Queue with AgScore™
+- [x] Add AgScore™ column to loan approval queue table
+- [x] Display AgScore™ badge with tier colors for each loan application (tested with 7 loan applications)
+- [x] Add color-coded risk indicators (yellow badges for Tier 4 moderate performance)
+- [ ] Sort/filter loans by AgScore™ tier
+- [ ] Show AgScore™ breakdown on hover or in expanded view
+- [ ] Add AgScore™ threshold recommendations for loan approval
+
+### AgScore™ Distribution Chart
+- [x] Create bar chart showing farmer distribution across 7 tiers
+- [x] Display count and percentage for each tier (35 farmers in Tier 5, 106 in Tier 4, 17 in Tier 3)
+- [x] Add color coding matching AgScore™ tier colors (green/blue/teal/yellow/orange/red/dark red)
+- [ ] Show average AgScore™ for all farmers
+- [ ] Add filtering by municipality/barangay
+
+### Implementation Status
+- [x] **Manager Dashboard AgScore™ integration complete**
+- [x] Loan approval queue displays AgScore™ badges (497, 464, 484, 501, 516, 489, 465)
+- [x] AgScore™ distribution chart with 7 tiers and color-coded bars
+- [x] Real-time data from 158 farmers showing performance distribution
+- [x] Tier breakdown: 0% Tier 7, 0% Tier 6, 22.2% Tier 5, 67.1% Tier 4, 10.8% Tier 3, 0% Tier 2, 0% Tier 1
+- [ ] **PENDING**: Sort/filter functionality for loan queue
+- [ ] **PENDING**: AgScore™ analytics and trends
+
+### AgScore™ Analytics
+- [ ] Calculate average AgScore™ by region
+- [ ] Show top 10 farmers by AgScore™
+- [ ] Display AgScore™ trends over time (if historical data available)
+- [ ] Add AgScore™ vs loan repayment correlation insights

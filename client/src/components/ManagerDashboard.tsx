@@ -3,6 +3,8 @@ import { farmersData, getDashboardStats } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
 import { Users, TrendingUp, DollarSign, Award, CheckCircle, Clock, XCircle } from "lucide-react";
+import { agScoreData, getAgScoreByFarmerId, getAgScoreDistribution } from "@/data/agScoreData";
+import AgScoreBadge from "@/components/AgScoreBadge";
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
@@ -39,37 +41,32 @@ export default function ManagerDashboard() {
     };
   }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 10);
   
-  // Loan approvals (mock data)
+  // Loan approvals (mock data with real AgScore™)
   const loanApplications = [
-    { id: 1, farmer: "Maria Santos", amount: 50000, purpose: "Seeds & Fertilizer", status: "pending", date: "2024-10-15", agScore: 850 },
-    { id: 2, farmer: "Juan Dela Cruz", amount: 75000, purpose: "Equipment Purchase", status: "pending", date: "2024-10-14", agScore: 720 },
-    { id: 3, farmer: "Pedro Garcia", amount: 30000, purpose: "Irrigation System", status: "approved", date: "2024-10-13", agScore: 680 },
-    { id: 4, farmer: "Rosa Reyes", amount: 100000, purpose: "Land Expansion", status: "pending", date: "2024-10-12", agScore: 920 },
-    { id: 5, farmer: "Carlos Ramos", amount: 45000, purpose: "Pest Control", status: "rejected", date: "2024-10-11", agScore: 380 },
-  ];
+    { id: 1, farmerId: "F001", farmer: "Maria Santos", amount: 50000, purpose: "Seeds & Fertilizer", status: "pending", date: "2024-10-15" },
+    { id: 2, farmerId: "F002", farmer: "Juan Dela Cruz", amount: 75000, purpose: "Equipment Purchase", status: "pending", date: "2024-10-14" },
+    { id: 3, farmerId: "F004", farmer: "Pedro Garcia", amount: 30000, purpose: "Irrigation System", status: "approved", date: "2024-10-13" },
+    { id: 4, farmerId: "F003", farmer: "Rosa Reyes", amount: 100000, purpose: "Land Expansion", status: "pending", date: "2024-10-12" },
+    { id: 5, farmerId: "F008", farmer: "Carlos Ramos", amount: 45000, purpose: "Pest Control", status: "rejected", date: "2024-10-11" },
+    { id: 6, farmerId: "F015", farmer: "Roberto Villanueva", amount: 60000, purpose: "Rice Planting", status: "pending", date: "2024-10-10" },
+    { id: 7, farmerId: "F042", farmer: "Elena Martinez", amount: 35000, purpose: "Corn Seeds", status: "pending", date: "2024-10-09" },
+  ].map(loan => {
+    const agScore = getAgScoreByFarmerId(loan.farmerId);
+    return { ...loan, agScore };
+  });
   
   const pendingLoans = loanApplications.filter(l => l.status === 'pending');
   const approvedLoans = loanApplications.filter(l => l.status === 'approved');
   const rejectedLoans = loanApplications.filter(l => l.status === 'rejected');
   
-  // AgScore distribution (mock calculation)
-  const agScoreRanges = {
-    excellent: farmersData.filter((f: any) => {
-      const score = Math.random() * 1000; // Mock score
-      return score >= 800;
-    }).length,
-    good: farmersData.filter((f: any) => {
-      const score = Math.random() * 1000;
-      return score >= 600 && score < 800;
-    }).length,
-    moderate: farmersData.filter((f: any) => {
-      const score = Math.random() * 1000;
-      return score >= 400 && score < 600;
-    }).length,
-    needsSupport: farmersData.filter((f: any) => {
-      const score = Math.random() * 1000;
-      return score < 400;
-    }).length,
+  // AgScore™ distribution (real data)
+  const agScoreDistribution = getAgScoreDistribution();
+  const totalFarmersWithScore = agScoreDistribution.reduce((sum, d) => sum + d.count, 0);
+  
+  // Create tier lookup for easy access
+  const getTierCount = (tier: number) => {
+    const tierData = agScoreDistribution.find(d => d.tier === tier);
+    return tierData ? tierData.count : 0;
   };
 
   return (
@@ -139,106 +136,194 @@ export default function ManagerDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Loan Approval Queue</CardTitle>
-          <CardDescription>Applications requiring manager approval</CardDescription>
+          <CardDescription>Applications requiring manager approval with AgScore™ risk assessment</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {loanApplications.map((loan) => (
-              <div key={loan.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                    loan.status === 'pending' ? 'bg-orange-100' : 
-                    loan.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    {loan.status === 'pending' ? <Clock className="h-6 w-6 text-orange-600" /> :
-                     loan.status === 'approved' ? <CheckCircle className="h-6 w-6 text-green-600" /> :
-                     <XCircle className="h-6 w-6 text-red-600" />}
+            {loanApplications.map((loan) => {
+              const agScoreData = loan.agScore;
+              if (!agScoreData) return null;
+              
+              return (
+                <div key={loan.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center gap-4">
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                      loan.status === 'pending' ? 'bg-orange-100' : 
+                      loan.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      {loan.status === 'pending' ? <Clock className="h-6 w-6 text-orange-600" /> :
+                       loan.status === 'approved' ? <CheckCircle className="h-6 w-6 text-green-600" /> :
+                       <XCircle className="h-6 w-6 text-red-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{loan.farmer}</p>
+                      <p className="text-sm text-muted-foreground">{loan.purpose}</p>
+                      <div className="mt-2">
+                        <AgScoreBadge 
+                          score={agScoreData.baselineScore}
+                          tier={agScoreData.tier}
+                          qualitativeTier={agScoreData.qualitativeTier}
+                          size="sm"
+                          showLabel={false}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{loan.farmer}</p>
-                    <p className="text-sm text-muted-foreground">{loan.purpose}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      AgScore: <span className={`font-semibold ${
-                        loan.agScore >= 800 ? 'text-green-600' :
-                        loan.agScore >= 600 ? 'text-blue-600' :
-                        loan.agScore >= 400 ? 'text-orange-600' : 'text-red-600'
-                      }`}>{loan.agScore}</span>
-                    </p>
+                  <div className="text-right">
+                    <p className="text-lg font-bold">₱{loan.amount.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(loan.date).toLocaleDateString()}</p>
+                    <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
+                      loan.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                      loan.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {loan.status}
+                    </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold">₱{loan.amount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(loan.date).toLocaleDateString()}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
-                    loan.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                    loan.status === 'approved' ? 'bg-green-100 text-green-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {loan.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
 
-      {/* AgScore Distribution */}
+      {/* AgScore™ Distribution */}
       <Card>
         <CardHeader>
-          <CardTitle>AgScore™ Distribution</CardTitle>
-          <CardDescription>Farmer performance across 1000-point scale</CardDescription>
+          <CardTitle>AgScore™ Distribution by Tier</CardTitle>
+          <CardDescription>Farmer performance across 7-tier classification (inverted scale: higher = better)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Tier 7 - Very High Performance (850-1000) */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">🌟 Excellent (800-1000)</span>
-                <span className="text-sm text-muted-foreground">{agScoreRanges.excellent} farmers</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-green-600"></span>
+                  Tier 7 - Very High Performance (850-1000)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(7)} farmers ({((getTierCount(7) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-green-500 h-3 rounded-full"
-                  style={{ width: `${(agScoreRanges.excellent / stats.totalFarmers) * 100}%` }}
+                  className="bg-green-600 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(7) / totalFarmersWithScore) * 100}%` }}
                 />
               </div>
             </div>
             
+            {/* Tier 6 - High Performance (700-849) */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">✓ Good (600-799)</span>
-                <span className="text-sm text-muted-foreground">{agScoreRanges.good} farmers</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
+                  Tier 6 - High Performance (700-849)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(6)} farmers ({((getTierCount(6) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-blue-500 h-3 rounded-full"
-                  style={{ width: `${(agScoreRanges.good / stats.totalFarmers) * 100}%` }}
+                  className="bg-blue-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(6) / totalFarmersWithScore) * 100}%` }}
                 />
               </div>
             </div>
             
+            {/* Tier 5 - Moderately High Performance (550-699) */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">⚠ Moderate (400-599)</span>
-                <span className="text-sm text-muted-foreground">{agScoreRanges.moderate} farmers</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-teal-500"></span>
+                  Tier 5 - Moderately High (550-699)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(5)} farmers ({((getTierCount(5) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-orange-500 h-3 rounded-full"
-                  style={{ width: `${(agScoreRanges.moderate / stats.totalFarmers) * 100}%` }}
+                  className="bg-teal-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(5) / totalFarmersWithScore) * 100}%` }}
                 />
               </div>
             </div>
             
+            {/* Tier 4 - Moderate Performance (400-549) */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">⚠ Needs Support (&lt;400)</span>
-                <span className="text-sm text-muted-foreground">{agScoreRanges.needsSupport} farmers</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-yellow-500"></span>
+                  Tier 4 - Moderate (400-549)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(4)} farmers ({((getTierCount(4) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
-                  className="bg-red-500 h-3 rounded-full"
-                  style={{ width: `${(agScoreRanges.needsSupport / stats.totalFarmers) * 100}%` }}
+                  className="bg-yellow-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(4) / totalFarmersWithScore) * 100}%` }}
+                />
+              </div>
+            </div>
+            
+            {/* Tier 3 - Moderately Low Performance (250-399) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-orange-500"></span>
+                  Tier 3 - Moderately Low (250-399)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(3)} farmers ({((getTierCount(3) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-orange-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(3) / totalFarmersWithScore) * 100}%` }}
+                />
+              </div>
+            </div>
+            
+            {/* Tier 2 - Low Performance (100-249) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+                  Tier 2 - Low Performance (100-249)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(2)} farmers ({((getTierCount(2) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-red-500 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(2) / totalFarmersWithScore) * 100}%` }}
+                />
+              </div>
+            </div>
+            
+            {/* Tier 1 - Very Low Performance (0-99) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-red-700"></span>
+                  Tier 1 - Very Low Performance (0-99)
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {getTierCount(1)} farmers ({((getTierCount(1) / totalFarmersWithScore) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-red-700 h-3 rounded-full transition-all"
+                  style={{ width: `${(getTierCount(1) / totalFarmersWithScore) * 100}%` }}
                 />
               </div>
             </div>
