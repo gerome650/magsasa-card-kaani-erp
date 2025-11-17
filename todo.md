@@ -2820,3 +2820,32 @@
 - [x] Verify chart interactivity (Chart.js components configured)
 - [x] Test filters update all charts (filters implemented with state management)
 - [ ] Check responsive design on mobile (requires manual testing in browser)
+
+
+## Farm Mapping View
+
+### Map Component
+- [x] Create FarmMap page component at /map route
+- [x] Integrate Google Maps with MapView component
+- [x] Load all 238 farms with coordinates from database
+- [x] Display markers for each farm location
+- [x] Add map controls (zoom, pan, map type)
+
+### Color Coding System
+- [x] Implement color coding by crop type (7 colors for 7 crops)
+- [x] Implement color coding by performance (green/yellow/red based on yield)
+- [x] Add toggle to switch between color modes
+- [x] Create legend showing color meanings
+
+### Interactive Features
+- [x] Add info window on marker click showing farm details
+- [ ] Implement farm clustering for better performance (optional enhancement)
+- [x] Add filter by crop type
+- [x] Add filter by region (Bacolod/Laguna)
+- [ ] Add search box to find specific farms (future enhancement)
+
+### Navigation & UI
+- [x] Add "Map View" link to sidebar navigation
+- [x] Add summary statistics overlay on map (farm count badge)
+- [x] Implement responsive design for mobile
+- [x] Add loading state while farms are loading

@@ -40,6 +40,7 @@ import TRPCClientTest from "./pages/TRPCClientTest";
 import SkeletonDemo from "./pages/SkeletonDemo";
 import Analytics from "./pages/Analytics";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import FarmMap from "./pages/FarmMap";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -237,6 +238,13 @@ function Router() {
       <Route path="/analytics">
         <Layout>
           <Analytics />
+        </Layout>
+      </Route>
+
+      {/* Farm Map Route */}
+      <Route path="/map">
+        <Layout>
+          <FarmMap />
         </Layout>
       </Route>
 
