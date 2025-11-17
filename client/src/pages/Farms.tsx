@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,38 +76,8 @@ export default function Farms() {
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Track if this is the initial mount to prevent URL sync on first render
-  const isInitialMount = useRef(true);
-  
-  // Debounced URL sync - update URL parameters after 500ms of no changes
-  useEffect(() => {
-    // Skip URL update on initial mount (when reading from URL)
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    
-    const timeoutId = setTimeout(() => {
-      const params = new URLSearchParams();
-      
-      if (searchQuery) params.set("search", searchQuery);
-      if (dateRange?.from) params.set("startDate", dateRange.from.toISOString().split('T')[0]);
-      if (dateRange?.to) params.set("endDate", dateRange.to.toISOString().split('T')[0]);
-      if (selectedBarangay !== "all") params.set("barangay", selectedBarangay);
-      if (selectedCrop !== "all") params.set("crop", selectedCrop);
-      if (selectedStatus !== "all") params.set("status", selectedStatus);
-      if (fromAnalytics) params.set("from", "analytics");
-      
-      const newUrl = params.toString() ? `/farms?${params.toString()}` : "/farms";
-      
-      // Only update if URL actually changed to prevent unnecessary history entries
-      if (window.location.pathname + window.location.search !== newUrl) {
-        window.history.replaceState({}, "", newUrl);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus, fromAnalytics]);
+  // Note: URL sync feature removed due to infinite render loop issues
+  // Filters are read from URL on initial load but not synced back
 
   // Fetch farms from database via tRPC with search and date filters
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({

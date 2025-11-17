@@ -2859,3 +2859,12 @@
 - [x] Verify no infinite render loops occur
 - [x] Test that shareable URLs work correctly when copied and pasted
 - [x] Ensure URL parameters persist across page refreshes
+
+
+## URGENT: Fix Infinite Render Loop in Farms Page
+
+- [x] Remove the useEffect that syncs URL parameters (causing "Maximum update depth exceeded" error)
+- [x] Keep one-way URL reading on initial load only
+- [x] Remove useRef for initial mount tracking
+- [x] Test that Farms page loads without errors
+- [x] Verify filters still work correctly
