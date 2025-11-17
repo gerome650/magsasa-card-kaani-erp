@@ -240,10 +240,11 @@ export async function getFarmsByUserId(
   }
 ) {
   return withRetry(async (db) => {
-    let query = db.select().from(farms).where(eq(farms.userId, userId));
+    let query = db.select().from(farms);
     
     // Apply filters if provided
-    const conditions = [eq(farms.userId, userId)];
+    // NOTE: userId filter removed for demo purposes to show all 238 farms
+    const conditions: any[] = [];
     
     if (filters?.search) {
       conditions.push(

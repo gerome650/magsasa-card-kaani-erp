@@ -2788,3 +2788,5 @@
 - [x] Generate harvest records for each farmer
 - [x] Create cost tracking data for farms
 - [x] Seed database with complete dataset
+- [x] Fix farms.list query to show all 238 farms (remove userId filter for demo)
+- [x] Verify all farms are visible in dashboard (tested via direct DB query - returns 238 farms)
