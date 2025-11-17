@@ -6,6 +6,7 @@
  */
 
 import { trpc } from "@/lib/trpc";
+import { trpcClient } from "@/lib/trpcClient";
 
 interface KaAniMessage {
   role: "user" | "assistant";
@@ -154,8 +155,8 @@ export async function sendMessageToKaAniSSE(
     let fullResponse = "";
     let category = "";
 
-    // Create subscription for real-time streaming
-    const subscription = trpc.kaani.sendMessageStreamSSE.subscribe(
+    // Create subscription for real-time streaming using vanilla client
+    const subscription = trpcClient.kaani.sendMessageStreamSSE.subscribe(
       {
         message,
         conversationHistory,
