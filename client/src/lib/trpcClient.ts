@@ -1,5 +1,6 @@
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "../../../server/routers";
+import superjson from "superjson";
 
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
@@ -9,6 +10,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
         const token = localStorage.getItem("token");
         return token ? { Authorization: `Bearer ${token}` } : {};
       },
+      transformer: superjson,
     }),
   ],
 });

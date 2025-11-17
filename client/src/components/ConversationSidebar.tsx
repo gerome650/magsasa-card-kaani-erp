@@ -108,7 +108,7 @@ export default function ConversationSidebar({
         {/* Search result count */}
         {searchQuery && (
           <div className="px-4 py-2 text-xs text-muted-foreground border-b">
-            {conversations.length === 0 ? (
+            {!Array.isArray(conversations) || conversations.length === 0 ? (
               <span>No conversations found</span>
             ) : (
               <span>
@@ -118,7 +118,7 @@ export default function ConversationSidebar({
           </div>
         )}
         
-        {conversations.length === 0 ? (
+        {!Array.isArray(conversations) || conversations.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
             {searchQuery ? (
@@ -135,7 +135,7 @@ export default function ConversationSidebar({
           </div>
         ) : (
           <div className="p-2 space-y-1">
-            {conversations.map((conversation) => (
+            {Array.isArray(conversations) && conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 className={cn(
