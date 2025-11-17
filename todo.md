@@ -2083,3 +2083,82 @@
 - [ ] Test S3 storage and retrieval
 - [ ] Create documentation for photo upload feature
 - [ ] Save checkpoint after implementation
+
+
+## Google Places API Autocomplete Integration
+
+### PlacesAutocomplete Component
+- [x] Create PlacesAutocomplete component with input field
+- [x] Initialize Google Places Autocomplete service (waits for google.maps.places)
+- [x] Configure autocomplete options (types, componentRestrictions, fields)
+- [x] Restrict to Philippines (country: 'ph')
+- [x] Filter by locality and sublocality types (type-specific)
+- [x] Handle place selection event (place_changed listener)
+- [x] Extract place details (name, coordinates, address components)
+- [x] Parse barangay and municipality from address components
+- [x] Add loading state during place search (Loader2 spinner)
+- [x] Add error handling for API failures (error state display)
+- [x] Style autocomplete dropdown (Google default with MapPin icon)
+- [x] Add debouncing (handled by Google Places API internally)
+
+### Integration with Farm Creation Wizard
+- [x] Replace barangay Input with PlacesAutocomplete
+- [x] Replace municipality Select with PlacesAutocomplete
+- [x] Update form state when place is selected (onPlaceSelect callback)
+- [x] Auto-fill barangay field from place details (extractAddressComponents)
+- [x] Auto-fill municipality field from place details
+- [x] Auto-update latitude/longitude from place coordinates
+- [x] Center map on selected location (centerMapOnCoordinates function)
+- [x] Add manual override option (users can type custom values)
+- [x] Show selected place name in input field (value prop)
+- [x] Add clear button to reset autocomplete (X button)
+
+### Coordinate Extraction
+- [x] Extract latitude from place.geometry.location.lat()
+- [x] Extract longitude from place.geometry.location.lng()
+- [x] Update form latitude field automatically (updateFormData)
+- [x] Update form longitude field automatically
+- [x] Trigger map re-centering on coordinate update (centerMapOnCoordinates)
+- [x] Add zoom level adjustment (zoom: 16 for details)
+- [x] Handle places without coordinates gracefully (error message)
+
+### Address Component Parsing
+- [x] Parse 'sublocality_level_1' for barangay (extractAddressComponents)
+- [x] Parse 'neighborhood' as fallback for barangay
+- [x] Parse 'locality' or 'administrative_area_level_2' for municipality
+- [x] Parse 'administrative_area_level_1' for province
+- [x] Handle missing address components (empty string fallback)
+- [x] Fallback to formatted_address if components missing
+- [x] Extract place_id for future reference
+- [ ] Validate parsed values against known municipalities (future)
+- [ ] Show warning if location outside Laguna province (future)
+
+### UX Enhancements
+- [x] Add search icon to autocomplete input (MapPin icon)
+- [x] Add loading spinner during API call (Loader2)
+- [x] Add keyboard navigation (handled by Google Places)
+- [x] Clear button to reset autocomplete (X button)
+- [x] Toast notification on successful location set
+- [x] Display formatted address in toast
+- [ ] Highlight matching text in suggestions (Google default - future custom)
+- [ ] Show recent searches (future enhancement)
+- [ ] Add "Use current location" button (future enhancement)
+
+### Testing & Documentation
+- [x] Create comprehensive documentation at docs/PLACES_AUTOCOMPLETE.md
+- [x] Document component API and props
+- [x] Document extractAddressComponents helper function
+- [x] Document integration in FarmNew.tsx
+- [x] Document autocomplete configuration options
+- [x] Document error handling strategies
+- [x] Document API usage and pricing
+- [x] Document troubleshooting steps
+- [x] Document future enhancements
+- [x] Provide usage examples
+- [ ] Test autocomplete with various barangay names (manual testing)
+- [ ] Test autocomplete with municipality names (manual testing)
+- [ ] Test coordinate extraction accuracy (manual testing)
+- [ ] Test map centering on place selection (manual testing)
+- [ ] Test manual input override (manual testing)
+- [ ] Test error handling (no results, API failure) (manual testing)
+- [ ] Save checkpoint after implementation

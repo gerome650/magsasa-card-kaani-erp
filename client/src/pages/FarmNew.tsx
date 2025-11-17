@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, ArrowRight, Check, MapPin, Tractor } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { ImageUpload } from "@/components/ImageUpload";
+import { PlacesAutocomplete, extractAddressComponents } from "@/components/PlacesAutocomplete";
 
 type FormData = {
   name: string;
@@ -87,6 +88,13 @@ export default function FarmNew() {
   const [calculatedArea, setCalculatedArea] = useState<number>(0);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
+  
+  const centerMapOnCoordinates = (lat: number, lng: number) => {
+    if (mapInstance) {
+      mapInstance.setCenter({ lat, lng });
+      mapInstance.setZoom(16);
+    }
+  };
 
   const utils = trpc.useContext();
   
@@ -456,31 +464,59 @@ export default function FarmNew() {
                   <Label htmlFor="barangay">
                     Barangay <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="barangay"
-                    placeholder="e.g., San Isidro"
+                  <PlacesAutocomplete
                     value={formData.barangay}
-                    onChange={(e) => updateFormData("barangay", e.target.value)}
+                    onChange={(value) => updateFormData("barangay", value)}
+                    onPlaceSelect={(place) => {
+                      const components = extractAddressComponents(place);
+                      
+                      // Auto-fill barangay if found
+                      if (components.barangay) {
+                        updateFormData("barangay", components.barangay);
+                      }
+                      
+                      // Auto-fill municipality if found
+                      if (components.municipality) {
+                        updateFormData("municipality", components.municipality);
+                      }
+                      
+                      // Auto-fill coordinates and center map
+                      if (components.latitude && components.longitude) {
+                        updateFormData("latitude", components.latitude);
+                        updateFormData("longitude", components.longitude);
+                        centerMapOnCoordinates(components.latitude, components.longitude);
+                        toast.success(`Location set to ${components.formatted_address}`);
+                      }
+                    }}
+                    placeholder="Search for barangay (e.g., San Isidro)"
+                    type="barangay"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="municipality">Municipality</Label>
-                  <Select
+                  <PlacesAutocomplete
                     value={formData.municipality}
-                    onValueChange={(value) => updateFormData("municipality", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MUNICIPALITIES.map((muni) => (
-                        <SelectItem key={muni} value={muni}>
-                          {muni}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => updateFormData("municipality", value)}
+                    onPlaceSelect={(place) => {
+                      const components = extractAddressComponents(place);
+                      
+                      // Auto-fill municipality
+                      if (components.municipality) {
+                        updateFormData("municipality", components.municipality);
+                      }
+                      
+                      // Auto-fill coordinates and center map
+                      if (components.latitude && components.longitude) {
+                        updateFormData("latitude", components.latitude);
+                        updateFormData("longitude", components.longitude);
+                        centerMapOnCoordinates(components.latitude, components.longitude);
+                        toast.success(`Location set to ${components.formatted_address}`);
+                      }
+                    }}
+                    placeholder="Search for municipality (e.g., Calauan)"
+                    type="municipality"
+                  />
                 </div>
 
                 <div className="space-y-2">
