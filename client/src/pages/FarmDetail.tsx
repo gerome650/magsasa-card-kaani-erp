@@ -19,8 +19,10 @@ import {
   X,
   Ruler,
   Calculator,
+  FileDown,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
+import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 
 export default function FarmDetail() {
@@ -442,6 +444,121 @@ ${placemarks}
                           }}
                         >
                           Clear Boundary
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={async () => {
+                            if (!mapInstance || drawnBoundaries.length === 0) {
+                              alert('Please draw farm boundaries before generating report');
+                              return;
+                            }
+
+                            // Generate PDF report
+                            const pdf = new jsPDF();
+                            const pageWidth = pdf.internal.pageSize.getWidth();
+                            let yPos = 20;
+
+                            // Header
+                            pdf.setFontSize(20);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Farm Report', pageWidth / 2, yPos, { align: 'center' });
+                            yPos += 15;
+
+                            // Farm Details
+                            pdf.setFontSize(12);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Farm Information', 20, yPos);
+                            yPos += 8;
+
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setFontSize(10);
+                            pdf.text(`Farm Name: ${farm.name}`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Farmer: ${farm.farmer}`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Location: ${farm.location}`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Registered Size: ${farm.size} hectares`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Crops: ${farm.crops.join(', ')}`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Status: ${farm.status}`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Registration Date: ${new Date(farm.registrationDate).toLocaleDateString()}`, 20, yPos);
+                            yPos += 12;
+
+                            // Parcel Breakdown Table
+                            pdf.setFontSize(12);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Parcel Breakdown', 20, yPos);
+                            yPos += 8;
+
+                            // Table header
+                            pdf.setFontSize(10);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Parcel #', 20, yPos);
+                            pdf.text('Area (ha)', 80, yPos);
+                            pdf.text('Percentage', 140, yPos);
+                            yPos += 6;
+
+                            // Table rows
+                            pdf.setFont('helvetica', 'normal');
+                            const totalArea = parcelAreas.reduce((sum, a) => sum + a, 0);
+                            parcelAreas.forEach((area, index) => {
+                              const percentage = (area / totalArea * 100).toFixed(1);
+                              pdf.text(`Parcel ${index + 1}`, 20, yPos);
+                              pdf.text(area.toFixed(2), 80, yPos);
+                              pdf.text(`${percentage}%`, 140, yPos);
+                              yPos += 6;
+                            });
+
+                            // Total
+                            yPos += 2;
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Total Calculated Area:', 20, yPos);
+                            pdf.text(`${totalArea.toFixed(2)} ha`, 80, yPos);
+                            yPos += 10;
+
+                            // Validation
+                            pdf.setFontSize(12);
+                            pdf.text('Area Validation', 20, yPos);
+                            yPos += 8;
+
+                            pdf.setFontSize(10);
+                            pdf.setFont('helvetica', 'normal');
+                            const difference = Math.abs(totalArea - farm.size);
+                            const percentDiff = (difference / farm.size) * 100;
+                            pdf.text(`Registered Size: ${farm.size} ha`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Calculated Area: ${totalArea.toFixed(2)} ha`, 20, yPos);
+                            yPos += 6;
+                            pdf.text(`Difference: ${difference.toFixed(2)} ha (${percentDiff.toFixed(1)}%)`, 20, yPos);
+                            yPos += 6;
+                            
+                            if (percentDiff <= 10) {
+                              pdf.setTextColor(0, 128, 0);
+                              pdf.text('Status: ✓ Within acceptable tolerance (±10%)', 20, yPos);
+                            } else {
+                              pdf.setTextColor(255, 0, 0);
+                              pdf.text('Status: ⚠ Exceeds tolerance (±10%)', 20, yPos);
+                            }
+                            pdf.setTextColor(0, 0, 0);
+                            yPos += 15;
+
+                            // Footer
+                            pdf.setFontSize(8);
+                            pdf.setFont('helvetica', 'italic');
+                            pdf.text(`Generated on: ${new Date().toLocaleString()}`, 20, yPos);
+                            pdf.text('MAGSASA-CARD ERP System', 20, yPos + 4);
+
+                            // Save PDF
+                            const filename = `${farm.name.replace(/\s+/g, '_')}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+                            pdf.save(filename);
+                          }}
+                        >
+                          <FileDown className="w-4 h-4 mr-1" />
+                          Download Report
                         </Button>
                       </>
                     )}
