@@ -30,17 +30,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load user from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('magsasa_user');
-    if (storedUser) {
+    const initializeAuth = () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        const storedUser = localStorage.getItem('magsasa_user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          // Validate that the parsed user has required fields
+          if (parsedUser && parsedUser.id && parsedUser.email && parsedUser.role) {
+            setUser(parsedUser);
+          } else {
+            console.warn('Invalid stored user data, clearing localStorage');
+            localStorage.removeItem('magsasa_user');
+          }
+        }
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('magsasa_user');
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
