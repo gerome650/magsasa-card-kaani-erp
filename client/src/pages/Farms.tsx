@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,8 +76,17 @@ export default function Farms() {
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Track if this is the initial mount to prevent URL sync on first render
+  const isInitialMount = useRef(true);
+  
   // Debounced URL sync - update URL parameters after 500ms of no changes
   useEffect(() => {
+    // Skip URL update on initial mount (when reading from URL)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
     const timeoutId = setTimeout(() => {
       const params = new URLSearchParams();
       
@@ -87,6 +96,7 @@ export default function Farms() {
       if (selectedBarangay !== "all") params.set("barangay", selectedBarangay);
       if (selectedCrop !== "all") params.set("crop", selectedCrop);
       if (selectedStatus !== "all") params.set("status", selectedStatus);
+      if (fromAnalytics) params.set("from", "analytics");
       
       const newUrl = params.toString() ? `/farms?${params.toString()}` : "/farms";
       
@@ -97,7 +107,7 @@ export default function Farms() {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus]);
+  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus, fromAnalytics]);
 
   // Fetch farms from database via tRPC with search and date filters
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({
