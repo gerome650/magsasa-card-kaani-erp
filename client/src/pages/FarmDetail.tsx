@@ -16,6 +16,7 @@ import {
   Map as MapIcon,
   Satellite,
   Layers,
+  X,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { MapView } from "@/components/Map";
@@ -418,11 +419,38 @@ ${placemarks}
                               'bg-pink-100 text-pink-700',
                             ];
                             return (
-                              <div key={index} className="flex items-center justify-between text-xs">
+                              <div key={index} className="flex items-center justify-between gap-2 text-xs">
                                 <span className={`px-2 py-1 rounded ${colors[index % colors.length]}`}>
                                   Parcel {index + 1}
                                 </span>
-                                <span className="font-medium">{area.toFixed(2)} ha</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">{area.toFixed(2)} ha</span>
+                                  <button
+                                    onClick={() => {
+                                      // Remove polygon from map
+                                      drawnBoundaries[index].setMap(null);
+                                      
+                                      // Remove from arrays
+                                      const newBoundaries = drawnBoundaries.filter((_, i) => i !== index);
+                                      const newAreas = parcelAreas.filter((_, i) => i !== index);
+                                      
+                                      setDrawnBoundaries(newBoundaries);
+                                      setParcelAreas(newAreas);
+                                      
+                                      // Recalculate total area
+                                      if (newAreas.length > 0) {
+                                        const totalArea = newAreas.reduce((sum, a) => sum + a, 0);
+                                        setCalculatedArea(totalArea);
+                                      } else {
+                                        setCalculatedArea(null);
+                                      }
+                                    }}
+                                    className="p-0.5 hover:bg-red-100 rounded transition-colors"
+                                    title="Delete this parcel"
+                                  >
+                                    <X className="w-3 h-3 text-red-600" />
+                                  </button>
+                                </div>
                               </div>
                             );
                           })}

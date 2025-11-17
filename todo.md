@@ -1531,3 +1531,17 @@
 - [x] Show parcel count badge (e.g., "3 Parcels")
 - [x] Color-code different parcels for visual distinction (5 colors)
 - [x] Update Clear Boundary to remove all parcels
+
+
+## New Feature: Individual Parcel Delete Button
+
+- [x] Add delete button (X icon) to each parcel in the list
+- [x] Implement deleteParcel function to remove specific parcel by index
+- [x] Remove polygon from map using setMap(null)
+- [x] Remove parcel from drawnBoundaries array
+- [x] Remove area from parcelAreas array
+- [x] Recalculate total area after deletion
+- [x] Handle case when last parcel is deleted (clear calculatedArea)
+- [x] Add hover effect to delete button (hover:bg-red-100)
+- [x] Test deleting first, middle, and last parcels
+- [x] Verify remaining parcels maintain correct colors and indices
