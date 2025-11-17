@@ -1890,3 +1890,28 @@
 - [x] Add smooth pulsing animation
 - [x] Make skeletons responsive (mobile, tablet, desktop)
 - [x] Save checkpoint after implementation
+
+
+## Optimistic Updates Implementation
+
+- [x] Analyze current mutation patterns in FarmNew.tsx and FarmDetail.tsx
+- [x] Implement optimistic create for farms.create mutation
+- [x] Add cache invalidation after successful creation
+- [x] Add rollback on creation failure
+- [x] Add snapshot of previous state for rollback
+- [x] Implement optimistic updates for boundaries.save mutation
+- [x] Implement optimistic updates for yields.create mutation
+- [x] Implement optimistic updates for yields.delete mutation
+- [x] Implement optimistic updates for costs.create mutation
+- [x] Implement optimistic updates for costs.delete mutation
+- [x] Add instant UI feedback with optimistic data
+- [x] Add error handling with automatic rollback
+- [x] Add toast notifications for all states (optimistic, success, error)
+- [x] Use temporary IDs (Date.now()) for optimistic items
+- [x] Cancel ongoing refetches to prevent race conditions
+- [x] Invalidate cache after success for consistency
+- [x] Create comprehensive documentation in docs/OPTIMISTIC_UPDATES.md
+- [x] Document all 6 optimistic update patterns
+- [x] Document best practices and common pitfalls
+- [x] Document testing strategies
+- [ ] Save checkpoint after implementation

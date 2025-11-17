@@ -87,30 +87,183 @@ export default function FarmDetail() {
     { enabled: !!farmId }
   );
   
-  // Mutations for saving data
+  // Get tRPC utils for cache manipulation
+  const utils = trpc.useContext();
+  
+  // Mutations for saving data with optimistic updates
   const saveBoundariesMutation = trpc.boundaries.save.useMutation({
-    onSuccess: () => toast.success("Boundaries saved successfully"),
-    onError: (error) => toast.error(`Failed to save boundaries: ${error.message}`),
+    onMutate: async (newBoundaries) => {
+      // Cancel outgoing refetches
+      await utils.boundaries.getByFarmId.cancel({ farmId: farmId! });
+      
+      // Snapshot previous value
+      const previousBoundaries = utils.boundaries.getByFarmId.getData({ farmId: farmId! });
+      
+      // Optimistically update cache
+      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, newBoundaries.boundaries);
+      
+      toast.success("Saving boundaries...", { duration: 1000 });
+      
+      return { previousBoundaries };
+    },
+    onSuccess: () => {
+      toast.success("Boundaries saved successfully");
+      utils.boundaries.getByFarmId.invalidate({ farmId: farmId! });
+    },
+    onError: (error, newBoundaries, context) => {
+      // Rollback on error
+      if (context?.previousBoundaries) {
+        utils.boundaries.getByFarmId.setData({ farmId: farmId! }, context.previousBoundaries);
+      }
+      toast.error(`Failed to save boundaries: ${error.message}`);
+    },
+    onSettled: () => {
+      utils.boundaries.getByFarmId.invalidate({ farmId: farmId! });
+    },
   });
   
   const createYieldMutation = trpc.yields.create.useMutation({
-    onSuccess: () => toast.success("Harvest record saved"),
-    onError: (error) => toast.error(`Failed to save harvest: ${error.message}`),
+    onMutate: async (newYield) => {
+      await utils.yields.getByFarmId.cancel({ farmId: farmId! });
+      
+      const previousYields = utils.yields.getByFarmId.getData({ farmId: farmId! });
+      
+      // Create optimistic yield record
+      const optimisticYield = {
+        id: Date.now(),
+        farmId: farmId!,
+        parcelId: newYield.parcelId,
+        crop: newYield.crop,
+        harvestDate: newYield.harvestDate,
+        quantity: newYield.quantity.toString(),
+        unit: newYield.unit,
+        qualityGrade: newYield.qualityGrade || null,
+        notes: newYield.notes || null,
+        createdAt: new Date().toISOString(),
+      };
+      
+      utils.yields.getByFarmId.setData({ farmId: farmId! }, (old) => {
+        return old ? [...old, optimisticYield] : [optimisticYield];
+      });
+      
+      toast.success("Adding harvest record...", { duration: 1000 });
+      
+      return { previousYields };
+    },
+    onSuccess: () => {
+      toast.success("Harvest record saved");
+      utils.yields.getByFarmId.invalidate({ farmId: farmId! });
+    },
+    onError: (error, newYield, context) => {
+      if (context?.previousYields) {
+        utils.yields.getByFarmId.setData({ farmId: farmId! }, context.previousYields);
+      }
+      toast.error(`Failed to save harvest: ${error.message}`);
+    },
+    onSettled: () => {
+      utils.yields.getByFarmId.invalidate({ farmId: farmId! });
+    },
   });
   
   const deleteYieldMutation = trpc.yields.delete.useMutation({
-    onSuccess: () => toast.success("Harvest record deleted"),
-    onError: (error) => toast.error(`Failed to delete harvest: ${error.message}`),
+    onMutate: async (variables) => {
+      await utils.yields.getByFarmId.cancel({ farmId: farmId! });
+      
+      const previousYields = utils.yields.getByFarmId.getData({ farmId: farmId! });
+      
+      // Optimistically remove the yield
+      utils.yields.getByFarmId.setData({ farmId: farmId! }, (old) => {
+        return old ? old.filter(y => y.id !== variables.id) : [];
+      });
+      
+      toast.success("Deleting harvest record...", { duration: 1000 });
+      
+      return { previousYields };
+    },
+    onSuccess: () => {
+      toast.success("Harvest record deleted");
+      utils.yields.getByFarmId.invalidate({ farmId: farmId! });
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousYields) {
+        utils.yields.getByFarmId.setData({ farmId: farmId! }, context.previousYields);
+      }
+      toast.error(`Failed to delete harvest: ${error.message}`);
+    },
+    onSettled: () => {
+      utils.yields.getByFarmId.invalidate({ farmId: farmId! });
+    },
   });
   
   const createCostMutation = trpc.costs.create.useMutation({
-    onSuccess: () => toast.success("Cost record saved"),
-    onError: (error) => toast.error(`Failed to save cost: ${error.message}`),
+    onMutate: async (newCost) => {
+      await utils.costs.getByFarmId.cancel({ farmId: farmId! });
+      
+      const previousCosts = utils.costs.getByFarmId.getData({ farmId: farmId! });
+      
+      // Create optimistic cost record
+      const optimisticCost = {
+        id: Date.now(),
+        farmId: farmId!,
+        parcelId: newCost.parcelId,
+        category: newCost.category,
+        amount: newCost.amount.toString(),
+        date: newCost.date,
+        description: newCost.description || null,
+        createdAt: new Date().toISOString(),
+      };
+      
+      utils.costs.getByFarmId.setData({ farmId: farmId! }, (old) => {
+        return old ? [...old, optimisticCost] : [optimisticCost];
+      });
+      
+      toast.success("Adding cost record...", { duration: 1000 });
+      
+      return { previousCosts };
+    },
+    onSuccess: () => {
+      toast.success("Cost record saved");
+      utils.costs.getByFarmId.invalidate({ farmId: farmId! });
+    },
+    onError: (error, newCost, context) => {
+      if (context?.previousCosts) {
+        utils.costs.getByFarmId.setData({ farmId: farmId! }, context.previousCosts);
+      }
+      toast.error(`Failed to save cost: ${error.message}`);
+    },
+    onSettled: () => {
+      utils.costs.getByFarmId.invalidate({ farmId: farmId! });
+    },
   });
   
   const deleteCostMutation = trpc.costs.delete.useMutation({
-    onSuccess: () => toast.success("Cost record deleted"),
-    onError: (error) => toast.error(`Failed to delete cost: ${error.message}`),
+    onMutate: async (variables) => {
+      await utils.costs.getByFarmId.cancel({ farmId: farmId! });
+      
+      const previousCosts = utils.costs.getByFarmId.getData({ farmId: farmId! });
+      
+      // Optimistically remove the cost
+      utils.costs.getByFarmId.setData({ farmId: farmId! }, (old) => {
+        return old ? old.filter(c => c.id !== variables.id) : [];
+      });
+      
+      toast.success("Deleting cost record...", { duration: 1000 });
+      
+      return { previousCosts };
+    },
+    onSuccess: () => {
+      toast.success("Cost record deleted");
+      utils.costs.getByFarmId.invalidate({ farmId: farmId! });
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousCosts) {
+        utils.costs.getByFarmId.setData({ farmId: farmId! }, context.previousCosts);
+      }
+      toast.error(`Failed to delete cost: ${error.message}`);
+    },
+    onSettled: () => {
+      utils.costs.getByFarmId.invalidate({ farmId: farmId! });
+    },
   });
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawnBoundaries, setDrawnBoundaries] = useState<google.maps.Polygon[]>([]);

@@ -85,17 +85,71 @@ export default function FarmNew() {
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
 
+  const utils = trpc.useContext();
+  
   const createFarmMutation = trpc.farms.create.useMutation({
+    onMutate: async (newFarm) => {
+      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      await utils.farms.list.cancel();
+      
+      // Snapshot the previous value
+      const previousFarms = utils.farms.list.getData();
+      
+      // Optimistically update the cache with the new farm
+      const optimisticFarm = {
+        id: Date.now(), // Temporary ID
+        name: newFarm.name,
+        farmerName: newFarm.farmerName,
+        barangay: newFarm.barangay,
+        municipality: newFarm.municipality,
+        latitude: newFarm.latitude,
+        longitude: newFarm.longitude,
+        size: newFarm.size.toString(),
+        crops: JSON.stringify(newFarm.crops),
+        soilType: newFarm.soilType,
+        irrigationType: newFarm.irrigationType,
+        status: newFarm.status,
+        registrationDate: new Date().toISOString(),
+        userId: 0, // Will be set by server
+        averageYield: null,
+      };
+      
+      utils.farms.list.setData(undefined, (old) => {
+        return old ? [...old, optimisticFarm] : [optimisticFarm];
+      });
+      
+      // Show optimistic toast
+      toast.success("Creating farm...", { duration: 1000 });
+      
+      // Return context with snapshot
+      return { previousFarms };
+    },
     onSuccess: (data) => {
       toast.success("Farm created successfully!");
+      // Invalidate to refetch with real data from server
+      utils.farms.list.invalidate();
       navigate(`/farms/${data.farmId}`);
     },
-    onError: (error) => {
+    onError: (error, newFarm, context) => {
+      // Rollback to previous state on error
+      if (context?.previousFarms) {
+        utils.farms.list.setData(undefined, context.previousFarms);
+      }
       toast.error(`Failed to create farm: ${error.message}`);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      utils.farms.list.invalidate();
     },
   });
 
   const saveBoundariesMutation = trpc.boundaries.save.useMutation({
+    onMutate: () => {
+      toast.success("Saving boundaries...", { duration: 1000 });
+    },
+    onSuccess: () => {
+      toast.success("Boundaries saved successfully!");
+    },
     onError: (error) => {
       toast.error(`Failed to save boundaries: ${error.message}`);
     },
