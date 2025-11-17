@@ -32,6 +32,8 @@ import {
   Trash2,
   Coins,
   Loader2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 
 import { jsPDF } from "jspdf";
@@ -107,6 +109,14 @@ export default function FarmDetail() {
   const [tempCalculatedArea, setTempCalculatedArea] = useState<number | null>(null);
   const [isMapLoading, setIsMapLoading] = useState(true);
   
+  // Undo/Redo history
+  type HistoryState = {
+    boundaries: google.maps.Polygon[];
+    areas: number[];
+  };
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  
   // Yield tracking
   type YieldRecord = {
     id: string;
@@ -131,6 +141,60 @@ export default function FarmDetail() {
   };
   const [costRecords, setCostRecords] = useState<CostRecord[]>([]);
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
+
+  // Undo/Redo functions
+  const saveToHistory = (boundaries: google.maps.Polygon[], areas: number[]) => {
+    const newHistory = history.slice(0, currentHistoryIndex + 1);
+    newHistory.push({ boundaries: [...boundaries], areas: [...areas] });
+    setHistory(newHistory);
+    setCurrentHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (currentHistoryIndex > 0) {
+      const prevState = history[currentHistoryIndex - 1];
+      
+      // Clear current polygons from map
+      drawnBoundaries.forEach(p => p.setMap(null));
+      
+      // Restore previous state
+      setDrawnBoundaries(prevState.boundaries);
+      setParcelAreas(prevState.areas);
+      
+      // Recalculate total area
+      if (prevState.areas.length > 0) {
+        const totalArea = prevState.areas.reduce((sum, a) => sum + a, 0);
+        setCalculatedArea(totalArea);
+      } else {
+        setCalculatedArea(null);
+      }
+      
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+    }
+  };
+
+  const redo = () => {
+    if (currentHistoryIndex < history.length - 1) {
+      const nextState = history[currentHistoryIndex + 1];
+      
+      // Clear current polygons from map
+      drawnBoundaries.forEach(p => p.setMap(null));
+      
+      // Restore next state
+      setDrawnBoundaries(nextState.boundaries);
+      setParcelAreas(nextState.areas);
+      
+      // Recalculate total area
+      if (nextState.areas.length > 0) {
+        const totalArea = nextState.areas.reduce((sum, a) => sum + a, 0);
+        setCalculatedArea(totalArea);
+      } else {
+        setCalculatedArea(null);
+      }
+      
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+    }
+  };
 
   if (!farm) {
     return (
@@ -382,6 +446,24 @@ export default function FarmDetail() {
                     >
                       <Calculator className="w-4 h-4 mr-1" />
                       {isCalculatingArea ? "Stop Calculating" : "Calculate Area"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={undo}
+                      disabled={currentHistoryIndex <= 0}
+                      title="Undo (Ctrl+Z)"
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={redo}
+                      disabled={currentHistoryIndex >= history.length - 1}
+                      title="Redo (Ctrl+Y)"
+                    >
+                      <Redo2 className="w-4 h-4" />
                     </Button>
                     {drawnBoundaries.length > 0 && (
                       <>
@@ -744,6 +826,9 @@ ${placemarks}
                                             } else {
                                               setCalculatedArea(null);
                                             }
+                                            
+                                            // Save to history for undo/redo
+                                            saveToHistory(newBoundaries, newAreas);
                                           }}
                                           className="bg-red-600 hover:bg-red-700"
                                         >
@@ -1080,6 +1165,11 @@ ${placemarks}
                         // Calculate total area
                         const totalArea = [...parcelAreas, hectares].reduce((sum, a) => sum + a, 0);
                         setCalculatedArea(totalArea);
+                        
+                        // Save to history for undo/redo
+                        const newBoundaries = [...drawnBoundaries, polygon];
+                        const newAreas = [...parcelAreas, hectares];
+                        saveToHistory(newBoundaries, newAreas);
 
                         // Update area on edit
                         const parcelIndex = drawnBoundaries.length;

@@ -1700,3 +1700,20 @@
 - [x] Call deleteParcel only after confirmation
 - [x] AlertDialog automatically handles open/close state
 - [x] Warning message: "This action cannot be undone"
+
+
+## New Feature: Undo/Redo for Polygon Drawing
+
+- [x] Add history state to track drawing operations
+- [x] Add currentHistoryIndex to track position in history
+- [x] Save state snapshot after each drawing operation (add, delete)
+- [x] Implement undo function to restore previous state
+- [x] Implement redo function to restore next state
+- [x] Add Undo button with Undo2 icon
+- [x] Add Redo button with Redo2 icon
+- [x] Disable Undo when at beginning of history (currentHistoryIndex <= 0)
+- [x] Disable Redo when at end of history (currentHistoryIndex >= history.length - 1)
+- [x] Show keyboard shortcuts (Ctrl+Z, Ctrl+Y) in tooltips
+- [x] Clear redo history when new action is performed (slice history)
+- [x] Update map polygons when undoing/redoing (clear and restore)
+- [x] Recalculate areas after undo/redo
