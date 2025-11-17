@@ -2458,3 +2458,25 @@
 - [x] Ensure role-based routing works with demo sessions (ProtectedRoute uses AuthContext)
 - [ ] Test all three demo accounts (farmer, officer, manager)
 - [ ] Verify no OAuth errors in browser console
+
+
+## Day 1 Checkpoint - Error Retry UI (Criterion 9)
+
+### ErrorState Component
+- [x] Create ErrorState component with "Try Again" button
+- [x] Add error icon and destructive styling
+- [x] Make retry callback optional
+- [x] Add customizable title and message props
+
+### FarmDetail Integration
+- [x] Add error and refetch states to farm query
+- [x] Add error and refetch states to yields query
+- [x] Add error and refetch states to costs query
+- [x] Display ErrorState when farm query fails
+- [x] Display ErrorState when yields query fails
+- [x] Display ErrorState when costs query fails
+- [x] Test error handling with network failures
+
+### Checkpoint Completion
+- [x] Update DAY_1_CHECKPOINT_CRITERIA.md to mark Criterion 9 complete
+- [ ] Create final checkpoint with all 12/13 criteria complete

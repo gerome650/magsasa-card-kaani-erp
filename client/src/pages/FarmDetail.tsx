@@ -1,5 +1,6 @@
 import { Link, useRoute } from "wouter";
 import { EmptyStateCompact } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ export default function FarmDetail() {
   const farmId = params?.id ? parseInt(params.id) : null;
   
   // Load farm data from database
-  const { data: dbFarm, isLoading: farmLoading } = trpc.farms.getById.useQuery(
+  const { data: dbFarm, isLoading: farmLoading, error: farmError, refetch: refetchFarm } = trpc.farms.getById.useQuery(
     { id: farmId! },
     { enabled: !!farmId }
   );
@@ -73,19 +74,19 @@ export default function FarmDetail() {
   } : undefined;
   
   // Load boundaries from database
-  const { data: dbBoundaries } = trpc.boundaries.getByFarmId.useQuery(
+  const { data: dbBoundaries, error: boundariesError, refetch: refetchBoundaries } = trpc.boundaries.getByFarmId.useQuery(
     { farmId: farmId! },
     { enabled: !!farmId }
   );
   
   // Load yields from database
-  const { data: dbYields } = trpc.yields.getByFarmId.useQuery(
+  const { data: dbYields, error: yieldsError, refetch: refetchYields } = trpc.yields.getByFarmId.useQuery(
     { farmId: farmId! },
     { enabled: !!farmId }
   );
   
   // Load costs from database
-  const { data: dbCosts } = trpc.costs.getByFarmId.useQuery(
+  const { data: dbCosts, error: costsError, refetch: refetchCosts } = trpc.costs.getByFarmId.useQuery(
     { farmId: farmId! },
     { enabled: !!farmId }
   );
@@ -371,6 +372,25 @@ export default function FarmDetail() {
       setCurrentHistoryIndex(currentHistoryIndex + 1);
     }
   };
+
+  // Handle farm query error
+  if (farmError) {
+    return (
+      <div className="space-y-6">
+        <Link href="/farms">
+          <Button variant="ghost" size="sm" className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Farms
+          </Button>
+        </Link>
+        <ErrorState
+          title="Failed to load farm details"
+          message={farmError.message || "Unable to fetch farm data from the database. Please check your connection and try again."}
+          onRetry={() => refetchFarm()}
+        />
+      </div>
+    );
+  }
 
   if (!farm) {
     return (
@@ -1649,7 +1669,13 @@ ${placemarks}
                 </div>
               </CardHeader>
               <CardContent>
-                {yieldRecords.length === 0 ? (
+                {yieldsError ? (
+                  <ErrorState
+                    title="Failed to load yield records"
+                    message={yieldsError.message || "Unable to fetch yield data. Please try again."}
+                    onRetry={() => refetchYields()}
+                  />
+                ) : yieldRecords.length === 0 ? (
                   <EmptyStateCompact
                     icon={Sprout}
                     title="No harvest records yet"
@@ -1857,7 +1883,13 @@ ${placemarks}
                 </div>
               </CardHeader>
               <CardContent>
-                {costRecords.length === 0 ? (
+                {costsError ? (
+                  <ErrorState
+                    title="Failed to load cost records"
+                    message={costsError.message || "Unable to fetch cost data. Please try again."}
+                    onRetry={() => refetchCosts()}
+                  />
+                ) : costRecords.length === 0 ? (
                   <EmptyStateCompact
                     icon={DollarSign}
                     title="No cost records yet"
