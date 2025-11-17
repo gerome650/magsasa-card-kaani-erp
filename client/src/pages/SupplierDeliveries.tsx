@@ -28,9 +28,19 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Edit
+  Edit,
+  Navigation
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import BulkTrackingAssignment from "@/components/BulkTrackingAssignment";
 
 export default function SupplierDeliveries() {
   const { user } = useAuth();
@@ -39,6 +49,13 @@ export default function SupplierDeliveries() {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState("");
   const [estimatedDelivery, setEstimatedDelivery] = useState("");
+  
+  // Bulk selection state
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTrackingPrefix, setBulkTrackingPrefix] = useState("");
+  const [bulkCarrier, setBulkCarrier] = useState("");
+  const [bulkStatus, setBulkStatus] = useState("");
 
   // For demo, use first supplier (Atlas Fertilizer)
   const supplier = suppliers[0];
@@ -58,7 +75,57 @@ export default function SupplierDeliveries() {
     delivered: { label: 'Delivered', color: 'bg-green-500', icon: CheckCircle2 }
   };
 
-  // Handlers
+  // Selection handlers
+  const toggleOrder = (orderId: string) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrders.size === ordersNeedingShipment.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(ordersNeedingShipment.map(o => o.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedOrders(new Set());
+
+  // Bulk action handlers
+  const handleBulkAssignTracking = () => {
+    if (!bulkTrackingPrefix || !bulkCarrier) {
+      toast.error("Please enter tracking prefix and carrier");
+      return;
+    }
+
+    const count = selectedOrders.size;
+    toast.success(`Tracking numbers assigned to ${count} shipments!`, {
+      description: `Prefix: ${bulkTrackingPrefix}, Carrier: ${bulkCarrier}`
+    });
+    
+    setBulkDialogOpen(false);
+    clearSelection();
+    setBulkTrackingPrefix("");
+    setBulkCarrier("");
+  };
+
+  const handleBulkUpdateStatus = (status: string) => {
+    const count = selectedOrders.size;
+    const statusLabel = shipmentStatusConfig[status as keyof typeof shipmentStatusConfig]?.label || status;
+    
+    toast.success(`${count} shipments updated!`, {
+      description: `Status changed to: ${statusLabel}`
+    });
+    
+    clearSelection();
+  };
+
+  // Single order handlers
   const handleCreateShipment = (order: SupplierOrder) => {
     setSelectedOrder(order);
     setTrackingNumber("");
@@ -184,9 +251,52 @@ export default function SupplierDeliveries() {
         </Card>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedOrders.size > 0 && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <span className="font-semibold">
+                  {selectedOrders.size} shipments selected
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  Clear
+                </Button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => setBulkDialogOpen(true)}>
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Assign Tracking Numbers
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleBulkUpdateStatus('picked-up')}
+                >
+                  Mark as Picked Up
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleBulkUpdateStatus('in-transit')}
+                >
+                  Mark as In Transit
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Orders List */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Active Deliveries</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Active Deliveries</h2>
+          {ordersNeedingShipment.length > 0 && (
+            <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+              {selectedOrders.size === ordersNeedingShipment.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
 
         {ordersNeedingShipment.length === 0 ? (
           <Card>
@@ -201,10 +311,21 @@ export default function SupplierDeliveries() {
         ) : (
           ordersNeedingShipment.map((order) => {
             const shipment = getSupplierShipment(order.id);
+            const isSelected = selectedOrders.has(order.id);
 
             return (
-              <Card key={order.id} className="hover:shadow-lg transition-shadow">
+              <Card key={order.id} className={`hover:shadow-lg transition-all ${
+                isSelected ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950' : ''
+              }`}>
                 <CardContent className="pt-6">
+                  <div className="flex gap-4 mb-4">
+                    <div className="flex items-start pt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleOrder(order.id)}
+                      />
+                    </div>
+                    <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -228,6 +349,11 @@ export default function SupplierDeliveries() {
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {order.quantity} {order.unit} • ₱{order.totalAmount.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold">
+                        ₱{order.totalAmount.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -339,6 +465,8 @@ export default function SupplierDeliveries() {
                       View Details
                     </Button>
                   </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -421,6 +549,14 @@ export default function SupplierDeliveries() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Tracking Assignment Dialog */}
+      <BulkTrackingAssignment
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        selectedCount={selectedOrders.size}
+        onAssign={handleBulkAssignTracking}
+      />
     </div>
   );
 }

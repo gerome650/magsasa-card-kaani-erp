@@ -1049,10 +1049,10 @@
 - [x] Display bulk update preview before applying
 
 ### Bulk Shipment Management
-- [ ] Add checkbox selection for multiple shipments
-- [ ] Create bulk tracking number assignment
-- [ ] Implement bulk carrier assignment
-- [ ] Add bulk status updates for shipments
+- [x] Add checkbox selection for multiple shipments
+- [x] Create bulk tracking number assignment
+- [x] Implement bulk carrier assignment
+- [x] Add bulk status updates for shipments
 - [ ] Generate bulk delivery manifests
 
 ### UI/UX Enhancements
