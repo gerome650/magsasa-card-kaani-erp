@@ -1194,3 +1194,49 @@
 - [x] Add permission indicators to UI
 - [x] Log access attempts in audit log
 - [ ] Add role-based navigation filtering
+
+
+## New Feature: Permission Request Workflow
+
+### Request Data Model
+- [x] Create permission request data structure (id, requester, requested_permissions, reason, status, timestamps)
+- [x] Add request status types (pending, approved, rejected, cancelled)
+- [x] Create request history tracking
+- [x] Add approval metadata (approver, approval_date, rejection_reason)
+
+### Request Creation Interface
+- [x] Add "Request Access" button on access denied screens
+- [x] Create permission request form with:
+  * Permission selection (checkboxes for available permissions)
+  * Justification text area
+  * Urgency level selector
+- [x] Show user's current permissions vs requested permissions
+- [x] Add request submission confirmation
+
+### Manager Approval Dashboard
+- [x] Create approval dashboard page for managers
+- [x] Display pending requests list with filters
+- [x] Show request details (requester, permissions, reason, date)
+- [x] Add approve/reject actions with reason field
+- [x] Display approved and rejected request history
+- [ ] Add bulk approval functionality
+
+### Status Tracking
+- [x] Create "My Requests" page for users to track their requests
+- [x] Show request status timeline (submitted → pending → approved/rejected)
+- [x] Add status badges (pending=yellow, approved=green, rejected=red)
+- [x] Display approval/rejection reasons
+- [x] Allow request cancellation for pending requests
+
+### Notifications
+- [x] Send notification to managers when new request submitted (via toast)
+- [x] Notify requester when request approved/rejected (via toast)
+- [ ] Add in-app notification badge/counter
+- [ ] Create notification center/inbox
+
+### Integration
+- [x] Add "Request Access" button to RetentionSettings access denied screen
+- [x] Add "My Requests" link to user menu
+- [x] Add "Approval Queue" link to manager navigation
+- [x] Log permission changes in audit log
+- [ ] Update user permissions after approval (requires backend)

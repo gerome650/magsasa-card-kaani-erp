@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { addAuditLog } from "@/data/auditLogData";
 import { useLocation } from "wouter";
+import RequestPermissionDialog from "@/components/RequestPermissionDialog";
 import {
   canModifyRetentionSettings,
   canEnablePermanentDeletion,
@@ -49,6 +50,7 @@ export default function RetentionSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'save' | 'disable' | 'reset' | null>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
   // Check for changes
   useEffect(() => {
@@ -224,11 +226,19 @@ export default function RetentionSettings() {
             <p className="text-sm text-muted-foreground">
               Required permission: <strong>retention_settings:view</strong>
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-4">
               Your role: <strong>{user?.role ? getRoleDisplayName(user.role) : 'Unknown'}</strong>
             </p>
+            <Button onClick={() => setRequestDialogOpen(true)}>
+              Request Access
+            </Button>
           </CardContent>
         </Card>
+        <RequestPermissionDialog
+          open={requestDialogOpen}
+          onOpenChange={setRequestDialogOpen}
+          suggestedPermissions={['retention_settings:view']}
+        />
       </div>
     );
   }

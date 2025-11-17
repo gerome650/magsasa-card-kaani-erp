@@ -28,6 +28,8 @@ import AuditLog from "./pages/AuditLog";
 import AuditArchive from "./pages/AuditArchive";
 import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
+import PermissionApproval from "./pages/PermissionApproval";
+import MyRequests from "./pages/MyRequests";
 
 function Router() {
   return (
@@ -183,6 +185,20 @@ function Router() {
       <Route path="/role-permissions">
         <Layout>
           <RolePermissions />
+        </Layout>
+      </Route>
+      
+      <Route path="/permission-approval">
+        <ProtectedRoute allowedRoles={['manager', 'admin']}>
+          <Layout>
+            <PermissionApproval />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/my-requests">
+        <Layout>
+          <MyRequests />
         </Layout>
       </Route>
       
