@@ -26,6 +26,7 @@ import {
   Map as MapIcon,
   Satellite,
   Layers,
+<<<<<<< HEAD
   X,
   Ruler,
   Calculator,
@@ -38,6 +39,8 @@ import {
   Undo2,
   Redo2,
   DollarSign,
+=======
+>>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
@@ -495,6 +498,7 @@ export default function FarmDetail() {
   const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
   const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+<<<<<<< HEAD
   const [terrainEnabled, setTerrainEnabled] = useState(false);
   const [terrainLayer, setTerrainLayer] = useState<google.maps.ImageMapType | null>(null);
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -808,6 +812,8 @@ export default function FarmDetail() {
       </div>
     );
   }
+=======
+>>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
 
   if (!farm) {
     return (
@@ -1520,6 +1526,7 @@ ${placemarks}
                     })()}
                   </div>
                 )}
+<<<<<<< HEAD
                 {tempCalculatedArea !== null && (
                   <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="flex items-center gap-2">
@@ -1717,6 +1724,12 @@ ${placemarks}
                       <span>Show Terrain</span>
                     </label>
                   </div>
+=======
+                
+                {/* Map Type Switcher */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Map View</span>
+>>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
                   <div className="flex gap-1 bg-muted rounded-lg p-1">
                     <Button
                       type="button"
@@ -1766,6 +1779,7 @@ ${placemarks}
                   </div>
                 </div>
                 
+<<<<<<< HEAD
                 <div className="h-96 rounded-lg overflow-hidden border relative">
                   {isMapLoading && (
                     <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
@@ -1780,6 +1794,11 @@ ${placemarks}
                       // Hide loading overlay
                       setIsMapLoading(false);
                       
+=======
+                <div className="h-96 rounded-lg overflow-hidden border">
+                  <MapView
+                    onMapReady={(map, google) => {
+>>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
                       // Store map instance for map type switching
                       setMapInstance(map);
                       
