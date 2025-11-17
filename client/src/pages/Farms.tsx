@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,21 +75,6 @@ export default function Farms() {
 
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
-
-  // Update URL when filters change (without page reload)
-  useEffect(() => {
-    const params = new URLSearchParams();
-    
-    if (searchQuery) params.set("search", searchQuery);
-    if (dateRange?.from) params.set("startDate", dateRange.from.toISOString().split('T')[0]);
-    if (dateRange?.to) params.set("endDate", dateRange.to.toISOString().split('T')[0]);
-    if (selectedBarangay !== "all") params.set("barangay", selectedBarangay);
-    if (selectedCrop !== "all") params.set("crop", selectedCrop);
-    if (selectedStatus !== "all") params.set("status", selectedStatus);
-    
-    const newUrl = params.toString() ? `/farms?${params.toString()}` : "/farms";
-    window.history.replaceState({}, "", newUrl);
-  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus]);
 
   // Fetch farms from database via tRPC with search and date filters
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({
