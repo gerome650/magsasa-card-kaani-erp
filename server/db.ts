@@ -371,6 +371,7 @@ export async function deleteCost(id: number) {
 
 export async function createChatMessage(data: {
   userId: number;
+  conversationId: number;
   role: "user" | "assistant";
   content: string;
   category?: string;
@@ -380,6 +381,7 @@ export async function createChatMessage(data: {
   
   const result = await db.insert(chatMessages).values({
     userId: data.userId,
+    conversationId: data.conversationId,
     role: data.role,
     content: data.content,
     category: data.category,
@@ -403,10 +405,89 @@ export async function getChatMessagesByUserId(userId: number, limit: number = 50
   return messages.reverse(); // Return in chronological order (oldest first)
 }
 
+export async function getChatMessagesByConversationId(conversationId: number) {
+  const db = await getDb();
+  const { chatMessages } = await import("../drizzle/schema");
+  const { asc, eq } = await import("drizzle-orm");
+  
+  const messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.conversationId, conversationId))
+    .orderBy(asc(chatMessages.createdAt));
+  
+  return messages;
+}
+
 export async function deleteChatMessagesByUserId(userId: number) {
   const db = await getDb();
   const { chatMessages } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
   await db.delete(chatMessages).where(eq(chatMessages.userId, userId));
+}
+
+// ==================== Conversations ====================
+
+export async function createConversation(data: {
+  userId: number;
+  title: string;
+}) {
+  const db = await getDb();
+  const { conversations } = await import("../drizzle/schema");
+  
+  const result = await db.insert(conversations).values({
+    userId: data.userId,
+    title: data.title,
+  });
+  
+  return Number(result[0].insertId);
+}
+
+export async function getConversationsByUserId(userId: number) {
+  const db = await getDb();
+  const { conversations } = await import("../drizzle/schema");
+  const { desc, eq } = await import("drizzle-orm");
+  
+  const convos = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.userId, userId))
+    .orderBy(desc(conversations.updatedAt));
+  
+  return convos;
+}
+
+export async function updateConversationTitle(id: number, title: string) {
+  const db = await getDb();
+  const { conversations } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  await db
+    .update(conversations)
+    .set({ title, updatedAt: new Date() })
+    .where(eq(conversations.id, id));
+}
+
+export async function deleteConversation(id: number) {
+  const db = await getDb();
+  const { conversations, chatMessages } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  // Delete all messages in the conversation first
+  await db.delete(chatMessages).where(eq(chatMessages.conversationId, id));
+  
+  // Then delete the conversation
+  await db.delete(conversations).where(eq(conversations.id, id));
+}
+
+export async function touchConversation(id: number) {
+  const db = await getDb();
+  const { conversations } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  await db
+    .update(conversations)
+    .set({ updatedAt: new Date() })
+    .where(eq(conversations.id, id));
 }

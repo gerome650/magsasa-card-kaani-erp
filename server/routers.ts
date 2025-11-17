@@ -292,21 +292,8 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           category = "weather";
         }
 
-        // Save user message to database
-        await db.createChatMessage({
-          userId: ctx.user.id,
-          role: "user",
-          content: input.message,
-          category,
-        });
-
-        // Save assistant response to database
-        await db.createChatMessage({
-          userId: ctx.user.id,
-          role: "assistant",
-          content: response,
-          category,
-        });
+        // Note: Chat messages are now saved per conversation
+        // This endpoint is deprecated in favor of conversation-based chat
 
         return { response, category };
       }),
@@ -404,21 +391,8 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           category = "weather";
         }
 
-        // Save user message to database
-        await db.createChatMessage({
-          userId: ctx.user.id,
-          role: "user",
-          content: input.message,
-          category,
-        });
-
-        // Save assistant response to database
-        await db.createChatMessage({
-          userId: ctx.user.id,
-          role: "assistant",
-          content: fullResponse,
-          category,
-        });
+        // Note: Chat messages are now saved per conversation
+        // This endpoint is deprecated in favor of conversation-based chat
 
         // Return chunks for frontend streaming simulation
         return { response: fullResponse, chunks, category };
@@ -510,21 +484,8 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
                 category = "weather";
               }
 
-              // Save user message to database
-              await db.createChatMessage({
-                userId: ctx.user.id,
-                role: "user",
-                content: input.message,
-                category,
-              });
-
-              // Save assistant response to database
-              await db.createChatMessage({
-                userId: ctx.user.id,
-                role: "assistant",
-                content: fullResponse,
-                category,
-              });
+              // Note: Chat messages are now saved per conversation
+              // This SSE endpoint will be updated to use conversationId
 
               // Signal completion
               emit.next({ type: 'done', content: fullResponse, category });
@@ -540,6 +501,53 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
             // No cleanup needed for Gemini API
           };
         });
+      }),
+  }),
+
+  // Conversations management router
+  conversations: router({
+    list: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await db.getConversationsByUserId(ctx.user.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const conversationId = await db.createConversation({
+          userId: ctx.user.id,
+          title: input.title,
+        });
+        return { conversationId };
+      }),
+
+    updateTitle: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.updateConversationTitle(input.id, input.title);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.deleteConversation(input.id);
+        return { success: true };
+      }),
+
+    getMessages: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        return await db.getChatMessagesByConversationId(input.conversationId);
       }),
   }),
 });

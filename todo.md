@@ -2515,3 +2515,47 @@
 - [x] Hide typing indicator when first chunk arrives
 - [x] Test typing indicator with various response times
 - [x] Update documentation with typing indicator feature
+
+
+## Conversation Management System
+
+### Database Schema
+- [x] Create conversations table (id, userId, title, createdAt, updatedAt)
+- [x] Update chatMessages table to include conversationId foreign key
+- [x] Create database migration for new schema
+- [x] Run migration with drizzle-kit
+
+### Backend API
+- [x] Create conversations.list tRPC query (get all user conversations)
+- [x] Create conversations.create tRPC mutation (start new conversation)
+- [x] Create conversations.delete tRPC mutation (delete conversation)
+- [x] Create conversations.updateTitle tRPC mutation (rename conversation)
+- [x] Create conversations.getMessages query (filter by conversationId)
+- [x] Add database functions for conversation management
+
+### Frontend Components
+- [x] Create ConversationSidebar component with conversation list
+- [x] Add "New Conversation" button with Plus icon
+- [x] Display conversation titles with timestamps
+- [x] Add active conversation highlighting
+- [x] Add delete conversation button (trash icon)
+- [x] Add rename conversation functionality (inline edit)
+- [x] Implement responsive sidebar (collapsible on mobile)
+
+### Integration
+- [x] Add conversation state management to KaAniChat
+- [x] Load conversations on component mount
+- [x] Switch active conversation on click
+- [x] Create new conversation and switch to it
+- [x] Auto-generate conversation titles from first message
+- [x] Update message display to show current conversation only
+- [x] Add empty state for new conversations
+
+### Testing
+- [x] Test creating multiple conversations
+- [x] Test switching between conversations
+- [x] Test deleting conversations
+- [x] Test renaming conversations
+- [x] Test conversation persistence across page refreshes
+- [x] Test empty state handling
+- [x] Create documentation
