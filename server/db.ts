@@ -583,3 +583,316 @@ export async function addChatMessage(data: {
   
   return Number(result[0].insertId);
 }
+
+// ==================== Analytics Functions ====================
+
+/**
+ * Get harvest trends by region (municipality) over time
+ */
+export async function getHarvestTrendsByRegion(input?: {
+  startDate?: string;
+  endDate?: string;
+  region?: "all" | "bacolod" | "laguna";
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const { yields, farms } = await import("../drizzle/schema");
+  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+
+  // Build where conditions
+  const conditions = [];
+  
+  if (input?.region && input.region !== "all") {
+    if (input.region === "bacolod") {
+      conditions.push(like(farms.municipality, "%Bacolod%"));
+    } else if (input.region === "laguna") {
+      conditions.push(like(farms.municipality, "%Laguna%"));
+    }
+  }
+  
+  if (input?.startDate) {
+    conditions.push(gte(yields.harvestDate, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    conditions.push(lte(yields.harvestDate, input.endDate));
+  }
+
+  // Query with grouping by municipality and month
+  const results = await db
+    .select({
+      municipality: farms.municipality,
+      month: sql<string>`DATE_FORMAT(${yields.harvestDate}, '%Y-%m')`.as('month'),
+      totalQuantity: sql<number>`SUM(${yields.quantity})`.as('totalQuantity'),
+      avgYield: sql<number>`AVG(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('avgYield'),
+      harvestCount: sql<number>`COUNT(${yields.id})`.as('harvestCount'),
+    })
+    .from(yields)
+    .innerJoin(farms, eq(yields.farmId, farms.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(farms.municipality, sql`DATE_FORMAT(${yields.harvestDate}, '%Y-%m')`)
+    .orderBy(sql`month ASC`);
+
+  return results;
+}
+
+/**
+ * Get crop performance comparison (yield, harvest, revenue)
+ */
+export async function getCropPerformance(input?: {
+  startDate?: string;
+  endDate?: string;
+  region?: "all" | "bacolod" | "laguna";
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const { yields, farms } = await import("../drizzle/schema");
+  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+
+  // Build where conditions
+  const conditions = [];
+  
+  if (input?.region && input.region !== "all") {
+    if (input.region === "bacolod") {
+      conditions.push(like(farms.municipality, "%Bacolod%"));
+    } else if (input.region === "laguna") {
+      conditions.push(like(farms.municipality, "%Laguna%"));
+    }
+  }
+  
+  if (input?.startDate) {
+    conditions.push(gte(yields.harvestDate, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    conditions.push(lte(yields.harvestDate, input.endDate));
+  }
+
+  // Query with grouping by crop type
+  const results = await db
+    .select({
+      crop: yields.cropType,
+      totalQuantity: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('totalQuantity'),
+      avgYield: sql<number>`AVG(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('avgYield'),
+      totalRevenue: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)) * 50)`.as('totalRevenue'), // Assuming avg price of 50 per unit
+      harvestCount: sql<number>`COUNT(${yields.id})`.as('harvestCount'),
+      farmCount: sql<number>`COUNT(DISTINCT ${yields.farmId})`.as('farmCount'),
+    })
+    .from(yields)
+    .innerJoin(farms, eq(yields.farmId, farms.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(yields.cropType)
+    .orderBy(sql`totalRevenue DESC`);
+
+  return results;
+}
+
+/**
+ * Get cost analysis by category and ROI by crop
+ */
+export async function getCostAnalysis(input?: {
+  startDate?: string;
+  endDate?: string;
+  region?: "all" | "bacolod" | "laguna";
+}) {
+  const db = await getDb();
+  if (!db) return { costsByCategory: [], roiByCrop: [] };
+
+  const { costs, yields, farms } = await import("../drizzle/schema");
+  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+
+  // Build where conditions for costs
+  const costConditions = [];
+  
+  if (input?.region && input.region !== "all") {
+    if (input.region === "bacolod") {
+      costConditions.push(like(farms.municipality, "%Bacolod%"));
+    } else if (input.region === "laguna") {
+      costConditions.push(like(farms.municipality, "%Laguna%"));
+    }
+  }
+  
+  if (input?.startDate) {
+    costConditions.push(gte(costs.date, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    costConditions.push(lte(costs.date, input.endDate));
+  }
+
+  // Get costs by category
+  const costsByCategory = await db
+    .select({
+      category: costs.category,
+      totalAmount: sql<number>`SUM(${costs.amount})`.as('totalAmount'),
+      transactionCount: sql<number>`COUNT(${costs.id})`.as('transactionCount'),
+    })
+    .from(costs)
+    .innerJoin(farms, eq(costs.farmId, farms.id))
+    .where(costConditions.length > 0 ? and(...costConditions) : undefined)
+    .groupBy(costs.category)
+    .orderBy(sql`totalAmount DESC`);
+
+  // Calculate ROI by crop (Revenue - Costs) / Costs
+  // First get total costs per farm
+  const farmCosts = await db
+    .select({
+      farmId: costs.farmId,
+      totalCost: sql<number>`SUM(${costs.amount})`.as('totalCost'),
+    })
+    .from(costs)
+    .innerJoin(farms, eq(costs.farmId, farms.id))
+    .where(costConditions.length > 0 ? and(...costConditions) : undefined)
+    .groupBy(costs.farmId);
+
+  // Build where conditions for yields
+  const yieldConditions = [];
+  
+  if (input?.region && input.region !== "all") {
+    if (input.region === "bacolod") {
+      yieldConditions.push(like(farms.municipality, "%Bacolod%"));
+    } else if (input.region === "laguna") {
+      yieldConditions.push(like(farms.municipality, "%Laguna%"));
+    }
+  }
+  
+  if (input?.startDate) {
+    yieldConditions.push(gte(yields.harvestDate, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    yieldConditions.push(lte(yields.harvestDate, input.endDate));
+  }
+
+  // Get total revenue per crop
+  const cropRevenue = await db
+    .select({
+      crop: yields.cropType,
+      farmId: yields.farmId,
+      totalRevenue: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)) * 50)`.as('totalRevenue'), // Assuming avg price of 50 per unit
+    })
+    .from(yields)
+    .innerJoin(farms, eq(yields.farmId, farms.id))
+    .where(yieldConditions.length > 0 ? and(...yieldConditions) : undefined)
+    .groupBy(yields.crop, yields.farmId);
+
+  // Calculate ROI by crop
+  const costMap = new Map(farmCosts.map(fc => [fc.farmId, fc.totalCost]));
+  const roiByFarmCrop = cropRevenue.map(cr => {
+    const cost = costMap.get(cr.farmId) || 0;
+    const revenue = cr.totalRevenue || 0;
+    const roi = cost > 0 ? ((revenue - cost) / cost) * 100 : 0;
+    return {
+      crop: cr.crop,
+      farmId: cr.farmId,
+      revenue,
+      cost,
+      roi,
+    };
+  });
+
+  // Aggregate ROI by crop
+  const cropRoiMap = new Map<string, { totalRevenue: number; totalCost: number; count: number }>();
+  roiByFarmCrop.forEach(item => {
+    const existing = cropRoiMap.get(item.crop) || { totalRevenue: 0, totalCost: 0, count: 0 };
+    cropRoiMap.set(item.crop, {
+      totalRevenue: existing.totalRevenue + item.revenue,
+      totalCost: existing.totalCost + item.cost,
+      count: existing.count + 1,
+    });
+  });
+
+  const roiByCrop = Array.from(cropRoiMap.entries()).map(([crop, data]) => ({
+    crop,
+    totalRevenue: data.totalRevenue,
+    totalCost: data.totalCost,
+    roi: data.totalCost > 0 ? ((data.totalRevenue - data.totalCost) / data.totalCost) * 100 : 0,
+    farmCount: data.count,
+  })).sort((a, b) => b.roi - a.roi);
+
+  return { costsByCategory, roiByCrop };
+}
+
+/**
+ * Get regional comparison (Bacolod vs Laguna)
+ */
+export async function getRegionalComparison(input?: {
+  startDate?: string;
+  endDate?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const { yields, costs, farms } = await import("../drizzle/schema");
+  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+
+  // Build where conditions
+  const conditions = [];
+  
+  if (input?.startDate) {
+    conditions.push(gte(yields.harvestDate, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    conditions.push(lte(yields.harvestDate, input.endDate));
+  }
+
+  // Get metrics by region
+  const results = await db
+    .select({
+      region: sql<string>`CASE 
+        WHEN ${farms.municipality} LIKE '%Bacolod%' THEN 'Bacolod'
+        WHEN ${farms.municipality} LIKE '%Laguna%' THEN 'Laguna'
+        ELSE 'Other'
+      END`.as('region'),
+      totalHarvest: sql<number>`SUM(${yields.quantity})`.as('totalHarvest'),
+      avgYield: sql<number>`AVG(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('avgYield'),
+      totalRevenue: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)) * 50)`.as('totalRevenue'), // Assuming avg price of 50 per unit
+      farmCount: sql<number>`COUNT(DISTINCT ${farms.id})`.as('farmCount'),
+      harvestCount: sql<number>`COUNT(${yields.id})`.as('harvestCount'),
+    })
+    .from(yields)
+    .innerJoin(farms, eq(yields.farmId, farms.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(sql`region`)
+    .orderBy(sql`region ASC`);
+
+  // Get cost data by region
+  const costConditions = [];
+  
+  if (input?.startDate) {
+    costConditions.push(gte(costs.date, input.startDate));
+  }
+  
+  if (input?.endDate) {
+    costConditions.push(lte(costs.date, input.endDate));
+  }
+
+  const costResults = await db
+    .select({
+      region: sql<string>`CASE 
+        WHEN ${farms.municipality} LIKE '%Bacolod%' THEN 'Bacolod'
+        WHEN ${farms.municipality} LIKE '%Laguna%' THEN 'Laguna'
+        ELSE 'Other'
+      END`.as('region'),
+      totalCost: sql<number>`SUM(${costs.amount})`.as('totalCost'),
+    })
+    .from(costs)
+    .innerJoin(farms, eq(costs.farmId, farms.id))
+    .where(costConditions.length > 0 ? and(...costConditions) : undefined)
+    .groupBy(sql`region`);
+
+  // Merge results
+  const costMap = new Map(costResults.map(cr => [cr.region, cr.totalCost]));
+  const finalResults = results.map(r => ({
+    ...r,
+    totalCost: costMap.get(r.region) || 0,
+    roi: (costMap.get(r.region) || 0) > 0 
+      ? (((r.totalRevenue || 0) - (costMap.get(r.region) || 0)) / (costMap.get(r.region) || 0)) * 100 
+      : 0,
+  }));
+
+  return finalResults;
+}

@@ -39,6 +39,7 @@ import FarmNew from "./pages/FarmNew";
 import TRPCClientTest from "./pages/TRPCClientTest";
 import SkeletonDemo from "./pages/SkeletonDemo";
 import Analytics from "./pages/Analytics";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -88,6 +89,14 @@ function Router() {
         <ProtectedRoute>
           <Layout>
             <HarvestTracking />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/analytics-dashboard">
+        <ProtectedRoute>
+          <Layout>
+            <AnalyticsDashboard />
           </Layout>
         </ProtectedRoute>
       </Route>

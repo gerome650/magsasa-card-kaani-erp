@@ -504,6 +504,52 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
       }),
   }),
 
+  // Analytics router for visual dashboard
+  analytics: router({
+    // Harvest trends by region (municipality) over time
+    harvestTrendsByRegion: publicProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        region: z.enum(["all", "bacolod", "laguna"]).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await db.getHarvestTrendsByRegion(input);
+      }),
+
+    // Crop performance comparison (yield, harvest, revenue)
+    cropPerformance: publicProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        region: z.enum(["all", "bacolod", "laguna"]).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await db.getCropPerformance(input);
+      }),
+
+    // Cost analysis by category and ROI by crop
+    costAnalysis: publicProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        region: z.enum(["all", "bacolod", "laguna"]).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await db.getCostAnalysis(input);
+      }),
+
+    // Regional comparison (Bacolod vs Laguna)
+    regionalComparison: publicProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await db.getRegionalComparison(input);
+      }),
+  }),
+
   // Conversations management router
   conversations: router({
     list: protectedProcedure

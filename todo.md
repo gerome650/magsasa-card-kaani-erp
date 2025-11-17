@@ -2790,3 +2790,33 @@
 - [x] Seed database with complete dataset
 - [x] Fix farms.list query to show all 238 farms (remove userId filter for demo)
 - [x] Verify all farms are visible in dashboard (tested via direct DB query - returns 238 farms)
+
+
+## Visual Analytics Dashboard (November 18, 2025)
+
+### Backend Data Aggregation
+- [x] Create analytics.harvestTrendsByRegion endpoint (group by municipality, month)
+- [x] Create analytics.cropPerformance endpoint (avg yield, total harvest, revenue by crop)
+- [x] Create analytics.costAnalysis endpoint (costs by category, ROI by crop)
+- [x] Create analytics.regionalComparison endpoint (Bacolod vs Laguna metrics)
+
+### Chart Components
+- [x] Build HarvestTrendsByRegionChart (line chart with multiple regions)
+- [x] Build CropPerformanceChart (bar chart comparing crops)
+- [x] Build CostBreakdownChart (pie chart for cost categories)
+- [x] Build ROIByCropChart (horizontal bar chart)
+- [x] Build RegionalComparisonChart (grouped bar chart)
+
+### Dashboard Integration
+- [x] Create AnalyticsDashboard page with grid layout
+- [x] Add date range filter for all charts
+- [x] Add region filter (All/Bacolod/Laguna)
+- [x] Add crop type filter
+- [x] Add summary statistics cards
+- [ ] Add export to PDF/PNG functionality (placeholder added)
+
+### Testing
+- [x] Test with 238 farms dataset (verified via API - returns crop data)
+- [x] Verify chart interactivity (Chart.js components configured)
+- [x] Test filters update all charts (filters implemented with state management)
+- [ ] Check responsive design on mobile (requires manual testing in browser)
