@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Search, MapPin, Phone, Mail, Calendar, Eye, Plus, Edit } from 'lucide-react';
+import { Search, MapPin, Phone, Mail, Calendar, Eye, Plus, Edit, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -188,7 +188,15 @@ export default function Farmers() {
                   </span>
                 </div>
                 <div>
-                  <h3 className="font-semibold">{farmer.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{farmer.name}</h3>
+                    {getFarmerFarms(farmer.id).length >= 2 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700" title={`Manages ${getFarmerFarms(farmer.id).length} farms`}>
+                        <Layers className="w-3 h-3" />
+                        {getFarmerFarms(farmer.id).length} Farms
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{farmer.id}</p>
                 </div>
               </div>

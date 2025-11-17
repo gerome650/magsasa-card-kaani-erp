@@ -1424,3 +1424,12 @@
 - [x] Update FarmerProfile page with farms section
 - [x] Link farms to farmers in farmsData
 - [x] Test with farmers who have multiple farms
+
+
+## Enhancement: Multi-Farm Badge on Farmer Cards
+
+- [x] Add multi-farm badge with icon to farmer cards
+- [x] Show badge only when farmer has 2+ farms
+- [x] Add tooltip showing exact farm count
+- [x] Use consistent styling with existing badges
+- [x] Position badge prominently on card header
