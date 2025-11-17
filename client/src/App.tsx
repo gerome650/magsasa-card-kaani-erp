@@ -26,6 +26,7 @@ import SupplierInventory from "./pages/SupplierInventory";
 import SupplierDeliveries from "./pages/SupplierDeliveries";
 import AuditLog from "./pages/AuditLog";
 import AuditArchive from "./pages/AuditArchive";
+import RetentionSettings from "./pages/RetentionSettings";
 
 function Router() {
   return (
@@ -166,6 +167,14 @@ function Router() {
         <ProtectedRoute allowedRoles={['supplier']}>
           <Layout>
             <AuditArchive />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/supplier/retention-settings">
+        <ProtectedRoute allowedRoles={['supplier', 'manager']}>
+          <Layout>
+            <RetentionSettings />
           </Layout>
         </ProtectedRoute>
       </Route>

@@ -29,9 +29,11 @@ import {
   Download
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function AuditArchive() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedBatch, setSelectedBatch] = useState<ArchivedBatch | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
@@ -91,6 +93,13 @@ export default function AuditArchive() {
             View and manage archived audit logs (90+ days old)
           </p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setLocation('/supplier/retention-settings')}
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Settings
+        </Button>
       </div>
 
       {/* Stats Cards */}

@@ -1127,3 +1127,37 @@
 - [x] Add "View Archives" button to Audit Log page
 - [x] Integrate archive status in audit log timeline
 - [x] Add archive indicator badges for restored logs
+
+
+## New Feature: Retention Settings Page
+
+### Settings Interface
+- [x] Create retention settings page for administrators
+- [x] Add retention period slider (30-180 days)
+- [x] Display current retention period with visual indicator
+- [x] Add preset buttons (30, 60, 90, 180 days)
+- [x] Show impact preview (how many logs would be affected)
+
+### Auto-Archive Controls
+- [x] Add toggle switch for auto-archive enable/disable
+- [x] Display auto-archive schedule configuration
+- [x] Add confirmation dialog for disabling auto-archive
+- [x] Show next scheduled run date/time
+
+### Advanced Settings
+- [x] Add permanent deletion toggle (for very old archives)
+- [x] Configure permanent deletion threshold (e.g., 365 days)
+- [ ] Add compression level settings
+- [x] Display storage statistics and projections
+
+### Settings Persistence
+- [x] Save settings to local storage or backend
+- [x] Load settings on page mount
+- [x] Add "Reset to Defaults" button
+- [x] Show last modified timestamp and user
+
+### Integration
+- [x] Add "Settings" link to Audit Archive page
+- [x] Update AutoArchiveManager to use configured retention period
+- [x] Add admin-only access control
+- [x] Show settings change in audit log
