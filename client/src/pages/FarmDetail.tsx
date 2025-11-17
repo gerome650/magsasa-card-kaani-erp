@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   MapPin,
@@ -27,6 +28,8 @@ export default function FarmDetail() {
   const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
   const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+  const [terrainEnabled, setTerrainEnabled] = useState(false);
+  const [terrainLayer, setTerrainLayer] = useState<google.maps.ImageMapType | null>(null);
 
   if (!farm) {
     return (
@@ -444,7 +447,48 @@ export default function FarmDetail() {
                 
                 {/* Map Type Switcher */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Map View</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium">Map View</span>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary transition-colors">
+                      <Checkbox
+                        checked={terrainEnabled}
+                        onCheckedChange={(checked) => {
+                          const enabled = checked === true;
+                          setTerrainEnabled(enabled);
+                          
+                          if (mapInstance) {
+                            if (enabled) {
+                              // Switch to terrain map type which shows elevation and topography
+                              const currentType = mapInstance.getMapTypeId();
+                              if (currentType === 'roadmap') {
+                                mapInstance.setMapTypeId('terrain');
+                                setMapType('roadmap'); // Keep UI state as roadmap
+                              } else {
+                                // For satellite/hybrid, enable terrain overlay
+                                mapInstance.setOptions({ 
+                                  // @ts-ignore - tilt is valid
+                                  tilt: 45 
+                                });
+                              }
+                            } else {
+                              // Switch back to regular roadmap if currently on terrain
+                              const currentType = mapInstance.getMapTypeId();
+                              if (currentType === 'terrain') {
+                                mapInstance.setMapTypeId('roadmap');
+                              } else {
+                                mapInstance.setOptions({ 
+                                  // @ts-ignore
+                                  tilt: 0 
+                                });
+                              }
+                            }
+                          }
+                        }}
+                      />
+                      <Mountain className="w-4 h-4" />
+                      <span>Show Terrain</span>
+                    </label>
+                  </div>
                   <div className="flex gap-1 bg-muted rounded-lg p-1">
                     <Button
                       type="button"

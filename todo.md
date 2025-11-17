@@ -1501,3 +1501,16 @@
 - [x] Position switcher in top-right corner of map
 - [x] Test switching between all three map types
 - [x] Verify boundaries are visible on satellite imagery
+
+
+## New Feature: Terrain Layer Toggle for Irrigation Planning
+
+- [x] Add terrain layer state management (boolean toggle)
+- [x] Create terrain toggle checkbox UI component
+- [x] Implement Google Maps Terrain layer overlay
+- [x] Add terrain layer when toggle is enabled
+- [x] Remove terrain layer when toggle is disabled
+- [x] Position toggle near map type switcher
+- [x] Add Mountain icon for visual clarity
+- [x] Test terrain overlay on all map types (roadmap, satellite, hybrid)
+- [x] Verify terrain shows elevation contours and shading
