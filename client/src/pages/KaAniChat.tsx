@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { sendMessageToKaAni } from "@/services/kaaniService";
+import { sendMessageToKaAni, loadChatHistory } from "@/services/kaaniService";
 import { toast } from "sonner";
 
 interface Message {
@@ -15,14 +15,8 @@ interface Message {
 
 export default function KaAniChat() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `Kumusta ${user?.name}! Ako si KaAni, ang iyong agricultural assistant. Paano kita matutulungan ngayong araw?`,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,6 +25,44 @@ export default function KaAniChat() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await loadChatHistory();
+        if (history.length > 0) {
+          const historyMessages: Message[] = history.map((msg, idx) => ({
+            id: `history-${idx}`,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(),
+          }));
+          setMessages(historyMessages);
+        } else {
+          // Show welcome message if no history
+          setMessages([{
+            id: "welcome",
+            role: "assistant",
+            content: `Kumusta ${user?.name}! Ako si KaAni, ang iyong agricultural assistant. Paano kita matutulungan ngayong araw?`,
+            timestamp: new Date(),
+          }]);
+        }
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+        // Show welcome message on error
+        setMessages([{
+          id: "welcome",
+          role: "assistant",
+          content: `Kumusta ${user?.name}! Ako si KaAni, ang iyong agricultural assistant. Paano kita matutulungan ngayong araw?`,
+          timestamp: new Date(),
+        }]);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+    loadHistory();
+  }, [user?.name]);
 
   useEffect(() => {
     scrollToBottom();
@@ -51,8 +83,16 @@ export default function KaAniChat() {
     setIsLoading(true);
 
     try {
-      // Call KaAni API (placeholder for now)
-      const response = await sendMessageToKaAni(input.trim(), user?.role || "Farmer");
+      // Build conversation history (last 10 messages for context)
+      const conversationHistory = messages
+        .slice(-10)
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+      // Call KaAni API with conversation context
+      const response = await sendMessageToKaAni(input.trim(), conversationHistory);
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),

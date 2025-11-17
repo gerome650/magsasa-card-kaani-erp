@@ -104,3 +104,16 @@ export const costs = mysqlTable("costs", {
 
 export type Cost = typeof costs.$inferSelect;
 export type InsertCost = typeof costs.$inferInsert;
+
+// Chat messages for KaAni AI assistant
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 50 }), // rice_farming, loan, agscore, pest_control, market_prices, weather, general
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;

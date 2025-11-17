@@ -366,3 +366,47 @@ export async function deleteCost(id: number) {
     await db.delete(costs).where(eq(costs.id, id));
   }, "deleteCost");
 }
+
+// ==================== Chat Messages ====================
+
+export async function createChatMessage(data: {
+  userId: number;
+  role: "user" | "assistant";
+  content: string;
+  category?: string;
+}) {
+  const db = await getDb();
+  const { chatMessages } = await import("../drizzle/schema");
+  
+  const result = await db.insert(chatMessages).values({
+    userId: data.userId,
+    role: data.role,
+    content: data.content,
+    category: data.category,
+  });
+  
+  return Number(result[0].insertId);
+}
+
+export async function getChatMessagesByUserId(userId: number, limit: number = 50) {
+  const db = await getDb();
+  const { chatMessages } = await import("../drizzle/schema");
+  const { desc, eq } = await import("drizzle-orm");
+  
+  const messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.userId, userId))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(limit);
+  
+  return messages.reverse(); // Return in chronological order (oldest first)
+}
+
+export async function deleteChatMessagesByUserId(userId: number) {
+  const db = await getDb();
+  const { chatMessages } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  await db.delete(chatMessages).where(eq(chatMessages.userId, userId));
+}
