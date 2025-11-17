@@ -1,11 +1,11 @@
 import { useState, ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { 
-  LayoutDashboard, 
-  Users, 
-  TrendingDown, 
-  ShoppingCart, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Users,
+  TrendingDown,
+  ShoppingCart,
+  Menu,
   X,
   Leaf,
   Wheat,
@@ -13,7 +13,8 @@ import {
   MessageCircle,
   Package,
   Truck,
-  Box
+  Box,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Orders', href: '/supplier', icon: Package, roles: ['supplier'] },
     { name: 'Inventory', href: '/supplier/inventory', icon: Box, roles: ['supplier'] },
     { name: 'Deliveries', href: '/supplier/deliveries', icon: Truck, roles: ['supplier'] },
+    { name: 'Audit Log', href: '/supplier/audit-log', icon: FileText, roles: ['supplier'] },
     { name: 'Farmers', href: '/farmers', icon: Users, roles: ['manager', 'field_officer'] },
     { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat, roles: ['manager', 'field_officer'] },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: ['farmer', 'manager', 'field_officer'] },

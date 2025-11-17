@@ -19,19 +19,22 @@ import {
 } from "@/components/ui/select";
 import { Package, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
+import { addAuditLog } from "@/data/auditLogData";
 
 interface BulkInventoryUpdateProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedProducts: SupplierProduct[];
   onUpdate: () => void;
+  onAuditLog?: (updateType: string, value: number, unit: string) => void;
 }
 
 export default function BulkInventoryUpdate({
   open,
   onOpenChange,
   selectedProducts,
-  onUpdate
+  onUpdate,
+  onAuditLog
 }: BulkInventoryUpdateProps) {
   const [updateType, setUpdateType] = useState<'set' | 'increase' | 'decrease'>('set');
   const [value, setValue] = useState<string>("");
@@ -62,10 +65,12 @@ export default function BulkInventoryUpdate({
       }
     }
 
-    toast.success("Inventory updated!", {
-      description: summary
-    });
-
+    // Call audit log callback if provided
+    if (onAuditLog) {
+      onAuditLog(updateType, numValue, isPercentage ? 'percentage' : 'units');
+    }
+    
+    toast.success(summary);
     onUpdate();
     onOpenChange(false);
     setValue("");

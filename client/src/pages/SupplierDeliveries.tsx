@@ -104,6 +104,24 @@ export default function SupplierDeliveries() {
     }
 
     const count = selectedOrders.size;
+    const selectedOrdersList = Array.from(selectedOrders);
+    
+    // Add audit log
+    addAuditLog({
+      userId: 'supplier-001',
+      userName: 'Maria Santos',
+      userRole: 'supplier',
+      actionType: 'bulk_tracking_assign',
+      actionDescription: `Assigned tracking numbers to ${count} shipments`,
+      affectedItemsCount: count,
+      affectedItems: selectedOrdersList,
+      details: {
+        carrier: bulkCarrier,
+        trackingPrefix: bulkTrackingPrefix
+      },
+      category: 'deliveries'
+    });
+    
     toast.success(`Tracking numbers assigned to ${count} shipments!`, {
       description: `Prefix: ${bulkTrackingPrefix}, Carrier: ${bulkCarrier}`
     });
@@ -116,7 +134,23 @@ export default function SupplierDeliveries() {
 
   const handleBulkUpdateStatus = (status: string) => {
     const count = selectedOrders.size;
+    const selectedOrdersList = Array.from(selectedOrders);
     const statusLabel = shipmentStatusConfig[status as keyof typeof shipmentStatusConfig]?.label || status;
+    
+    // Add audit log
+    addAuditLog({
+      userId: 'supplier-001',
+      userName: 'Maria Santos',
+      userRole: 'supplier',
+      actionType: 'bulk_status_update',
+      actionDescription: `Marked ${count} shipments as ${statusLabel}`,
+      affectedItemsCount: count,
+      affectedItems: selectedOrdersList,
+      details: {
+        newStatus: status
+      },
+      category: 'deliveries'
+    });
     
     toast.success(`${count} shipments updated!`, {
       description: `Status changed to: ${statusLabel}`

@@ -31,6 +31,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import BulkInventoryUpdate from "@/components/BulkInventoryUpdate";
 import { toast } from "sonner";
+import { addAuditLog } from "@/data/auditLogData";
 
 export default function SupplierInventory() {
   const { user } = useAuth();
@@ -473,6 +474,26 @@ export default function SupplierInventory() {
         onOpenChange={setBulkDialogOpen}
         selectedProducts={getSelectedProductsData()}
         onUpdate={handleBulkUpdateComplete}
+        onAuditLog={(updateType, value, unit) => {
+          const count = selectedProducts.size;
+          const selectedProductsList = Array.from(selectedProducts);
+          
+          addAuditLog({
+            userId: user?.id || 'supplier-001',
+            userName: user?.name || 'Maria Santos',
+            userRole: user?.role || 'supplier',
+            actionType: 'bulk_inventory_update',
+            actionDescription: `${updateType === 'set' ? 'Set stock to' : updateType === 'increase' ? 'Increased stock by' : 'Decreased stock by'} ${value}${unit === 'percentage' ? '%' : ' units'} for ${count} products`,
+            affectedItemsCount: count,
+            affectedItems: selectedProductsList,
+            details: {
+              updateType,
+              value,
+              unit
+            },
+            category: 'inventory'
+          });
+        }}
       />
     </div>
   );

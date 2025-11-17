@@ -152,6 +152,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/supplier/audit-log">
+        <ProtectedRoute allowedRoles={['supplier']}>
+          <Layout>
+            <AuditLog />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

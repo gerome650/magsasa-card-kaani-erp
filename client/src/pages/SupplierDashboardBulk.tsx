@@ -78,19 +78,67 @@ export default function SupplierDashboardBulk() {
 
   // Bulk actions
   const handleBulkConfirm = () => {
-    toast.success(`${selectedOrders.size} orders confirmed!`, {
+    const count = selectedOrders.size;
+    const selectedOrdersList = Array.from(selectedOrders);
+    
+    // Add audit log
+    addAuditLog({
+      userId: user?.id || 'supplier-001',
+      userName: user?.name || 'Maria Santos',
+      userRole: user?.role || 'supplier',
+      actionType: 'bulk_confirm_orders',
+      actionDescription: `Confirmed ${count} pending orders`,
+      affectedItemsCount: count,
+      affectedItems: selectedOrdersList,
+      details: {},
+      category: 'orders'
+    });
+    
+    toast.success(`${count} orders confirmed!`, {
       description: "CARD MRI has been notified."
     });
     clearSelection();
   };
 
   const handleBulkDecline = () => {
-    toast.error(`${selectedOrders.size} orders declined`);
+    const count = selectedOrders.size;
+    const selectedOrdersList = Array.from(selectedOrders);
+    
+    // Add audit log
+    addAuditLog({
+      userId: user?.id || 'supplier-001',
+      userName: user?.name || 'Maria Santos',
+      userRole: user?.role || 'supplier',
+      actionType: 'bulk_decline_orders',
+      actionDescription: `Declined ${count} orders`,
+      affectedItemsCount: count,
+      affectedItems: selectedOrdersList,
+      details: {},
+      category: 'orders'
+    });
+    
+    toast.error(`${count} orders declined`);
     clearSelection();
   };
 
   const handleBulkMarkPreparing = () => {
-    toast.success(`${selectedOrders.size} orders marked as preparing`);
+    const count = selectedOrders.size;
+    const selectedOrdersList = Array.from(selectedOrders);
+    
+    // Add audit log
+    addAuditLog({
+      userId: user?.id || 'supplier-001',
+      userName: user?.name || 'Maria Santos',
+      userRole: user?.role || 'supplier',
+      actionType: 'bulk_mark_preparing',
+      actionDescription: `Marked ${count} confirmed orders as preparing`,
+      affectedItemsCount: count,
+      affectedItems: selectedOrdersList,
+      details: {},
+      category: 'orders'
+    });
+    
+    toast.success(`${count} orders marked as preparing`);
     clearSelection();
   };
 
