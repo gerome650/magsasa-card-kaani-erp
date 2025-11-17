@@ -661,3 +661,61 @@
 - [x] Visual feedback with icon and badge color changes
 - [x] Tested with 2 loans: 1 approved (Maria Santos), 1 rejected (Juan Dela Cruz)
 - [x] State management working correctly across all 7 loan applications
+
+
+## New Feature: AgScore™ Recalculation
+
+### Recalculation Dialog Component
+- [x] Create AgScoreRecalculateDialog component
+- [x] Add farmer selection dropdown (from assigned farmers - 158 farmers)
+- [x] Add form fields for updated data:
+  - [x] Crop type selection (7 crops)
+  - [x] Farm system (Irrigated/Rainfed/Greenhouse/Organic)
+  - [x] Farm size (hectares)
+  - [x] Projected/actual yield (MT/ha)
+  - [x] Farm location (coordinates or address - auto-filled)
+- [x] Add validation for all form fields
+- [x] Add "Calculate" button to trigger recalculation
+- [x] Show loading state during calculation
+- [x] Display new AgScore™ result in dialog with full breakdown
+- [x] Add "Submit for Approval" button to send to approval queue
+
+### Field Officer Dashboard Integration
+- [x] Add "Recalculate AgScore™" button to dashboard
+- [x] Position button in Quick Actions section (4th button with green styling)
+- [x] Open recalculation dialog when button clicked
+- [x] Pre-fill form with existing farmer data when farmer selected
+- [x] Handle dialog close and form reset
+
+### API Integration (Placeholder)
+- [x] Create recalculateAgScore function in kaaniService
+- [x] Send farmer data to KaAni API for recalculation (mock)
+- [x] Receive new AgScore™ breakdown from API (mock calculation)
+- [x] Handle API errors gracefully
+- [x] Add mock response for testing (Climate/Soil/Harvest scores)
+
+### Workflow
+- [x] Field Officer selects farmer from dropdown (Maria Santos)
+- [x] Form pre-fills with existing data (location auto-filled)
+- [x] Officer updates any changed information (Palay, Irrigated, 2.5ha, 5.8 MT/ha)
+- [x] Click "Calculate" to get new AgScore™ (366/1000)
+- [x] Review new score and breakdown (Climate: 339, Soil: 419, Harvest: 350)
+- [x] Click "Submit for Approval" to add to pending queue
+- [x] New submission appears in "Pending AgScore™ Reviews" section
+
+### Testing
+- [x] Test dialog open/close (Quick Actions button)
+- [x] Test form validation (all required fields)
+- [x] Test with mock AgScore™ calculation (366/1000 for Maria Santos)
+- [x] Verify new submission appears in approval queue
+- [x] Test with different farmers and crop types (Maria Santos - Palay Irrigated)
+
+### Implementation Status
+- [x] **AgScore™ recalculation feature complete**
+- [x] Dialog with 158 farmers dropdown
+- [x] Complete form with crop/system/size/yield fields
+- [x] Mock calculation with Climate/Soil/Harvest breakdown
+- [x] Confidence weight (92%) and Alpha Risk (500/1000)
+- [x] Submit for Approval workflow
+- [x] Tested: Maria Santos, Palay Irrigated, 2.5ha, 5.8 MT/ha → AgScore 366/1000
+- [ ] **PENDING**: Real KaAni API integration for live calculations

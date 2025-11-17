@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import AgScoreReviewDialog from "@/components/AgScoreReviewDialog";
 import { pendingAgScoreSubmissions, PendingAgScoreSubmission, getPendingAgScoresForOfficer } from "@/data/pendingAgScores";
 import AgScoreBadge from "@/components/AgScoreBadge";
+import AgScoreRecalculateDialog from "@/components/AgScoreRecalculateDialog";
+import { Calculator } from "lucide-react";
 
 interface Task {
   id: number;
@@ -52,6 +54,9 @@ export default function FieldOfficerDashboard() {
   const [agScoreSubmissions, setAgScoreSubmissions] = useState<PendingAgScoreSubmission[]>(pendingAgScoreSubmissions);
   const [selectedAgScore, setSelectedAgScore] = useState<PendingAgScoreSubmission | null>(null);
   const [isAgScoreReviewOpen, setIsAgScoreReviewOpen] = useState(false);
+  
+  // AgScore recalculation state
+  const [isRecalculateDialogOpen, setIsRecalculateDialogOpen] = useState(false);
   
   const handleFarmerClick = (farmer: any) => {
     setSelectedFarmer(farmer);
@@ -204,6 +209,43 @@ export default function FieldOfficerDashboard() {
         : s
     ));
     // In production, this would send feedback to KaAni
+  };
+  
+  // Handle new AgScore submission from recalculation
+  const handleSubmitRecalculatedScore = (data: any) => {
+    const locationParts = data.location.split(', ');
+    const newSubmission: PendingAgScoreSubmission = {
+      id: `RS${Date.now()}`,
+      farmerId: data.farmerId,
+      farmerName: data.farmerName,
+      submittedDate: new Date().toISOString().split('T')[0],
+      submittedData: {
+        cropType: data.cropType,
+        province: "Laguna",
+        municipality: locationParts[1] || "Unknown",
+        barangay: locationParts[0] || "Unknown",
+        coordinates: { lat: 14.35, lng: 121.05 },
+        projectedYieldPerHa: data.projectedYield,
+        areaSizeHa: data.farmSize,
+        systemOrVariety: data.farmSystem
+      },
+      calculatedScore: {
+        baselineScore: data.agScore.baselineScore,
+        tier: data.agScore.tier,
+        qualitativeTier: data.agScore.qualitativeTier,
+        climateScore: data.agScore.climateScore,
+        soilScore: data.agScore.soilScore,
+        harvestScore: data.agScore.harvestScore,
+        alpha: data.agScore.alpha,
+        alphaRisk: data.agScore.alphaRisk,
+        alphaTierLabel: "Moderate",
+        alphaTier: 4,
+        confidenceWeight: data.agScore.confidenceWeight
+      },
+      status: 'pending'
+    };
+    
+    setAgScoreSubmissions(prev => [newSubmission, ...prev]);
   };
   
   // Barangay performance
@@ -637,7 +679,7 @@ export default function FieldOfficerDashboard() {
           <CardDescription>Common field officer tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors">
               <p className="font-medium">✓ Verify Harvest</p>
               <p className="text-sm text-muted-foreground mt-1">Review and approve harvest records</p>
@@ -649,6 +691,16 @@ export default function FieldOfficerDashboard() {
             <button className="p-4 border rounded-lg hover:bg-gray-50 text-left transition-colors">
               <p className="font-medium">📊 Generate Report</p>
               <p className="text-sm text-muted-foreground mt-1">Create area performance report</p>
+            </button>
+            <button 
+              onClick={() => setIsRecalculateDialogOpen(true)}
+              className="p-4 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 text-left transition-colors"
+            >
+              <p className="font-medium text-green-700 flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                Recalculate AgScore™
+              </p>
+              <p className="text-sm text-green-600 mt-1">Update farmer data and scores</p>
             </button>
           </div>
         </CardContent>
@@ -686,6 +738,18 @@ export default function FieldOfficerDashboard() {
         submission={selectedAgScore}
         onApprove={handleApproveAgScore}
         onReject={handleRejectAgScore}
+      />
+      
+      {/* AgScore Recalculate Dialog */}
+      <AgScoreRecalculateDialog
+        open={isRecalculateDialogOpen}
+        onOpenChange={setIsRecalculateDialogOpen}
+        farmers={assignedFarmers.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          location: `${f.barangay}, ${f.municipality}`
+        }))}
+        onSubmitForApproval={handleSubmitRecalculatedScore}
       />
     </div>
   );
