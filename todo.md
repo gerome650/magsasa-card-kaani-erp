@@ -1489,3 +1489,15 @@
 - [x] Trigger browser download for generated files
 - [x] Show success message after download
 - [x] Disable button when no boundary exists
+
+
+## New Feature: Map Type Switcher (Satellite/Hybrid Views)
+
+- [x] Add map type state management (roadmap, satellite, hybrid)
+- [x] Create map type switcher button group UI component
+- [x] Implement setMapTypeId() to change Google Maps view
+- [x] Add icons for each map type (Map, Satellite, Layers)
+- [x] Style active map type button with visual feedback
+- [x] Position switcher in top-right corner of map
+- [x] Test switching between all three map types
+- [x] Verify boundaries are visible on satellite imagery

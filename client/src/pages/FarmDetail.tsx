@@ -12,6 +12,9 @@ import {
   Droplets,
   Mountain,
   Edit,
+  Map as MapIcon,
+  Satellite,
+  Layers,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { MapView } from "@/components/Map";
@@ -22,6 +25,8 @@ export default function FarmDetail() {
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawnBoundary, setDrawnBoundary] = useState<google.maps.Polygon | null>(null);
   const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
+  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
 
   if (!farm) {
     return (
@@ -436,9 +441,68 @@ export default function FarmDetail() {
                     })()}
                   </div>
                 )}
+                
+                {/* Map Type Switcher */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Map View</span>
+                  <div className="flex gap-1 bg-muted rounded-lg p-1">
+                    <Button
+                      type="button"
+                      variant={mapType === 'roadmap' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => {
+                        setMapType('roadmap');
+                        if (mapInstance) {
+                          mapInstance.setMapTypeId('roadmap');
+                        }
+                      }}
+                    >
+                      <MapIcon className="w-4 h-4 mr-1" />
+                      Roadmap
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={mapType === 'satellite' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => {
+                        setMapType('satellite');
+                        if (mapInstance) {
+                          mapInstance.setMapTypeId('satellite');
+                        }
+                      }}
+                    >
+                      <Satellite className="w-4 h-4 mr-1" />
+                      Satellite
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={mapType === 'hybrid' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => {
+                        setMapType('hybrid');
+                        if (mapInstance) {
+                          mapInstance.setMapTypeId('hybrid');
+                        }
+                      }}
+                    >
+                      <Layers className="w-4 h-4 mr-1" />
+                      Hybrid
+                    </Button>
+                  </div>
+                </div>
+                
                 <div className="h-96 rounded-lg overflow-hidden border">
                   <MapView
                     onMapReady={(map, google) => {
+                      // Store map instance for map type switching
+                      setMapInstance(map);
+                      
+                      // Set initial map type
+                      map.setMapTypeId(mapType);
+                      
                       // Center map on farm location
                       const position = {
                         lat: farm.location.coordinates.lat,
