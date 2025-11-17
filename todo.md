@@ -1444,3 +1444,16 @@
 - [x] Add toggle between list view and map view
 - [x] Show farm count and total area in map view
 - [ ] Add legend for marker colors/types
+
+
+## New Feature: Farm Boundary Drawing
+
+- [x] Add Google Maps Drawing Tools to farm detail page
+- [x] Enable polygon drawing for farm boundaries
+- [x] Add edit and delete boundary tools
+- [x] Calculate area automatically from drawn polygon
+- [x] Save boundary coordinates to farm data
+- [x] Display existing boundaries on map views
+- [ ] Show boundary on farmer profile map view
+- [ ] Add boundary drawing to Add/Edit Farm dialogs
+- [ ] Validate boundary area matches entered farm size

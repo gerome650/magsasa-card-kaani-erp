@@ -19,6 +19,7 @@ export interface Farm {
   dateRegistered: string;
   lastHarvest?: string;
   averageYield?: number; // MT/ha
+  boundary?: { lat: number; lng: number }[]; // Farm boundary polygon coordinates
 }
 
 export interface FarmerActivity {

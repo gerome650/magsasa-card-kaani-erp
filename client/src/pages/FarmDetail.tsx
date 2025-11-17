@@ -1,4 +1,5 @@
 import { useRoute, Link } from "wouter";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,9 @@ import { MapView } from "@/components/Map";
 export default function FarmDetail() {
   const [, params] = useRoute("/farms/:id");
   const farm = params?.id ? getFarmById(params.id) : null;
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [drawnBoundary, setDrawnBoundary] = useState<google.maps.Polygon | null>(null);
+  const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
 
   if (!farm) {
     return (
@@ -161,26 +165,160 @@ export default function FarmDetail() {
                 </p>
               </div>
 
-              {/* Map */}
-              <div className="h-64 rounded-lg overflow-hidden border">
-                <MapView
-                  onMapReady={(map, google) => {
-                    // Center map on farm location
-                    const position = {
-                      lat: farm.location.coordinates.lat,
-                      lng: farm.location.coordinates.lng,
-                    };
-                    map.setCenter(position);
-                    map.setZoom(15);
+              {/* Map with Drawing Tools */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Farm Location & Boundary</h4>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={isDrawingMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setIsDrawingMode(!isDrawingMode)}
+                    >
+                      {isDrawingMode ? "Stop Drawing" : "Draw Boundary"}
+                    </Button>
+                    {drawnBoundary && (
+                      <>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            if (drawnBoundary) {
+                              const path = drawnBoundary.getPath();
+                              const coordinates: { lat: number; lng: number }[] = [];
+                              for (let i = 0; i < path.getLength(); i++) {
+                                const point = path.getAt(i);
+                                coordinates.push({
+                                  lat: point.lat(),
+                                  lng: point.lng()
+                                });
+                              }
+                              // TODO: Save to backend
+                              console.log('Saving boundary:', coordinates);
+                              alert(`Boundary saved! Area: ${calculatedArea?.toFixed(2)} hectares`);
+                            }
+                          }}
+                        >
+                          Save Boundary
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (drawnBoundary) {
+                              drawnBoundary.setMap(null);
+                              setDrawnBoundary(null);
+                              setCalculatedArea(null);
+                            }
+                          }}
+                        >
+                          Clear Boundary
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {calculatedArea && (
+                  <div className="text-sm text-muted-foreground">
+                    Calculated Area: <strong>{calculatedArea.toFixed(2)} hectares</strong>
+                  </div>
+                )}
+                <div className="h-96 rounded-lg overflow-hidden border">
+                  <MapView
+                    onMapReady={(map, google) => {
+                      // Center map on farm location
+                      const position = {
+                        lat: farm.location.coordinates.lat,
+                        lng: farm.location.coordinates.lng,
+                      };
+                      map.setCenter(position);
+                      map.setZoom(15);
 
-                    // Add marker for farm
-                    new google.maps.Marker({
-                      position,
-                      map,
-                      title: farm.name,
-                    });
-                  }}
-                />
+                      // Add marker for farm
+                      new google.maps.Marker({
+                        position,
+                        map,
+                        title: farm.name,
+                      });
+
+                      // Display existing boundary if available
+                      if (farm.boundary && farm.boundary.length > 0) {
+                        const existingBoundary = new google.maps.Polygon({
+                          paths: farm.boundary,
+                          fillColor: '#22c55e',
+                          fillOpacity: 0.3,
+                          strokeWeight: 2,
+                          strokeColor: '#16a34a',
+                          editable: true,
+                          draggable: true,
+                          map,
+                        });
+                        setDrawnBoundary(existingBoundary);
+                        
+                        // Calculate and display existing area
+                        const area = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
+                        setCalculatedArea(area / 10000);
+
+                        // Update area on edit
+                        google.maps.event.addListener(existingBoundary.getPath(), 'set_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+                        google.maps.event.addListener(existingBoundary.getPath(), 'insert_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+                      }
+
+                      // Initialize Drawing Manager
+                      const drawingManager = new google.maps.drawing.DrawingManager({
+                        drawingMode: null,
+                        drawingControl: false,
+                        polygonOptions: {
+                          fillColor: '#22c55e',
+                          fillOpacity: 0.3,
+                          strokeWeight: 2,
+                          strokeColor: '#16a34a',
+                          editable: true,
+                          draggable: true,
+                        },
+                      });
+                      drawingManager.setMap(map);
+
+                      // Toggle drawing mode
+                      const checkDrawingMode = setInterval(() => {
+                        if (isDrawingMode && !drawnBoundary) {
+                          drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+                        } else {
+                          drawingManager.setDrawingMode(null);
+                        }
+                      }, 100);
+
+                      // Handle polygon complete
+                      google.maps.event.addListener(drawingManager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
+                        setDrawnBoundary(polygon);
+                        setIsDrawingMode(false);
+                        
+                        // Calculate area
+                        const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                        const hectares = area / 10000; // Convert m² to hectares
+                        setCalculatedArea(hectares);
+
+                        // Update area on edit
+                        google.maps.event.addListener(polygon.getPath(), 'set_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+                        google.maps.event.addListener(polygon.getPath(), 'insert_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+                      });
+
+                      return () => clearInterval(checkDrawingMode);
+                    }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
