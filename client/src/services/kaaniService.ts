@@ -3,6 +3,7 @@
  * 
  * This service handles communication with the KaAni AI assistant via tRPC.
  * Uses Google Gemini API on the backend for real AI responses.
+ * Includes automatic reconnection logic for dropped SSE connections.
  */
 
 import { trpc } from "@/lib/trpc";
@@ -139,70 +140,152 @@ export async function sendMessageToKaAniStream(
 }
 
 /**
- * Send a message to KaAni AI with TRUE real-time SSE streaming
+ * Reconnection configuration
+ */
+const RECONNECTION_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000, // 1 second
+  maxDelay: 8000, // 8 seconds
+  backoffMultiplier: 2,
+};
+
+/**
+ * Calculate exponential backoff delay
+ * @param attempt - Current retry attempt (0-indexed)
+ * @returns Delay in milliseconds
+ */
+function calculateBackoffDelay(attempt: number): number {
+  const delay = RECONNECTION_CONFIG.initialDelay * Math.pow(RECONNECTION_CONFIG.backoffMultiplier, attempt);
+  return Math.min(delay, RECONNECTION_CONFIG.maxDelay);
+}
+
+/**
+ * Check if error is retryable (network/connection errors)
+ * @param error - Error object
+ * @returns True if error should trigger retry
+ */
+function isRetryableError(error: any): boolean {
+  if (!error) return false;
+  
+  const errorMessage = error.message || error.toString();
+  
+  // Network and connection errors that should trigger retry
+  const retryablePatterns = [
+    'network',
+    'connection',
+    'timeout',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'fetch failed',
+    'subscription',
+  ];
+  
+  return retryablePatterns.some(pattern => 
+    errorMessage.toLowerCase().includes(pattern.toLowerCase())
+  );
+}
+
+/**
+ * Send a message to KaAni AI with TRUE real-time SSE streaming and automatic reconnection
  * Uses tRPC subscriptions for genuine real-time chunk delivery
+ * Includes exponential backoff retry logic for dropped connections
  * @param message - User's message
  * @param conversationHistory - Optional conversation history for context
  * @param onChunk - Callback function called for each text chunk as it arrives
+ * @param onRetry - Optional callback when retry attempt is made
  * @returns Complete AI response text
  */
 export async function sendMessageToKaAniSSE(
   message: string,
   conversationHistory: KaAniMessage[] | undefined,
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  onRetry?: (attempt: number, maxRetries: number) => void
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let fullResponse = "";
-    let category = "";
+  let attempt = 0;
+  
+  const attemptConnection = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      let fullResponse = "";
+      let category = "";
+      let hasReceivedData = false;
 
-    // Create subscription for real-time streaming using vanilla client
-    const subscription = trpcClient.kaani.sendMessageStreamSSE.subscribe(
-      {
-        message,
-        conversationHistory,
-      },
-      {
-        onData: (data) => {
-          if (data.type === 'chunk') {
-            // Append chunk to full response
-            fullResponse += data.content;
-            // Immediately update UI with new chunk
-            onChunk(fullResponse);
-          } else if (data.type === 'done') {
-            // Stream completed
-            fullResponse = data.content;
-            category = data.category || "general";
-            onChunk(fullResponse);
-            subscription.unsubscribe();
-            resolve(fullResponse);
-          } else if (data.type === 'error') {
-            console.error('[KaAni SSE] Error:', data.content);
-            subscription.unsubscribe();
-            reject(new Error(data.content));
-          }
+      // Create subscription for real-time streaming using vanilla client
+      const subscription = trpcClient.kaani.sendMessageStreamSSE.subscribe(
+        {
+          message,
+          conversationHistory,
         },
-        onError: (error) => {
-          console.error('[KaAni SSE] Subscription error:', error);
-          subscription.unsubscribe();
-          
-          // User-friendly error messages
-          if (error instanceof Error) {
-            if (error.message.includes("API key not configured")) {
-              reject(new Error("KaAni AI is not configured. Please contact support."));
-            } else if (error.message.includes("UNAUTHORIZED")) {
-              reject(new Error("Please log in to use KaAni AI."));
-            } else if (error.message.includes("quota")) {
-              reject(new Error("API quota exceeded. Please try again later."));
-            } else {
-              reject(new Error("Failed to get response from KaAni. Please try again."));
+        {
+          onData: (data) => {
+            hasReceivedData = true;
+            
+            if (data.type === 'chunk') {
+              // Append chunk to full response
+              fullResponse += data.content;
+              // Immediately update UI with new chunk
+              onChunk(fullResponse);
+            } else if (data.type === 'done') {
+              // Stream completed successfully
+              fullResponse = data.content;
+              category = data.category || "general";
+              onChunk(fullResponse);
+              subscription.unsubscribe();
+              resolve(fullResponse);
+            } else if (data.type === 'error') {
+              console.error('[KaAni SSE] Error:', data.content);
+              subscription.unsubscribe();
+              reject(new Error(data.content));
             }
-          } else {
-            reject(new Error("Failed to get response from KaAni. Please try again."));
-          }
-        },
-      }
-    );
-  });
+          },
+          onError: (error) => {
+            console.error('[KaAni SSE] Subscription error:', error);
+            subscription.unsubscribe();
+            
+            // Check if error is retryable and we haven't exceeded max retries
+            if (isRetryableError(error) && attempt < RECONNECTION_CONFIG.maxRetries) {
+              attempt++;
+              const delay = calculateBackoffDelay(attempt - 1);
+              
+              console.log(`[KaAni SSE] Retrying connection (attempt ${attempt}/${RECONNECTION_CONFIG.maxRetries}) after ${delay}ms...`);
+              
+              // Notify UI about retry attempt
+              if (onRetry) {
+                onRetry(attempt, RECONNECTION_CONFIG.maxRetries);
+              }
+              
+              // Wait for backoff delay, then retry
+              setTimeout(() => {
+                attemptConnection()
+                  .then(resolve)
+                  .catch(reject);
+              }, delay);
+            } else {
+              // Max retries exceeded or non-retryable error
+              // User-friendly error messages
+              if (error instanceof Error) {
+                if (error.message.includes("API key not configured")) {
+                  reject(new Error("KaAni AI is not configured. Please contact support."));
+                } else if (error.message.includes("UNAUTHORIZED")) {
+                  reject(new Error("Please log in to use KaAni AI."));
+                } else if (error.message.includes("quota")) {
+                  reject(new Error("API quota exceeded. Please try again later."));
+                } else if (attempt >= RECONNECTION_CONFIG.maxRetries) {
+                  reject(new Error(`Connection failed after ${RECONNECTION_CONFIG.maxRetries} attempts. Please check your internet connection and try again.`));
+                } else {
+                  reject(new Error("Failed to get response from KaAni. Please try again."));
+                }
+              } else {
+                reject(new Error("Failed to get response from KaAni. Please try again."));
+              }
+            }
+          },
+        }
+      );
+    });
+  };
+  
+  return attemptConnection();
 }
 
 /**

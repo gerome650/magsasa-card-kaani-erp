@@ -38,6 +38,7 @@ export default function KaAniChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState<{ current: number; max: number } | null>(null);
   const [selectedRole, setSelectedRole] = useState<"farmer" | "technician">("farmer");
   const [selectedContext, setSelectedContext] = useState<"loan_matching" | "risk_scoring" | null>(null);
   const [selectedDialect, setSelectedDialect] = useState("tagalog");
@@ -222,7 +223,7 @@ export default function KaAniChat() {
 
       const contextualMessage = contextPrefix + userMessageContent;
 
-      // Call KaAni API with TRUE real-time SSE streaming
+      // Call KaAni API with TRUE real-time SSE streaming and auto-reconnection
       const aiResponse = await sendMessageToKaAniSSE(
         contextualMessage,
         conversationHistory,
@@ -231,6 +232,8 @@ export default function KaAniChat() {
           if (chunk.length > 0) {
             setIsWaitingForFirstChunk(false);
           }
+          // Clear retry status when receiving data
+          setRetryAttempt(null);
           // Update the AI message content with each chunk as it arrives
           setMessages((prev) =>
             prev.map((msg) =>
@@ -239,6 +242,11 @@ export default function KaAniChat() {
                 : msg
             )
           );
+        },
+        // Retry callback
+        (attempt, maxRetries) => {
+          setRetryAttempt({ current: attempt, max: maxRetries });
+          toast.info(`Connection lost. Retrying (${attempt}/${maxRetries})...`);
         }
       );
 
@@ -275,10 +283,17 @@ export default function KaAniChat() {
       );
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message. Please try again.");
+      // Remove the placeholder AI message on error
+      setMessages((prev) => prev.filter((msg) => msg.id !== aiMessageId));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to send message. Please try again."
+      );
     } finally {
       setIsLoading(false);
       setIsWaitingForFirstChunk(false);
+      setRetryAttempt(null);
       textareaRef.current?.focus();
     }
   };
@@ -420,6 +435,18 @@ export default function KaAniChat() {
                   </div>
                   <div className="bg-gray-100 rounded-2xl px-4 py-3">
                     <TypingIndicator />
+                  </div>
+                </div>
+              )}
+
+              {/* Connection retry status indicator */}
+              {retryAttempt && (
+                <div className="flex gap-3 justify-center">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm text-yellow-800">
+                      Connection lost. Retrying ({retryAttempt.current}/{retryAttempt.max})...
+                    </p>
                   </div>
                 </div>
               )}
