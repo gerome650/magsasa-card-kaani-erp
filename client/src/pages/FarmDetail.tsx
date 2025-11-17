@@ -17,6 +17,7 @@ import {
   Satellite,
   Layers,
   X,
+  Ruler,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { MapView } from "@/components/Map";
@@ -32,6 +33,10 @@ export default function FarmDetail() {
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [terrainEnabled, setTerrainEnabled] = useState(false);
   const [terrainLayer, setTerrainLayer] = useState<google.maps.ImageMapType | null>(null);
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measurementMarkers, setMeasurementMarkers] = useState<google.maps.Marker[]>([]);
+  const [measurementLine, setMeasurementLine] = useState<google.maps.Polyline | null>(null);
+  const [measuredDistance, setMeasuredDistance] = useState<number | null>(null);
 
   if (!farm) {
     return (
@@ -248,6 +253,24 @@ export default function FarmDetail() {
                     >
                       {isDrawingMode ? "Stop Drawing" : "Draw Boundary"}
                     </Button>
+                    <Button
+                      variant={isMeasuring ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setIsMeasuring(!isMeasuring);
+                        if (isMeasuring) {
+                          // Clear measurement when exiting
+                          measurementMarkers.forEach(marker => marker.setMap(null));
+                          if (measurementLine) measurementLine.setMap(null);
+                          setMeasurementMarkers([]);
+                          setMeasurementLine(null);
+                          setMeasuredDistance(null);
+                        }
+                      }}
+                    >
+                      <Ruler className="w-4 h-4 mr-1" />
+                      {isMeasuring ? "Stop Measuring" : "Measure Distance"}
+                    </Button>
                     {drawnBoundaries.length > 0 && (
                       <>
                         <Button
@@ -402,6 +425,22 @@ ${placemarks}
                     )}
                   </div>
                 </div>
+                {measuredDistance !== null && (
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Ruler className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-800">
+                        Measured Distance:
+                      </span>
+                      <span className="text-sm font-bold text-purple-900">
+                        {measuredDistance < 1000 
+                          ? `${measuredDistance.toFixed(2)} meters`
+                          : `${(measuredDistance / 1000).toFixed(2)} kilometers`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {calculatedArea && (
                   <div className="space-y-2">
                     {drawnBoundaries.length > 1 && (
@@ -797,7 +836,71 @@ ${placemarks}
                         // User can click "Stop Drawing" to exit
                       });
 
-                      return () => clearInterval(checkDrawingMode);
+                      // Add measurement click listener
+                      const measurementClickListener = google.maps.event.addListener(map, 'click', (event: google.maps.MapMouseEvent) => {
+                        if (!isMeasuring) return;
+                        
+                        const clickedLocation = event.latLng;
+                        if (!clickedLocation) return;
+
+                        if (measurementMarkers.length === 0) {
+                          // First click - place start marker
+                          const startMarker = new google.maps.Marker({
+                            position: clickedLocation,
+                            map,
+                            icon: {
+                              path: google.maps.SymbolPath.CIRCLE,
+                              scale: 8,
+                              fillColor: '#9333ea',
+                              fillOpacity: 1,
+                              strokeColor: '#ffffff',
+                              strokeWeight: 2,
+                            },
+                            title: 'Start point',
+                          });
+                          setMeasurementMarkers([startMarker]);
+                        } else if (measurementMarkers.length === 1) {
+                          // Second click - place end marker and calculate distance
+                          const endMarker = new google.maps.Marker({
+                            position: clickedLocation,
+                            map,
+                            icon: {
+                              path: google.maps.SymbolPath.CIRCLE,
+                              scale: 8,
+                              fillColor: '#9333ea',
+                              fillOpacity: 1,
+                              strokeColor: '#ffffff',
+                              strokeWeight: 2,
+                            },
+                            title: 'End point',
+                          });
+                          
+                          // Draw line between markers
+                          const line = new google.maps.Polyline({
+                            path: [measurementMarkers[0].getPosition()!, clickedLocation],
+                            strokeColor: '#9333ea',
+                            strokeOpacity: 0.8,
+                            strokeWeight: 3,
+                            map,
+                          });
+                          
+                          // Calculate distance
+                          const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                            measurementMarkers[0].getPosition()!,
+                            clickedLocation
+                          );
+                          
+                          setMeasurementMarkers([...measurementMarkers, endMarker]);
+                          setMeasurementLine(line);
+                          setMeasuredDistance(distance);
+                          setIsMeasuring(false);
+                        }
+                      });
+
+                      return () => {
+                        clearInterval(checkDrawingMode);
+                        google.maps.event.removeListener(measurementClickListener);
+                      };
                     }}
                   />
                 </div>

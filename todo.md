@@ -1545,3 +1545,22 @@
 - [x] Add hover effect to delete button (hover:bg-red-100)
 - [x] Test deleting first, middle, and last parcels
 - [x] Verify remaining parcels maintain correct colors and indices
+
+
+## New Feature: Distance Measurement Tool
+
+- [x] Add "Measure Distance" button to map controls
+- [x] Add isMeasuring state to track measurement mode
+- [x] Add measurementMarkers state to store start/end points
+- [x] Add measurementLine state to store polyline
+- [x] Add measuredDistance state to store calculated distance
+- [x] Implement click handler to place first marker (start point)
+- [x] Implement click handler to place second marker (end point)
+- [x] Draw polyline connecting two markers
+- [x] Calculate distance using Google Maps geometry.spherical.computeDistanceBetween
+- [x] Display distance in meters and kilometers
+- [x] Clear measurement when clicking "Stop Measuring"
+- [x] Exit measurement mode after placing second point
+- [x] Add Ruler icon from lucide-react
+- [x] Style measurement line (purple, solid, 3px weight)
+- [x] Style measurement markers (purple circles with white border)
