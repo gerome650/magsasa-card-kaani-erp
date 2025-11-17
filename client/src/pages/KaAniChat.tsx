@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send, Loader2 } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { sendMessageToKaAniSSE, loadChatHistory } from "@/services/kaaniService";
 import { toast } from "sonner";
+import TypingIndicator from "@/components/TypingIndicator";
 
 interface Message {
   id: string;
@@ -19,6 +20,7 @@ export default function KaAniChat() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -81,6 +83,7 @@ export default function KaAniChat() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setIsWaitingForFirstChunk(true);
 
     // Create placeholder message for streaming
     const aiMessageId = (Date.now() + 1).toString();
@@ -106,6 +109,10 @@ export default function KaAniChat() {
         input.trim(),
         conversationHistory,
         (chunk) => {
+          // Hide typing indicator when first chunk arrives
+          if (chunk.length > 0) {
+            setIsWaitingForFirstChunk(false);
+          }
           // Update the AI message content with each chunk as it arrives
           setMessages((prev) =>
             prev.map((msg) =>
@@ -121,6 +128,7 @@ export default function KaAniChat() {
       toast.error("Failed to send message. Please try again.");
     } finally {
       setIsLoading(false);
+      setIsWaitingForFirstChunk(false);
       textareaRef.current?.focus();
     }
   };
@@ -188,14 +196,8 @@ export default function KaAniChat() {
           </div>
         ))}
 
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[70%] rounded-lg px-4 py-3 bg-muted text-foreground flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">KaAni is typing...</span>
-            </div>
-          </div>
-        )}
+        {/* Show typing indicator while waiting for first chunk */}
+        {isWaitingForFirstChunk && <TypingIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
