@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   MapPin,
@@ -26,6 +27,7 @@ import {
   FileDown,
   Sprout,
   Trash2,
+  Coins,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { jsPDF } from "jspdf";
@@ -62,6 +64,18 @@ export default function FarmDetail() {
   };
   const [yieldRecords, setYieldRecords] = useState<YieldRecord[]>([]);
   const [isYieldDialogOpen, setIsYieldDialogOpen] = useState(false);
+  
+  // Cost tracking
+  type CostRecord = {
+    id: string;
+    date: string;
+    category: 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other';
+    description: string;
+    amount: number;
+    parcelIndex: number | null; // null means applies to all parcels
+  };
+  const [costRecords, setCostRecords] = useState<CostRecord[]>([]);
+  const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
 
   if (!farm) {
     return (
@@ -1361,6 +1375,252 @@ ${placemarks}
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cost Tracking Card */}
+          {drawnBoundaries.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="w-5 h-5" />
+                    Input Costs
+                  </CardTitle>
+                  <Dialog open={isCostDialogOpen} onOpenChange={setIsCostDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Coins className="w-4 h-4 mr-1" />
+                        Record Cost
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Record Input Cost</DialogTitle>
+                      </DialogHeader>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.currentTarget);
+                          const parcelValue = formData.get('parcel') as string;
+                          const newRecord: CostRecord = {
+                            id: Date.now().toString(),
+                            date: formData.get('date') as string,
+                            category: formData.get('category') as CostRecord['category'],
+                            description: formData.get('description') as string,
+                            amount: parseFloat(formData.get('amount') as string),
+                            parcelIndex: parcelValue === 'all' ? null : parseInt(parcelValue),
+                          };
+                          setCostRecords([...costRecords, newRecord]);
+                          setIsCostDialogOpen(false);
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Select name="category" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Fertilizer">Fertilizer</SelectItem>
+                              <SelectItem value="Pesticides">Pesticides</SelectItem>
+                              <SelectItem value="Seeds">Seeds</SelectItem>
+                              <SelectItem value="Labor">Labor</SelectItem>
+                              <SelectItem value="Equipment">Equipment</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="date">Date</Label>
+                          <Input
+                            type="date"
+                            name="date"
+                            required
+                            max={new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="amount">Amount (PHP)</Label>
+                          <Input
+                            type="number"
+                            name="amount"
+                            step="0.01"
+                            min="0"
+                            required
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="parcel">Applies To</Label>
+                          <Select name="parcel" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select parcel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Parcels</SelectItem>
+                              {parcelAreas.map((_, index) => (
+                                <SelectItem key={index} value={index.toString()}>
+                                  Parcel {index + 1} ({parcelAreas[index].toFixed(2)} ha)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="description">Description</Label>
+                          <Textarea
+                            name="description"
+                            placeholder="e.g., NPK fertilizer application, hired 5 workers for harvest"
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsCostDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit">Save Cost</Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {costRecords.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No cost records yet. Click "Record Cost" to track expenses.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2">Date</th>
+                            <th className="text-left py-2">Category</th>
+                            <th className="text-left py-2">Parcel</th>
+                            <th className="text-right py-2">Amount</th>
+                            <th className="text-right py-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {costRecords.map((record) => (
+                            <tr key={record.id} className="border-b">
+                              <td className="py-2">{new Date(record.date).toLocaleDateString()}</td>
+                              <td className="py-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {record.category}
+                                </Badge>
+                              </td>
+                              <td className="py-2">
+                                {record.parcelIndex === null ? 'All' : `Parcel ${record.parcelIndex + 1}`}
+                              </td>
+                              <td className="text-right py-2">₱{record.amount.toFixed(2)}</td>
+                              <td className="text-right py-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setCostRecords(costRecords.filter(r => r.id !== record.id));
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <p className="text-sm font-medium">Total Costs</p>
+                      <p className="text-2xl font-bold">
+                        ₱{costRecords.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Profitability Card */}
+          {drawnBoundaries.length > 0 && yieldRecords.length > 0 && costRecords.length > 0 && (
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  Profitability Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {(() => {
+                    // Calculate total revenue (assuming average prices per crop)
+                    const cropPrices: Record<string, number> = {
+                      'Rice': 20000, // PHP per ton
+                      'Corn': 15000,
+                      'Vegetables': 30000,
+                      'Fruits': 40000,
+                    };
+                    
+                    const totalRevenue = yieldRecords.reduce((sum, r) => {
+                      const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+                      const price = cropPrices[r.cropType] || 25000; // default price
+                      return sum + (tons * price);
+                    }, 0);
+                    
+                    const totalCosts = costRecords.reduce((sum, r) => sum + r.amount, 0);
+                    const grossProfit = totalRevenue - totalCosts;
+                    const profitMargin = (grossProfit / totalRevenue) * 100;
+                    const roi = (grossProfit / totalCosts) * 100;
+                    
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-green-700">Total Revenue</p>
+                            <p className="text-xl font-bold text-green-900">₱{totalRevenue.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-red-700">Total Costs</p>
+                            <p className="text-xl font-bold text-red-900">₱{totalCosts.toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <div className="pt-4 border-t border-green-200">
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm font-medium">Gross Profit</p>
+                              <p className="text-2xl font-bold" style={{ color: grossProfit >= 0 ? '#16a34a' : '#dc2626' }}>
+                                ₱{grossProfit.toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm font-medium">Profit Margin</p>
+                                <p className="text-lg font-bold">{profitMargin.toFixed(1)}%</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">ROI</p>
+                                <p className="text-lg font-bold">{roi.toFixed(1)}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-4">
+                          * Revenue calculated using average market prices. Actual prices may vary.
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
               </CardContent>
             </Card>
           )}

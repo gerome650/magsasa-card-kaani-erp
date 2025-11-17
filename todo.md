@@ -1625,3 +1625,29 @@
 - [x] Show yield tracking card only when boundaries are drawn
 - [x] Convert kg to tons for yield per hectare calculation
 - [x] Badge styling for quality grades (Premium = default, others = outline)
+
+
+## New Feature: Input Cost Tracking and Profitability Analysis
+
+- [x] Create cost tracking data structure (date, category, description, amount, parcel)
+- [x] Add "Record Cost" button in farm detail page
+- [x] Create cost entry dialog with form fields
+- [x] Add cost category selector (Fertilizer, Pesticides, Seeds, Labor, Equipment, Other)
+- [x] Add date picker for expense date with max date validation
+- [x] Add amount input with currency (PHP ₱)
+- [x] Add description/notes field (Textarea)
+- [x] Add parcel selector with "All Parcels" option
+- [x] Store cost records in state (array)
+- [x] Display cost history table with all expenses
+- [x] Calculate total costs for entire farm
+- [x] Add profitability card showing revenue vs costs
+- [x] Calculate gross profit (revenue - costs)
+- [x] Calculate profit margin percentage
+- [x] Calculate ROI (return on investment)
+- [x] Use crop prices for revenue calculation (Rice: ₱20k/ton, Corn: ₱15k/ton, etc.)
+- [x] Add delete functionality for cost records
+- [x] Use Coins icon for cost tracking
+- [x] Show profitability card only when yield and cost data exist
+- [x] Green theme for profitability card
+- [x] Color-coded profit (green for positive, red for negative)
+- [x] Disclaimer about estimated prices
