@@ -1,4 +1,5 @@
-import { useRoute, Link } from "wouter";
+import { Link, useRoute } from "wouter";
+import { EmptyStateCompact } from "@/components/EmptyState";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -1637,9 +1638,13 @@ ${placemarks}
               </CardHeader>
               <CardContent>
                 {yieldRecords.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No harvest records yet. Click "Record Harvest" to add yield data.
-                  </p>
+                  <EmptyStateCompact
+                    icon={Sprout}
+                    title="No harvest records yet"
+                    description="Start tracking your farm's productivity by recording harvest yields for each parcel."
+                    actionLabel="Record First Harvest"
+                    onAction={() => setIsYieldDialogOpen(true)}
+                  />
                 ) : (
                   <div className="space-y-4">
                     <div className="overflow-x-auto">
@@ -1841,9 +1846,13 @@ ${placemarks}
               </CardHeader>
               <CardContent>
                 {costRecords.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No cost records yet. Click "Record Cost" to track expenses.
-                  </p>
+                  <EmptyStateCompact
+                    icon={DollarSign}
+                    title="No cost records yet"
+                    description="Track your farm expenses including seeds, fertilizers, labor, and equipment to monitor profitability."
+                    actionLabel="Record First Cost"
+                    onAction={() => setIsCostDialogOpen(true)}
+                  />
                 ) : (
                   <div className="space-y-4">
                     <div className="overflow-x-auto">

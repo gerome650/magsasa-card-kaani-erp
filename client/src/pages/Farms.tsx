@@ -24,9 +24,11 @@ import {
 import { trpc } from "@/lib/trpc";
 import { FarmsSkeleton } from "@/components/FarmsSkeleton";
 import { type Farm } from "@/data/farmsData";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function Farms() {
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBarangay, setSelectedBarangay] = useState("all");
   const [selectedCrop, setSelectedCrop] = useState("all");
@@ -274,9 +276,37 @@ export default function Farms() {
         </Select>
       </div>
 
-      {/* Farms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredFarms.map((farm) => (
+      {/* Farms Grid or Empty State */}
+      {filteredFarms.length === 0 ? (
+        farms.length === 0 ? (
+          // No farms at all - show main empty state
+          <EmptyState
+            icon={Tractor}
+            title="No farms registered yet"
+            description="Get started by registering your first farm. Add farm details, draw boundaries on the map, and start tracking your agricultural operations."
+            actionLabel="Register First Farm"
+            onAction={() => navigate('/farms/new')}
+          />
+        ) : (
+          // Farms exist but filtered out - show filter empty state
+          <EmptyState
+            icon={Search}
+            title="No farms match your filters"
+            description="Try adjusting your search criteria or filters to find the farms you're looking for."
+            actionLabel="Clear Filters"
+            onAction={() => {
+              setSearchQuery("");
+              setSelectedBarangay("all");
+              setSelectedCrop("all");
+              setSelectedStatus("all");
+            }}
+            secondaryActionLabel="Register New Farm"
+            onSecondaryAction={() => navigate('/farms/new')}
+          />
+        )
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredFarms.map((farm) => (
           <Card key={farm.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -370,16 +400,7 @@ export default function Farms() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredFarms.length === 0 && (
-        <Card className="p-12 text-center">
-          <Wheat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            No farms found matching your criteria.
-          </p>
-        </Card>
+        </div>
       )}
 
 
