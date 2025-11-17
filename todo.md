@@ -2778,3 +2778,6 @@
 - [x] Add pulsing animation for online status
 - [x] Add last connection timestamp display
 - [x] Verify TypeScript compilation passes with no errors
+
+## Visual Enhancements
+- [x] Make background grey tone more pronounced in KaAni chat interface for better visual contrast

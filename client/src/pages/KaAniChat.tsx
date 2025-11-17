@@ -361,7 +361,7 @@ export default function KaAniChat() {
       </div>
 
       {/* Main Chat Container */}
-      <div className="flex-1 px-4 pb-6 bg-white">
+      <div className="flex-1 px-4 pb-6 bg-gray-50">
         <div className="max-w-5xl mx-auto h-full flex flex-col">
           {/* Chat Container */}
           <div className="bg-white border border-gray-200 rounded-lg flex-1 flex flex-col overflow-hidden my-6">
@@ -425,7 +425,7 @@ export default function KaAniChat() {
                     className={`max-w-[70%] rounded-2xl px-4 py-3 ${
                       message.role === "user"
                         ? "bg-green-600 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : "bg-gray-200 text-gray-900"
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
