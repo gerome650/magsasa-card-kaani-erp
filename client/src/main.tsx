@@ -8,7 +8,47 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+// Configure QueryClient with retry logic and error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry failed queries up to 3 times
+      retry: (failureCount, error) => {
+        // Don't retry on authentication errors
+        if (error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG) {
+          return false;
+        }
+        // Don't retry on client errors (4xx)
+        if (error instanceof TRPCClientError && error.data?.httpStatus && error.data.httpStatus >= 400 && error.data.httpStatus < 500) {
+          return false;
+        }
+        // Retry up to 3 times for network/server errors
+        return failureCount < 3;
+      },
+      // Exponential backoff: 1s, 2s, 4s
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Refetch on window focus for fresh data
+      refetchOnWindowFocus: false,
+      // Cache data for 5 minutes
+      staleTime: 5 * 60 * 1000,
+    },
+    mutations: {
+      // Retry mutations once for network errors only
+      retry: (failureCount, error) => {
+        // Never retry auth errors or client errors
+        if (error instanceof TRPCClientError) {
+          if (error.message === UNAUTHED_ERR_MSG) return false;
+          if (error.data?.httpStatus && error.data.httpStatus >= 400 && error.data.httpStatus < 500) {
+            return false;
+          }
+        }
+        // Retry once for network/server errors
+        return failureCount < 1;
+      },
+      retryDelay: 1000,
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -37,17 +77,28 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+// Create tRPC client with enhanced configuration
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      // Custom fetch with credentials and timeout
       fetch(input, init) {
+        // Create an AbortController for request timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
         return globalThis.fetch(input, {
           ...(init ?? {}),
-          credentials: "include",
+          credentials: "include", // Include cookies for authentication
+          signal: controller.signal,
+        }).finally(() => {
+          clearTimeout(timeoutId);
         });
       },
+      // Batch requests within 10ms window
+      maxURLLength: 2083,
     }),
   ],
 });

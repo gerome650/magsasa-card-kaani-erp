@@ -1852,3 +1852,22 @@
 - [x] Crop multi-select with 10 common crops
 - [ ] Test complete farm creation workflow end-to-end
 - [ ] Save checkpoint after feature completion
+
+
+## Task 1.1: Setup tRPC Client Integration
+
+- [x] Verify tRPC client configuration in client/src/lib/trpc.ts
+- [x] Check httpBatchLink configuration and API endpoint
+- [x] Test API connection with simple query
+- [x] Verify authentication token handling
+- [x] Check cookie-based session management
+- [x] Implement error handling with custom error messages
+- [x] Add retry logic for failed requests (3 retries with exponential backoff)
+- [x] Add 30-second request timeout with AbortController
+- [x] Implement smart retry logic (skip auth/client errors)
+- [x] Add query caching (5-minute stale time)
+- [x] Create comprehensive test page at /trpc-client-test
+- [x] Document tRPC client configuration in docs/TRPC_CLIENT_SETUP.md
+- [x] Create usage examples for common patterns
+- [x] Document error handling strategies
+- [x] Document performance optimization techniques
