@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Search, MapPin, Phone, Mail, Calendar, Eye } from 'lucide-react';
+import { Search, MapPin, Phone, Mail, Calendar, Eye, Plus, Edit } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
@@ -9,6 +10,8 @@ import Pagination from '@/components/Pagination';
 import FarmerQuickView from '@/components/FarmerQuickView';
 import AdvancedFilters, { type FilterOptions } from '@/components/AdvancedFilters';
 import { applyFarmerFilters, getActiveFilterCount, getFilterSummary } from '@/utils/farmerFilters';
+import AddFarmerDialog from '@/components/AddFarmerDialog';
+import EditFarmerDialog from '@/components/EditFarmerDialog';
 
 export default function Farmers() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +20,10 @@ export default function Farmers() {
   const itemsPerPage = 25;
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingFarmer, setEditingFarmer] = useState<Farmer | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [filters, setFilters] = useState<FilterOptions>({
     landArea: 'all',
     cropType: 'all',
@@ -39,6 +46,17 @@ export default function Farmers() {
 
   const activeFilterCount = getActiveFilterCount(filters);
   const filterSummary = getFilterSummary(filters, filteredFarmers.length, farmersData.length);
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleEditClick = (farmer: Farmer, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingFarmer(farmer);
+    setIsEditDialogOpen(true);
+  };
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -72,9 +90,18 @@ export default function Farmers() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Farmers</h1>
+          <p className="text-muted-foreground mt-1">Manage and monitor farmer information</p>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Farmer
+        </Button>
+      </div>
       <div>
-        <h1 className="text-3xl font-bold">Farmers</h1>
-        <p className="text-muted-foreground mt-1">Manage and monitor farmer information</p>
+        <p className="text-muted-foreground mt-1"></p>
         <div className="mt-2 px-3 py-1 bg-yellow-100 border border-yellow-400 rounded inline-block text-sm">
           DEBUG: Current Page = {currentPage} | Total Pages = {totalPages} | Showing farmers {startIndex + 1}-{Math.min(endIndex, filteredFarmers.length)}
         </div>
@@ -216,9 +243,15 @@ export default function Farmers() {
                 <Eye className="w-4 h-4" />
                 Quick View
               </button>
+              <button
+                onClick={(e) => handleEditClick(farmer, e)}
+                className="py-2 px-4 border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
               <Link href={`/farmers/${farmer.id}`}>
                 <button className="py-2 px-4 border border-green-600 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors">
-                  Full Profile
+                  Profile
                 </button>
               </Link>
             </div>
@@ -251,6 +284,21 @@ export default function Farmers() {
           setIsQuickViewOpen(false);
           setSelectedFarmer(null);
         }}
+      />
+
+      {/* Add Farmer Dialog */}
+      <AddFarmerDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSuccess={handleRefresh}
+      />
+
+      {/* Edit Farmer Dialog */}
+      <EditFarmerDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        farmer={editingFarmer}
+        onSuccess={handleRefresh}
       />
     </div>
   );

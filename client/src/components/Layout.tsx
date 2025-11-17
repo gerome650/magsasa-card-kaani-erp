@@ -15,7 +15,8 @@ import {
   Truck,
   Box,
   FileText,
-  Shield
+  Shield,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Permission Approval', href: '/permission-approval', icon: Shield, roles: ['manager'] },
     { name: 'My Requests', href: '/my-requests', icon: FileText, roles: ['farmer', 'field_officer', 'supplier'] },
     { name: 'Farmers', href: '/farmers', icon: Users, roles: ['manager', 'field_officer'] },
+    { name: 'Farms', href: '/farms', icon: MapPin, roles: ['manager', 'field_officer'] },
     { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat, roles: ['manager', 'field_officer'] },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart, roles: ['farmer', 'manager', 'field_officer'] },

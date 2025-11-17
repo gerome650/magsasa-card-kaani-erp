@@ -20,13 +20,13 @@
 ### Farmers Module
 - [x] Farmer list with search and filtering
 - [x] Farmer profile cards with key information
-- [ ] Add new farmer functionality
-- [ ] Edit farmer details
+- [x] Add new farmer functionality
+- [x] Edit farmer details
 - [ ] View farmer history and activities
 
 ### Farms Module
-- [ ] Farm list with location and crop information
-- [ ] Farm detail view with map integration
+- [x] Farm list with location and crop information
+- [x] Farm detail view with map integration
 - [ ] Add new farm functionality
 - [ ] Edit farm details
 - [ ] Link farms to farmers
@@ -1262,3 +1262,58 @@
 - [x] Apply animation to notification badge
 - [x] Use subtle, professional timing (not distracting)
 - [x] Test animation on both mobile and desktop
+
+
+## Farmers Module Enhancements
+
+### Add New Farmer
+- [ ] Create "Add Farmer" dialog/form
+- [ ] Form fields: name, contact info, address, barangay, farm details
+- [ ] Form validation
+- [ ] Save new farmer to data store
+
+### Edit Farmer Details
+- [ ] Add "Edit" button to farmer profile cards
+- [ ] Create edit farmer dialog with pre-filled data
+- [ ] Update farmer information
+- [ ] Show success notification
+
+### Farmer History and Activities
+- [ ] Create farmer history/activity timeline
+- [ ] Track: orders, harvests, AgScore calculations, loans, payments
+- [ ] Display activity feed with dates and descriptions
+- [ ] Add filtering by activity type
+
+## Farms Module
+
+### Farm List
+- [ ] Create farms list page with location and crop information
+- [ ] Display farm cards with: name, location, size, crops, farmer
+- [ ] Add search and filtering (by barangay, crop, farmer)
+- [ ] Show farm count statistics
+
+### Farm Detail View
+- [ ] Create farm detail page
+- [ ] Display comprehensive farm information
+- [ ] Integrate map showing farm location
+- [ ] Show linked farmer information
+- [ ] Display crop history and yield data
+
+### Add New Farm
+- [ ] Create "Add Farm" dialog/form
+- [ ] Form fields: name, location (coordinates), size, crops, farmer link
+- [ ] Map picker for selecting farm location
+- [ ] Form validation
+- [ ] Save new farm to data store
+
+### Edit Farm Details
+- [ ] Add "Edit" button to farm cards
+- [ ] Create edit farm dialog with pre-filled data
+- [ ] Allow updating location via map
+- [ ] Update farm information
+
+### Link Farms to Farmers
+- [ ] Add farmer selector in farm form
+- [ ] Display linked farms in farmer profile
+- [ ] Support multiple farms per farmer
+- [ ] Show farm count in farmer cards

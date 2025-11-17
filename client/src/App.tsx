@@ -26,6 +26,8 @@ import SupplierInventory from "./pages/SupplierInventory";
 import SupplierDeliveries from "./pages/SupplierDeliveries";
 import AuditLog from "./pages/AuditLog";
 import AuditArchive from "./pages/AuditArchive";
+import Farms from "./pages/Farms";
+import FarmDetail from "./pages/FarmDetail";
 import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
@@ -199,6 +201,18 @@ function Router() {
       <Route path="/my-requests">
         <Layout>
           <MyRequests />
+        </Layout>
+      </Route>
+
+      {/* Farms Routes */}
+      <Route path="/farms">
+        <Layout>
+          <Farms />
+        </Layout>
+      </Route>
+      <Route path="/farms/:id">
+        <Layout>
+          <FarmDetail />
         </Layout>
       </Route>
       

@@ -366,12 +366,12 @@ export default function SupplierDeliveries() {
                         <span className="font-mono text-sm text-muted-foreground">
                           {order.orderNumber}
                         </span>
-                        <Badge className={
+                        <Badge className={`text-white ${
                           order.status === 'confirmed' ? 'bg-blue-500' :
                           order.status === 'preparing' ? 'bg-purple-500' :
                           order.status === 'shipped' ? 'bg-orange-500' :
                           'bg-gray-500'
-                        } className="text-white">
+                        }`}>
                           {order.status === 'confirmed' ? 'Confirmed' :
                            order.status === 'preparing' ? 'Preparing' :
                            order.status === 'shipped' ? 'Shipped' :
