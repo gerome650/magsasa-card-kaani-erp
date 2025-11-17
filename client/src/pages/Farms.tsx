@@ -30,6 +30,7 @@ export default function Farms() {
   const [selectedCrop, setSelectedCrop] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
+
   const farms = getFarms();
 
   // Get unique values for filters
@@ -329,6 +330,8 @@ export default function Farms() {
           </p>
         </Card>
       )}
+
+
     </div>
   );
 }

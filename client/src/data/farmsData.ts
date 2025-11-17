@@ -209,7 +209,8 @@ export function getFarmerActivities(farmerId: string): FarmerActivity[] {
 export function addFarm(farm: Omit<Farm, 'id'>): Farm {
   const newFarm: Farm = {
     ...farm,
-    id: `farm-${Date.now()}`
+    id: `F${String(mockFarms.length + 1).padStart(3, '0')}`,
+    lastYield: farm.lastYield || undefined,
   };
   mockFarms.push(newFarm);
   return newFarm;
@@ -256,3 +257,4 @@ export function getActivityColor(type: FarmerActivity['type']): string {
     default: return 'gray';
   }
 }
+

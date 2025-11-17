@@ -1317,3 +1317,83 @@
 - [ ] Display linked farms in farmer profile
 - [ ] Support multiple farms per farmer
 - [ ] Show farm count in farmer cards
+
+
+## New Feature: Add/Edit Farm Forms with Map Location Picker
+
+### AddFarmDialog Component
+- [x] Create AddFarmDialog component with form fields
+- [x] Add farmer selection dropdown (link farm to farmer)
+- [x] Add farm name, size, soil type, irrigation type inputs
+- [x] Add crop selection (multi-select)
+- [x] Integrate Google Maps with click-to-place marker
+- [x] Add address search/geocoding for location lookup
+- [x] Display selected coordinates (lat/lng)
+- [x] Add form validation for required fields
+- [x] Implement save functionality to add new farm
+
+### EditFarmDialog Component
+- [x] Create EditFarmDialog component pre-filled with farm data
+- [x] Allow updating all farm fields (name, size, crops, etc.)
+- [x] Show existing farm location on map with marker
+- [x] Allow dragging marker to update location
+- [x] Add address search to relocate farm
+- [x] Preserve farmer linkage or allow changing
+- [x] Add form validation
+- [x] Implement save functionality to update farm
+
+### Map Integration
+- [x] Add click event listener to place/move marker
+- [x] Display marker at selected coordinates
+- [x] Add geocoding service for address → coordinates
+- [x] Add reverse geocoding for coordinates → address
+- [x] Show barangay/municipality based on selected location
+- [x] Add map controls (zoom, pan, satellite view)
+
+### Integration with Farms Page
+- [x] Add "Add Farm" button to Farms page header
+- [x] Add "Edit" button to farm cards
+- [x] Connect AddFarmDialog to Farms page
+- [x] Connect EditFarmDialog to farm detail page
+- [x] Refresh farm list after add/edit operations
+- [x] Show success notifications after save
+
+
+## New Feature: Farmer History Timeline
+
+### Activity Timeline Component
+- [x] Create FarmerActivityTimeline component
+- [x] Display activities in chronological order (newest first)
+- [x] Show activity type icons (order, harvest, AgScore, loan, payment, training)
+- [x] Add activity cards with expandable details
+- [x] Color-code activities by type
+- [x] Show relative timestamps (e.g., "2 days ago", "1 month ago")
+
+### Activity Types
+- [x] Orders: Product name, quantity, amount, status
+- [x] Harvests: Crop, quantity, quality grade, value
+- [x] AgScore: Score value, tier, components breakdown
+- [x] Loans: Amount, purpose, status, due date
+- [x] Payments: Amount, method, reference number
+- [x] Training: Topic, date, attendance status
+
+### Filtering & Search
+- [x] Add filter by activity type (all, orders, harvests, etc.)
+- [x] Add date range filter (last 7 days, 30 days, 90 days, all time)
+- [x] Add search by activity description or amount
+- [x] Show active filter count badge
+- [x] Add "Clear Filters" button
+
+### Statistics Dashboard
+- [x] Total activities count
+- [x] Activity breakdown by type (pie chart or bars)
+- [x] Recent activity summary (last 30 days)
+- [x] Most frequent activity type
+- [x] Total transaction value
+
+### Integration
+- [x] Add History tab to farmer profile page
+- [x] Load activities from farmsData.ts
+- [x] Connect to existing FarmerProfile component
+- [x] Add loading states and empty state messages
+- [x] Test with all 158 farmers

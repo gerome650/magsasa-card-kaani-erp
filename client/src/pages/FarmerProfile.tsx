@@ -15,11 +15,12 @@ import {
 } from 'lucide-react';
 import { farmersData } from '@/data/farmersData';
 import { harvestData } from '@/data/harvestData';
+import FarmerHistory from '@/components/FarmerHistory';
 
 export default function FarmerProfile() {
   const [, params] = useRoute('/farmers/:id');
   const farmerId = params?.id;
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'analytics' | 'activity'>('overview');
 
   const farmer = farmersData.find(f => f.id === farmerId);
   const farmerHarvests = harvestData.filter(h => h.farmerId === farmerId);
@@ -238,6 +239,16 @@ export default function FarmerProfile() {
           >
             Analytics
           </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`pb-3 px-1 border-b-2 transition-colors ${
+              activeTab === 'activity'
+                ? 'border-green-600 text-green-600 font-medium'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Activity History
+          </button>
         </div>
       </div>
 
@@ -425,6 +436,10 @@ export default function FarmerProfile() {
             </div>
           </Card>
         </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <FarmerHistory farmerId={farmerId || ''} />
       )}
     </div>
   );
