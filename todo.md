@@ -1466,3 +1466,15 @@
 - [x] Show color-coded validation status (green=match, blue=minor, yellow=major difference)
 - [x] Add suggestion to update farm size to match drawn boundary
 - [x] Implement "Update Farm Size" button to sync with calculated area
+
+
+## New Feature: KML/GeoJSON Boundary Import
+
+- [x] Add file upload button accepting .kml, .geojson, .json files
+- [x] Implement GeoJSON parser to extract coordinates
+- [x] Implement KML parser to extract coordinates
+- [x] Render imported boundaries on map automatically
+- [x] Run area validation after import
+- [x] Show success/error messages for file parsing
+- [x] Add file format validation and error handling
+- [x] Display imported filename and coordinate count

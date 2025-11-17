@@ -170,6 +170,67 @@ export default function FarmDetail() {
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Farm Location & Boundary</h4>
                   <div className="flex gap-2">
+                    <input
+                      type="file"
+                      id="boundary-upload"
+                      accept=".kml,.geojson,.json"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            try {
+                              const content = event.target?.result as string;
+                              let coordinates: { lat: number; lng: number }[] = [];
+
+                              if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
+                                // Parse GeoJSON
+                                const geojson = JSON.parse(content);
+                                if (geojson.type === 'FeatureCollection' && geojson.features?.[0]) {
+                                  const coords = geojson.features[0].geometry.coordinates[0];
+                                  coordinates = coords.map((c: number[]) => ({ lng: c[0], lat: c[1] }));
+                                } else if (geojson.type === 'Feature') {
+                                  const coords = geojson.geometry.coordinates[0];
+                                  coordinates = coords.map((c: number[]) => ({ lng: c[0], lat: c[1] }));
+                                }
+                              } else if (file.name.endsWith('.kml')) {
+                                // Parse KML
+                                const parser = new DOMParser();
+                                const xmlDoc = parser.parseFromString(content, 'text/xml');
+                                const coordsText = xmlDoc.querySelector('coordinates')?.textContent?.trim();
+                                if (coordsText) {
+                                  coordinates = coordsText.split(/\s+/).map(coord => {
+                                    const [lng, lat] = coord.split(',').map(Number);
+                                    return { lat, lng };
+                                  });
+                                }
+                              }
+
+                              if (coordinates.length > 0) {
+                                // Store for later use when map is ready
+                                (window as any).pendingBoundaryCoordinates = coordinates;
+                                alert(`Successfully imported ${coordinates.length} coordinates from ${file.name}`);
+                                // Trigger page reload to render boundary
+                                window.location.reload();
+                              } else {
+                                alert('No valid coordinates found in file');
+                              }
+                            } catch (error) {
+                              alert('Error parsing file: ' + (error as Error).message);
+                            }
+                          };
+                          reader.readAsText(file);
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('boundary-upload')?.click()}
+                    >
+                      Upload KML/GeoJSON
+                    </Button>
                     <Button
                       variant={isDrawingMode ? "default" : "outline"}
                       size="sm"
@@ -296,8 +357,47 @@ export default function FarmDetail() {
                         title: farm.name,
                       });
 
+                      // Check for pending uploaded boundary coordinates
+                      const pendingCoords = (window as any).pendingBoundaryCoordinates;
+                      if (pendingCoords && pendingCoords.length > 0) {
+                        const uploadedBoundary = new google.maps.Polygon({
+                          paths: pendingCoords,
+                          fillColor: '#3b82f6',
+                          fillOpacity: 0.3,
+                          strokeWeight: 2,
+                          strokeColor: '#2563eb',
+                          editable: true,
+                          draggable: true,
+                          map,
+                        });
+                        setDrawnBoundary(uploadedBoundary);
+                        
+                        // Calculate and display area
+                        const area = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
+                        setCalculatedArea(area / 10000);
+
+                        // Update area on edit
+                        google.maps.event.addListener(uploadedBoundary.getPath(), 'set_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+                        google.maps.event.addListener(uploadedBoundary.getPath(), 'insert_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
+                          setCalculatedArea(newArea / 10000);
+                        });
+
+                        // Fit map to boundary
+                        const bounds = new google.maps.LatLngBounds();
+                        pendingCoords.forEach((coord: { lat: number; lng: number }) => {
+                          bounds.extend(coord);
+                        });
+                        map.fitBounds(bounds);
+
+                        // Clear pending coordinates
+                        delete (window as any).pendingBoundaryCoordinates;
+                      }
                       // Display existing boundary if available
-                      if (farm.boundary && farm.boundary.length > 0) {
+                      else if (farm.boundary && farm.boundary.length > 0) {
                         const existingBoundary = new google.maps.Polygon({
                           paths: farm.boundary,
                           fillColor: '#22c55e',
