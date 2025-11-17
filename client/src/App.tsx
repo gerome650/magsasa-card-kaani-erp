@@ -21,6 +21,9 @@ import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import OrderHistory from "./pages/OrderHistory";
 import BatchOrders from "./pages/BatchOrders";
+import SupplierDashboard from "./pages/SupplierDashboard";
+import SupplierInventory from "./pages/SupplierInventory";
+import SupplierDeliveries from "./pages/SupplierDeliveries";
 
 function Router() {
   return (
@@ -121,6 +124,30 @@ function Router() {
         <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <BatchOrders />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/supplier">
+        <ProtectedRoute allowedRoles={['supplier']}>
+          <Layout>
+            <SupplierDashboard />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/supplier/inventory">
+        <ProtectedRoute allowedRoles={['supplier']}>
+          <Layout>
+            <SupplierInventory />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/supplier/deliveries">
+        <ProtectedRoute allowedRoles={['supplier']}>
+          <Layout>
+            <SupplierDeliveries />
           </Layout>
         </ProtectedRoute>
       </Route>

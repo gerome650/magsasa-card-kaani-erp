@@ -90,6 +90,19 @@ export const demoUsers: User[] = [
     location: 'CARD BDSFI - Regional Office',
     createdAt: '2021-05-20',
     lastLogin: '2024-11-16'
+  },
+  
+  // Supplier users
+  {
+    id: 'U007',
+    email: 'supplier@atlasfertilizer.com',
+    password: 'supplier123',
+    name: 'Roberto Santos',
+    role: 'supplier',
+    phone: '+63 2 8888 1234',
+    location: 'Atlas Fertilizer Corporation, Makati City',
+    createdAt: '2020-01-15',
+    lastLogin: '2024-11-17'
   }
 ];
 

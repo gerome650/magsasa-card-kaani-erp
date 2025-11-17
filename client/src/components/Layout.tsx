@@ -11,7 +11,9 @@ import {
   Wheat,
   LogOut,
   MessageCircle,
-  Package
+  Package,
+  Truck,
+  Box
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -30,6 +32,7 @@ export default function Layout({ children }: LayoutProps) {
       case 'farmer': return 'Farmer';
       case 'field_officer': return 'Field Officer';
       case 'manager': return 'Manager';
+      case 'supplier': return 'Supplier';
       default: return role;
     }
   };
@@ -39,6 +42,7 @@ export default function Layout({ children }: LayoutProps) {
       case 'farmer': return 'bg-blue-100 text-blue-700';
       case 'field_officer': return 'bg-green-100 text-green-700';
       case 'manager': return 'bg-purple-100 text-purple-700';
+      case 'supplier': return 'bg-orange-100 text-orange-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -53,11 +57,14 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Farmers', href: '/farmers', icon: Users },
-    { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat },
-    { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown },
-    { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'] },
+    { name: 'Orders', href: '/supplier', icon: Package, roles: ['supplier'] },
+    { name: 'Inventory', href: '/supplier/inventory', icon: Box, roles: ['supplier'] },
+    { name: 'Deliveries', href: '/supplier/deliveries', icon: Truck, roles: ['supplier'] },
+    { name: 'Farmers', href: '/farmers', icon: Users, roles: ['manager', 'field_officer'] },
+    { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat, roles: ['manager', 'field_officer'] },
+    { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: ['farmer', 'manager', 'field_officer'] },
+    { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Batch Orders', href: '/batch-orders', icon: Package, roles: ['manager', 'field_officer'] },
     { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart, roles: ['farmer'] },
     { name: 'Order History', href: '/orders', icon: Package, roles: ['farmer'] },
@@ -94,7 +101,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="border-t bg-white">
-            {navigation.map((item) => {
+            {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
               return (
                 <Link
@@ -135,7 +142,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
+            {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
               return (
                 <Link key={item.name} href={item.href}>

@@ -987,3 +987,41 @@
 - [ ] Link to farmer profiles and order history
 - [ ] Connect to supplier management system
 - [ ] Add to Manager and Field Officer dashboards
+
+
+## New Feature: Supplier Portal
+
+### Supplier Dashboard
+- [x] Create supplier dashboard with order overview metrics
+- [x] Display pending orders requiring confirmation
+- [x] Show active orders in progress
+- [x] Add revenue analytics and order history
+- [ ] Implement supplier profile management
+
+### Order Management
+- [x] Create order confirmation workflow (accept/decline/request changes)
+- [x] Add order detail view with batch information
+- [x] Display farmer list and quantities per order
+- [x] Implement order status updates
+- [ ] Add communication log with CARD MRI
+
+### Inventory Management
+- [x] Create product inventory list for supplier
+- [x] Add stock level tracking (in stock, low stock, out of stock)
+- [x] Implement inventory update interface
+- [ ] Add restock alerts and notifications
+- [ ] Display inventory history and movements
+
+### Delivery Tracking
+- [x] Create delivery management interface
+- [x] Add shipment creation with tracking number
+- [x] Implement delivery status updates (preparing, shipped, in-transit, delivered)
+- [x] Add estimated delivery date management
+- [ ] Display delivery history and proof of delivery
+
+### Integration
+- [x] Add "Supplier Portal" navigation item
+- [x] Create supplier authentication and login
+- [x] Link to batch orders system
+- [ ] Integrate with delivery routes
+- [x] Add supplier role to authentication system
