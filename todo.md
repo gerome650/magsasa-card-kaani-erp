@@ -719,3 +719,81 @@
 - [x] Submit for Approval workflow
 - [x] Tested: Maria Santos, Palay Irrigated, 2.5ha, 5.8 MT/ha → AgScore 366/1000
 - [ ] **PENDING**: Real KaAni API integration for live calculations
+
+
+## New Feature: Agricultural Marketplace
+
+### Product Catalog Data
+- [x] Create productsData.ts with real suppliers (Atlas, Harvester, Masinag, Yara, PhilRice, Pioneer, Known-You)
+- [x] Add product categories: Seeds, Fertilizers, Tools, Organic Products (16 products total)
+- [x] Include product details: name, brand, price range, unit, description, composition
+- [x] Add supplier information and CARD MRI-negotiated pricing indicator
+- [x] Create product search and filter functions
+
+### Marketplace UI Components
+- [x] Create MarketplacePage component with product grid layout (3-column responsive grid)
+- [x] Build ProductCard component with image placeholder, name, price, "Add to Cart" button
+- [x] Add search bar with real-time filtering
+- [x] Implement category filter tabs (All, Seeds, Fertilizers, Tools, Organic)
+- [ ] Add product detail modal/page with full specifications
+- [x] Display "Products sourced directly from verified suppliers with CARD MRI-negotiated pricing" notice
+
+### Shopping Cart System
+- [x] Create CartContext for global cart state management
+- [x] Build ShoppingCart component with cart items list
+- [x] Add quantity adjustment controls (increase/decrease)
+- [x] Calculate total price and display cart summary
+- [x] Add "Remove from Cart" functionality
+- [x] Show cart icon with item count in navigation ("View Cart" button with badge)
+
+### Checkout Flow
+- [x] Create CheckoutPage component
+- [x] Display order summary with itemized list
+- [x] Show available loan balance for approved farmers (₱30,000 remaining)
+- [x] Add delivery address form with contact number
+- [x] Implement payment method selection (Use Loan Balance / Cash on Delivery)
+- [x] Add order confirmation step with success message
+- [x] Generate order ID and confirmation message (ORD-XXXXXXXX format)
+
+### Loan Integration
+- [x] Link marketplace to farmer's approved loan data (mock: ₱50,000 approved, ₱20,000 used, ₱30,000 remaining)
+- [x] Display available loan balance in checkout page
+- [x] Validate purchase against loan balance (show error if insufficient)
+- [ ] Deduct purchase amount from loan balance after order (requires backend)
+- [ ] Update loan status (amount used, remaining balance) (requires backend)
+- [x] Track loan utilization for marketplace purchases (mock implementation)
+
+### Order Management
+- [ ] Create ordersData.ts for order tracking
+- [ ] Store order details (farmer, products, total, date, status)
+- [ ] Add order status tracking (Pending, Processing, Delivered, Completed)
+- [ ] Create OrderHistory component for farmers to view past orders
+- [ ] Add order details view with delivery tracking
+- [ ] Enable Field Officers to view farmer orders
+
+### Navigation Integration
+- [x] Add "🛒 Marketplace" to Farmer Dashboard sidebar
+- [x] Create routes for /marketplace, /cart, /checkout paths
+- [x] Add shopping cart button to marketplace header with badge count
+- [x] Ensure marketplace is accessible only to farmers (role-based routing)
+
+### Testing
+- [x] Test product display and grid layout (16 products displayed)
+- [x] Test add to cart functionality (cart counter updates)
+- [ ] Test checkout flow with loan balance (access denied issue - needs investigation)
+- [x] Verify order confirmation page (success message with order ID)
+- [x] Test with different product categories (Fertilizers, Seeds, Tools, Organic)
+- [ ] Verify loan balance updates after purchase (requires backend)
+
+### Implementation Status
+- [x] **Agricultural Marketplace core features complete**
+- [x] Product catalog with 16 products from 7 verified suppliers
+- [x] Shopping cart with CartContext global state
+- [x] Checkout page with loan balance integration
+- [x] Order confirmation workflow
+- [x] Category filters and search functionality
+- [x] Responsive product grid layout
+- [x] Navigation integration (Marketplace link in sidebar)
+- [ ] **ISSUE**: Access denied error when accessing cart/checkout pages (role-based routing needs debugging)
+- [ ] **PENDING**: Backend integration for real loan balance updates
+- [ ] **PENDING**: Order history tracking and management

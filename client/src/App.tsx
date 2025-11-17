@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -15,6 +16,9 @@ import PriceComparison from "./components/PriceComparison";
 import OrderCalculator from "./pages/OrderCalculator";
 import Login from "./pages/Login";
 import KaAniChat from "./pages/KaAniChat";
+import Marketplace from "./pages/Marketplace";
+import ShoppingCart from "./pages/ShoppingCart";
+import Checkout from "./pages/Checkout";
 
 function Router() {
   return (
@@ -79,6 +83,30 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/marketplace">
+        <ProtectedRoute allowedRoles={['farmer']}>
+          <Layout>
+            <Marketplace />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/cart">
+        <ProtectedRoute allowedRoles={['farmer']}>
+          <Layout>
+            <ShoppingCart />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/checkout">
+        <ProtectedRoute allowedRoles={['farmer']}>
+          <Layout>
+            <Checkout />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -90,10 +118,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <CartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
