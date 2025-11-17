@@ -557,6 +557,21 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
       .query(async ({ ctx, input }) => {
         return await db.searchConversations(ctx.user.id, input.query);
       }),
+
+    addMessage: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const messageId = await db.addChatMessage({
+          conversationId: input.conversationId,
+          role: input.role,
+          content: input.content,
+        });
+        return { messageId };
+      }),
   }),
 });
 

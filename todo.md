@@ -2692,3 +2692,55 @@
 - [x] Ensure sub-header stays below main header
 - [x] Keep white background for clean, minimal look
 - [x] Maintain all existing functionality (streaming, conversations, etc.)
+
+
+## KaAni AI Chat - QA Testing & Bug Fixes (November 17, 2025)
+
+### Critical Bugs Fixed (P0)
+- [x] BUG-001: Message persistence to database (added addChatMessage function and mutation)
+- [x] BUG-002: Suggested prompts clickable (verified already working)
+- [x] BUG-003: Sample formats dialog implementation (created comprehensive dialog with 5 examples)
+
+### High Priority Bugs Fixed (P1)
+- [x] BUG-004: Conversation search implementation (real-time filtering with debounce)
+- [x] BUG-005: Empty state for new conversations (contextual welcome screen)
+- [x] BUG-007: Textarea auto-resize functionality (max 200px height)
+- [x] BUG-009: Delete conversation confirmation dialog (AlertDialog with warning)
+
+### Components Created
+- [x] SampleFormatsDialog.tsx - Example conversations for guidance
+- [x] ConversationManager.tsx - Enhanced conversation management with search and delete
+- [x] KaAniEmptyState.tsx - Welcome screen with role-specific tips
+
+### Backend Enhancements
+- [x] Added addChatMessage() function to server/db.ts
+- [x] Added conversations.addMessage mutation to server/routers.ts
+- [x] Fixed tRPC client usage in kaaniService.ts (use trpcClient for SSE)
+
+### Documentation
+- [x] Created KAANI_QA_TEST_PLAN.md - Comprehensive test plan (31 test cases)
+- [x] Created KAANI_BUGS_FOUND.md - Detailed bug documentation (15 bugs)
+- [x] Created KAANI_QA_RESULTS.md - QA results and summary
+
+### Deferred for Future Iterations (P2/P3)
+- [ ] Character counter for input field
+- [ ] User-friendly timestamp formatting ("5 minutes ago")
+- [ ] Loading skeletons for conversation list
+- [ ] Voice input feature implementation
+- [ ] Keyboard shortcuts (Ctrl+N, Ctrl+K, etc.)
+- [ ] Copy button for AI responses
+- [ ] Conversation export (TXT, PDF, Markdown)
+- [ ] Conversation rename (inline editing)
+- [ ] Conversation pinning/favorites
+- [ ] Conversation categories/tags
+
+### Production Readiness
+- [x] All P0 and P1 bugs fixed (7/7 = 100%)
+- [x] Message persistence working
+- [x] Conversation management robust
+- [x] UX polished with empty states
+- [x] Sample formats for user guidance
+- [x] Delete operations safe with confirmation
+- [x] Dev server compiling without errors
+
+**Status: KaAni Section READY FOR PRODUCTION** 🚀

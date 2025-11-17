@@ -9,14 +9,10 @@ import TypingIndicator from "@/components/TypingIndicator";
 
 import { KaAniSubHeader } from "@/components/KaAniSubHeader";
 import { SuggestedPrompts } from "@/components/SuggestedPrompts";
+import { SampleFormatsDialog } from "@/components/SampleFormatsDialog";
+import { ConversationManager } from "@/components/ConversationManager";
+import { KaAniEmptyState } from "@/components/KaAniEmptyState";
 import { trpcClient } from "@/lib/trpcClient";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface Message {
   id: string;
@@ -55,6 +51,15 @@ export default function KaAniChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea as user types
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 200);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, [input]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -218,7 +223,7 @@ export default function KaAniChat() {
       const contextualMessage = contextPrefix + userMessageContent;
 
       // Call KaAni API with TRUE real-time SSE streaming
-      await sendMessageToKaAniSSE(
+      const aiResponse = await sendMessageToKaAniSSE(
         contextualMessage,
         conversationHistory,
         (chunk) => {
@@ -236,6 +241,24 @@ export default function KaAniChat() {
           );
         }
       );
+
+      // Save both user message and AI response to database
+      try {
+        await trpcClient.conversations.addMessage.mutate({
+          conversationId: activeConversationId,
+          role: "user",
+          content: userMessageContent,
+        });
+        
+        await trpcClient.conversations.addMessage.mutate({
+          conversationId: activeConversationId,
+          role: "assistant",
+          content: aiResponse,
+        });
+      } catch (dbError) {
+        console.error("Error saving messages to database:", dbError);
+        // Don't show error to user since messages are already displayed
+      }
 
       // Auto-generate conversation title from first user message
       const isFirstMessage = messages.filter(m => m.role === "user").length === 0;
@@ -319,51 +342,31 @@ export default function KaAniChat() {
           <div className="bg-white border border-gray-200 rounded-lg flex-1 flex flex-col overflow-hidden my-6">
             {/* Conversation Menu Button */}
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Menu className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      {conversations.find(c => c.id === activeConversationId)?.title || "Conversations"}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64">
-                  <DropdownMenuItem onClick={handleNewConversation}>
-                    + New Conversation
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {conversations.slice(0, 10).map((convo) => (
-                    <DropdownMenuItem
-                      key={convo.id}
-                      onClick={() => handleSelectConversation(convo.id)}
-                      className={activeConversationId === convo.id ? "bg-green-50" : ""}
-                    >
-                      <div className="flex-1 truncate">{convo.title}</div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ConversationManager
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={handleDeleteConversation}
+              />
 
-              <div className="text-sm text-muted-foreground">
-                {user?.role === "farmer" ? "Farmer Mode" : user?.role === "field_officer" ? "Field Officer Mode" : "Manager Mode"}
+              <div className="flex items-center gap-2">
+                <SampleFormatsDialog />
+                <div className="text-sm text-muted-foreground">
+                  {user?.role === "farmer" ? "Farmer Mode" : user?.role === "field_officer" ? "Field Officer Mode" : "Manager Mode"}
+                </div>
               </div>
             </div>
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Empty state */}
               {messages.length === 0 && !isLoadingMessages && (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-3xl font-bold text-green-700">K</span>
+                <div className="h-full">
+                  <KaAniEmptyState role={selectedRole} context={selectedContext} />
+                  <div className="mt-6">
+                    <SuggestedPrompts prompts={suggestedPrompts} onPromptClick={handlePromptClick} />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                    Ano po ang pangunahin ninyong kailangan ngayon?
-                  </h2>
-                  <p className="text-gray-600 mb-8">
-                    Ask KaAni anything about farming, loans, or agricultural advice
-                  </p>
-                  <SuggestedPrompts prompts={suggestedPrompts} onPromptClick={handlePromptClick} />
                 </div>
               )}
 
@@ -451,8 +454,6 @@ export default function KaAniChat() {
           </div>
         </div>
       </div>
-
-
     </div>
   );
 }

@@ -562,3 +562,23 @@ export async function searchConversations(userId: number, query: string) {
   
   return uniqueResults;
 }
+
+export async function addChatMessage(data: {
+  conversationId: number;
+  role: "user" | "assistant";
+  content: string;
+}) {
+  const db = await getDb();
+  const { chatMessages } = await import("../drizzle/schema");
+  
+  const result = await db.insert(chatMessages).values({
+    conversationId: data.conversationId,
+    role: data.role,
+    content: data.content,
+  });
+  
+  // Update conversation's updatedAt timestamp
+  await touchConversation(data.conversationId);
+  
+  return Number(result[0].insertId);
+}
