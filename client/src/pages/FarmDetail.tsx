@@ -24,7 +24,8 @@ export default function FarmDetail() {
   const [, params] = useRoute("/farms/:id");
   const farm = params?.id ? getFarmById(params.id) : null;
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawnBoundary, setDrawnBoundary] = useState<google.maps.Polygon | null>(null);
+  const [drawnBoundaries, setDrawnBoundaries] = useState<google.maps.Polygon[]>([]);
+  const [parcelAreas, setParcelAreas] = useState<number[]>([]);
   const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
   const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
@@ -246,44 +247,51 @@ export default function FarmDetail() {
                     >
                       {isDrawingMode ? "Stop Drawing" : "Draw Boundary"}
                     </Button>
-                    {drawnBoundary && (
+                    {drawnBoundaries.length > 0 && (
                       <>
                         <Button
                           variant="default"
                           size="sm"
                           onClick={() => {
-                            if (drawnBoundary) {
-                              const path = drawnBoundary.getPath();
-                              const coordinates: { lat: number; lng: number }[] = [];
-                              for (let i = 0; i < path.getLength(); i++) {
-                                const point = path.getAt(i);
-                                coordinates.push({
-                                  lat: point.lat(),
-                                  lng: point.lng()
-                                });
-                              }
+                            if (drawnBoundaries.length > 0) {
+                              const allParcels = drawnBoundaries.map(boundary => {
+                                const path = boundary.getPath();
+                                const coordinates: { lat: number; lng: number }[] = [];
+                                for (let i = 0; i < path.getLength(); i++) {
+                                  const point = path.getAt(i);
+                                  coordinates.push({
+                                    lat: point.lat(),
+                                    lng: point.lng()
+                                  });
+                                }
+                                return coordinates;
+                              });
                               // TODO: Save to backend
-                              console.log('Saving boundary:', coordinates);
-                              alert(`Boundary saved! Area: ${calculatedArea?.toFixed(2)} hectares`);
+                              console.log('Saving parcels:', allParcels);
+                              alert(`${drawnBoundaries.length} parcel(s) saved! Total area: ${calculatedArea?.toFixed(2)} hectares`);
                             }
                           }}
                         >
-                          Save Boundary
+                          Save {drawnBoundaries.length} Parcel{drawnBoundaries.length > 1 ? 's' : ''}
                         </Button>
                         <Button
                           variant="secondary"
                           size="sm"
                           onClick={() => {
-                            if (drawnBoundary) {
-                              const path = drawnBoundary.getPath();
-                              const coordinates: { lat: number; lng: number }[] = [];
-                              for (let i = 0; i < path.getLength(); i++) {
-                                const point = path.getAt(i);
-                                coordinates.push({
-                                  lat: point.lat(),
-                                  lng: point.lng()
-                                });
-                              }
+                            if (drawnBoundaries.length > 0) {
+                              // Extract coordinates from all parcels
+                              const allParcels = drawnBoundaries.map(boundary => {
+                                const path = boundary.getPath();
+                                const coordinates: { lat: number; lng: number }[] = [];
+                                for (let i = 0; i < path.getLength(); i++) {
+                                  const point = path.getAt(i);
+                                  coordinates.push({
+                                    lat: point.lat(),
+                                    lng: point.lng()
+                                  });
+                                }
+                                return coordinates;
+                              });
 
                               // Ask user for format
                               const format = confirm('Download as GeoJSON? (Cancel for KML)') ? 'geojson' : 'kml';
@@ -295,7 +303,7 @@ export default function FarmDetail() {
                               let extension: string;
 
                               if (format === 'geojson') {
-                                // Generate GeoJSON
+                                // Generate GeoJSON with MultiPolygon
                                 const geojson = {
                                   type: 'FeatureCollection',
                                   features: [
@@ -306,11 +314,15 @@ export default function FarmDetail() {
                                         farmer: farm.farmerName,
                                         size: farm.size,
                                         crops: farm.crops.join(', '),
-                                        calculatedArea: calculatedArea?.toFixed(2)
+                                        calculatedArea: calculatedArea?.toFixed(2),
+                                        parcelCount: drawnBoundaries.length,
+                                        parcelAreas: parcelAreas.map(a => a.toFixed(2))
                                       },
                                       geometry: {
-                                        type: 'Polygon',
-                                        coordinates: [coordinates.map(c => [c.lng, c.lat])]
+                                        type: drawnBoundaries.length === 1 ? 'Polygon' : 'MultiPolygon',
+                                        coordinates: drawnBoundaries.length === 1 
+                                          ? [allParcels[0].map(c => [c.lng, c.lat])]
+                                          : allParcels.map(parcel => [parcel.map(c => [c.lng, c.lat])])
                                       }
                                     }
                                   ]
@@ -319,22 +331,17 @@ export default function FarmDetail() {
                                 mimeType = 'application/geo+json';
                                 extension = 'geojson';
                               } else {
-                                // Generate KML
-                                const coordsString = coordinates
-                                  .map(c => `${c.lng},${c.lat},0`)
-                                  .join(' ');
-                                content = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>${farm.name}</name>
-    <description>Farm boundary for ${farm.farmerName}</description>
-    <Placemark>
-      <name>${farm.name}</name>
+                                // Generate KML with multiple Placemarks
+                                const placemarks = allParcels.map((parcel, index) => {
+                                  const coordsString = parcel
+                                    .map(c => `${c.lng},${c.lat},0`)
+                                    .join(' ');
+                                  return `    <Placemark>
+      <name>${farm.name} - Parcel ${index + 1}</name>
       <description>
         Farmer: ${farm.farmerName}
-        Size: ${farm.size} ha
-        Crops: ${farm.crops.join(', ')}
-        Calculated Area: ${calculatedArea?.toFixed(2)} ha
+        Parcel ${index + 1} of ${drawnBoundaries.length}
+        Area: ${parcelAreas[index].toFixed(2)} ha
       </description>
       <Polygon>
         <outerBoundaryIs>
@@ -343,7 +350,15 @@ export default function FarmDetail() {
           </LinearRing>
         </outerBoundaryIs>
       </Polygon>
-    </Placemark>
+    </Placemark>`;
+                                }).join('\n');
+                                
+                                content = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${farm.name}</name>
+    <description>Farm boundaries for ${farm.farmerName} - ${drawnBoundaries.length} parcel(s), Total: ${calculatedArea?.toFixed(2)} ha</description>
+${placemarks}
   </Document>
 </kml>`;
                                 mimeType = 'application/vnd.google-earth.kml+xml';
@@ -361,19 +376,21 @@ export default function FarmDetail() {
                               document.body.removeChild(a);
                               URL.revokeObjectURL(url);
 
-                              alert(`Boundary exported as ${extension.toUpperCase()}!`);
+                              alert(`${drawnBoundaries.length} parcel(s) exported as ${extension.toUpperCase()}!`);
                             }
                           }}
                         >
-                          Download Boundary
+                          Download {drawnBoundaries.length} Parcel{drawnBoundaries.length > 1 ? 's' : ''}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            if (drawnBoundary) {
-                              drawnBoundary.setMap(null);
-                              setDrawnBoundary(null);
+                            if (drawnBoundaries.length > 0) {
+                              // Remove all parcels from map
+                              drawnBoundaries.forEach(boundary => boundary.setMap(null));
+                              setDrawnBoundaries([]);
+                              setParcelAreas([]);
                               setCalculatedArea(null);
                             }
                           }}
@@ -386,9 +403,35 @@ export default function FarmDetail() {
                 </div>
                 {calculatedArea && (
                   <div className="space-y-2">
+                    {drawnBoundaries.length > 1 && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800 mb-2">
+                          📦 {drawnBoundaries.length} Parcels (Non-contiguous Land)
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {parcelAreas.map((area, index) => {
+                            const colors = [
+                              'bg-green-100 text-green-700',
+                              'bg-blue-100 text-blue-700',
+                              'bg-orange-100 text-orange-700',
+                              'bg-purple-100 text-purple-700',
+                              'bg-pink-100 text-pink-700',
+                            ];
+                            return (
+                              <div key={index} className="flex items-center justify-between text-xs">
+                                <span className={`px-2 py-1 rounded ${colors[index % colors.length]}`}>
+                                  Parcel {index + 1}
+                                </span>
+                                <span className="font-medium">{area.toFixed(2)} ha</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Calculated Area: <strong>{calculatedArea.toFixed(2)} hectares</strong>
+                        {drawnBoundaries.length > 1 ? 'Total' : 'Calculated'} Area: <strong>{calculatedArea.toFixed(2)} hectares</strong>
                       </span>
                       <span className="text-sm text-muted-foreground">
                         | Entered Size: <strong>{farm.size} hectares</strong>
@@ -575,20 +618,26 @@ export default function FarmDetail() {
                           draggable: true,
                           map,
                         });
-                        setDrawnBoundary(uploadedBoundary);
                         
                         // Calculate and display area
                         const area = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
-                        setCalculatedArea(area / 10000);
+                        const hectares = area / 10000;
+                        setDrawnBoundaries([uploadedBoundary]);
+                        setParcelAreas([hectares]);
+                        setCalculatedArea(hectares);
 
                         // Update area on edit
                         google.maps.event.addListener(uploadedBoundary.getPath(), 'set_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas([newHectares]);
+                          setCalculatedArea(newHectares);
                         });
                         google.maps.event.addListener(uploadedBoundary.getPath(), 'insert_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(uploadedBoundary.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas([newHectares]);
+                          setCalculatedArea(newHectares);
                         });
 
                         // Fit map to boundary
@@ -613,20 +662,26 @@ export default function FarmDetail() {
                           draggable: true,
                           map,
                         });
-                        setDrawnBoundary(existingBoundary);
                         
                         // Calculate and display existing area
                         const area = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
-                        setCalculatedArea(area / 10000);
+                        const hectares = area / 10000;
+                        setDrawnBoundaries([existingBoundary]);
+                        setParcelAreas([hectares]);
+                        setCalculatedArea(hectares);
 
                         // Update area on edit
                         google.maps.event.addListener(existingBoundary.getPath(), 'set_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas([newHectares]);
+                          setCalculatedArea(newHectares);
                         });
                         google.maps.event.addListener(existingBoundary.getPath(), 'insert_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(existingBoundary.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas([newHectares]);
+                          setCalculatedArea(newHectares);
                         });
                       }
 
@@ -645,9 +700,18 @@ export default function FarmDetail() {
                       });
                       drawingManager.setMap(map);
 
+                      // Color palette for different parcels
+                      const parcelColors = [
+                        { fill: '#22c55e', stroke: '#16a34a' }, // Green
+                        { fill: '#3b82f6', stroke: '#2563eb' }, // Blue
+                        { fill: '#f59e0b', stroke: '#d97706' }, // Orange
+                        { fill: '#8b5cf6', stroke: '#7c3aed' }, // Purple
+                        { fill: '#ec4899', stroke: '#db2777' }, // Pink
+                      ];
+
                       // Toggle drawing mode
                       const checkDrawingMode = setInterval(() => {
-                        if (isDrawingMode && !drawnBoundary) {
+                        if (isDrawingMode) {
                           drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
                         } else {
                           drawingManager.setDrawingMode(null);
@@ -656,23 +720,53 @@ export default function FarmDetail() {
 
                       // Handle polygon complete
                       google.maps.event.addListener(drawingManager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
-                        setDrawnBoundary(polygon);
-                        setIsDrawingMode(false);
+                        // Get color for this parcel
+                        const colorIndex = drawnBoundaries.length % parcelColors.length;
+                        const color = parcelColors[colorIndex];
                         
-                        // Calculate area
+                        // Apply color to polygon
+                        polygon.setOptions({
+                          fillColor: color.fill,
+                          strokeColor: color.stroke,
+                        });
+
+                        // Add to boundaries array
+                        setDrawnBoundaries(prev => [...prev, polygon]);
+                        
+                        // Calculate area for this parcel
                         const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
                         const hectares = area / 10000; // Convert m² to hectares
-                        setCalculatedArea(hectares);
+                        setParcelAreas(prev => [...prev, hectares]);
+
+                        // Calculate total area
+                        const totalArea = [...parcelAreas, hectares].reduce((sum, a) => sum + a, 0);
+                        setCalculatedArea(totalArea);
 
                         // Update area on edit
+                        const parcelIndex = drawnBoundaries.length;
                         google.maps.event.addListener(polygon.getPath(), 'set_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas(prev => {
+                            const updated = [...prev];
+                            updated[parcelIndex] = newHectares;
+                            setCalculatedArea(updated.reduce((sum, a) => sum + a, 0));
+                            return updated;
+                          });
                         });
                         google.maps.event.addListener(polygon.getPath(), 'insert_at', () => {
                           const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
-                          setCalculatedArea(newArea / 10000);
+                          const newHectares = newArea / 10000;
+                          setParcelAreas(prev => {
+                            const updated = [...prev];
+                            updated[parcelIndex] = newHectares;
+                            setCalculatedArea(updated.reduce((sum, a) => sum + a, 0));
+                            return updated;
+                          });
                         });
+
+                        // Keep drawing mode active for adding more parcels
+                        // User can click "Stop Drawing" to exit
                       });
 
                       return () => clearInterval(checkDrawingMode);

@@ -1514,3 +1514,20 @@
 - [x] Add Mountain icon for visual clarity
 - [x] Test terrain overlay on all map types (roadmap, satellite, hybrid)
 - [x] Verify terrain shows elevation contours and shading
+
+
+## New Feature: Multi-Parcel Support (Multiple Disconnected Polygons)
+
+- [x] Change drawnBoundary state from single polygon to array of polygons
+- [x] Update drawing mode to allow multiple polygon creation
+- [x] Drawing mode stays active for adding multiple parcels
+- [x] Display parcel list showing individual areas
+- [x] Calculate total area across all parcels
+- [x] Update area validation to compare total vs entered size
+- [x] Update Save Boundary to save all parcels
+- [x] Update Download Boundary to export all parcels in single file
+- [x] GeoJSON export uses MultiPolygon geometry for multiple parcels
+- [x] KML export creates multiple Placemarks with individual areas
+- [x] Show parcel count badge (e.g., "3 Parcels")
+- [x] Color-code different parcels for visual distinction (5 colors)
+- [x] Update Clear Boundary to remove all parcels
