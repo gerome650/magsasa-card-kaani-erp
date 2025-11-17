@@ -1750,3 +1750,17 @@
 - [x] Add percentage badge for active farms (green themed)
 - [x] Position cards above the main table
 - [x] Make cards responsive (4 cols on lg, 2 cols on sm, 1 col on mobile)
+
+
+## New Feature: Crop Distribution Pie Chart
+
+- [x] Install recharts library
+- [x] Calculate crop distribution data (count per crop type)
+- [x] Create pie chart component with Recharts
+- [x] Add chart card below summary statistics
+- [x] Use distinct colors for each crop type (8 color palette)
+- [x] Add legend showing crop names and percentages
+- [x] Make chart responsive (ResponsiveContainer)
+- [x] Add tooltip on hover showing exact counts
+- [x] Add chart title "Crop Distribution"
+- [x] Add percentage labels on pie slices

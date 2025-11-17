@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Eye, Tractor, Map, TrendingUp, Wheat } from "lucide-react";
 import { getFarms, type Farm } from "@/data/farmsData";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 export default function FarmList() {
   const allFarms = getFarms();
@@ -45,6 +46,15 @@ export default function FarmList() {
     return acc;
   }, {} as Record<string, number>);
   const mostCommonCrop = Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+  
+  // Prepare data for pie chart
+  const cropDistributionData = Object.entries(cropCounts).map(([name, value]) => ({
+    name,
+    value
+  })).sort((a, b) => b.value - a.value);
+  
+  // Colors for pie chart
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4'];
 
   const getStatusBadge = (status: Farm['status']) => {
     const variants: Record<Farm['status'], { variant: "default" | "secondary" | "outline"; label: string }> = {
@@ -130,6 +140,35 @@ export default function FarmList() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Crop Distribution Pie Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Crop Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={cropDistributionData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {cropDistributionData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: number) => [`${value} farms`, 'Count']} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
