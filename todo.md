@@ -1936,3 +1936,25 @@
 - [x] Center-aligned text with proper spacing
 - [x] Responsive button sizing (lg for main, sm for compact)
 - [ ] Save checkpoint after implementation
+
+
+## React Query DevTools Integration
+
+- [x] Install @tanstack/react-query-devtools package (v5.90.2)
+- [x] Import ReactQueryDevtools component in main.tsx
+- [x] Add DevTools to main.tsx (inside QueryClientProvider)
+- [x] Configure DevTools to show only in development mode (auto tree-shaken in production)
+- [x] Set initial state (closed by default with initialIsOpen={false})
+- [x] Configure position (bottom-right)
+- [x] Create comprehensive documentation in docs/REACT_QUERY_DEVTOOLS.md
+- [x] Document query inspection features (view query keys, data, status)
+- [x] Document mutation inspection (view pending mutations)
+- [x] Document cache inspection (view cached data, stale time)
+- [x] Document query invalidation from DevTools UI
+- [x] Document refetch functionality from DevTools UI
+- [x] Document query removal from cache
+- [x] Document keyboard shortcuts and interface
+- [x] Document tRPC integration and query keys
+- [x] Document common use cases and troubleshooting
+- [x] Document performance monitoring features
+- [ ] Save checkpoint after implementation
