@@ -25,8 +25,11 @@ import {
   Edit,
   Plus,
   TrendingDown,
-  Search
+  Search,
+  TrendingUp
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import BulkInventoryUpdate from "@/components/BulkInventoryUpdate";
 import { toast } from "sonner";
 
 export default function SupplierInventory() {
@@ -35,6 +38,8 @@ export default function SupplierInventory() {
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [newStockLevel, setNewStockLevel] = useState<number>(0);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   // For demo, use first supplier (Atlas Fertilizer)
   const supplier = suppliers[0];
@@ -59,6 +64,27 @@ export default function SupplierInventory() {
     'out-of-stock': { label: 'Out of Stock', color: 'bg-red-500', icon: AlertTriangle }
   };
 
+  // Selection handlers
+  const toggleProduct = (productId: string) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === filteredProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedProducts(new Set());
+
   // Handlers
   const handleUpdateStock = (product: SupplierProduct) => {
     setSelectedProduct(product);
@@ -78,6 +104,18 @@ export default function SupplierInventory() {
 
   const handleAddProduct = () => {
     toast.info("Opening add product form");
+  };
+
+  const handleBulkUpdate = () => {
+    setBulkDialogOpen(true);
+  };
+
+  const handleBulkUpdateComplete = () => {
+    clearSelection();
+  };
+
+  const getSelectedProductsData = () => {
+    return products.filter(p => selectedProducts.has(p.id));
   };
 
   // Check if user is supplier
@@ -180,6 +218,30 @@ export default function SupplierInventory() {
         </Card>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedProducts.size > 0 && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <span className="font-semibold">
+                  {selectedProducts.size} products selected
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  Clear
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleBulkUpdate}>
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Bulk Update Stock
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
@@ -196,6 +258,14 @@ export default function SupplierInventory() {
       </Card>
 
       {/* Products List */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Products</h2>
+        {filteredProducts.length > 0 && (
+          <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+            {selectedProducts.size === filteredProducts.length ? 'Deselect All' : 'Select All'}
+          </Button>
+        )}
+      </div>
       <div className="space-y-4">
         {filteredProducts.length === 0 ? (
           <Card>
@@ -221,10 +291,21 @@ export default function SupplierInventory() {
             const status = stockStatusConfig[product.stockStatus];
             const StatusIcon = status.icon;
             const stockPercentage = Math.round((product.stockLevel / (product.reorderPoint * 3)) * 100);
+            const isSelected = selectedProducts.has(product.id);
 
             return (
-              <Card key={product.id} className="hover:shadow-lg transition-shadow">
+              <Card key={product.id} className={`hover:shadow-lg transition-all ${
+                isSelected ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950' : ''
+              }`}>
                 <CardContent className="pt-6">
+                  <div className="flex gap-4 mb-4">
+                    <div className="flex items-start pt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleProduct(product.id)}
+                      />
+                    </div>
+                    <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -325,6 +406,8 @@ export default function SupplierInventory() {
                       View History
                     </Button>
                   </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -383,6 +466,14 @@ export default function SupplierInventory() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Inventory Update Dialog */}
+      <BulkInventoryUpdate
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        selectedProducts={getSelectedProductsData()}
+        onUpdate={handleBulkUpdateComplete}
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import OrderHistory from "./pages/OrderHistory";
 import BatchOrders from "./pages/BatchOrders";
-import SupplierDashboard from "./pages/SupplierDashboard";
+import SupplierDashboard from "./pages/SupplierDashboardBulk";
 import SupplierInventory from "./pages/SupplierInventory";
 import SupplierDeliveries from "./pages/SupplierDeliveries";
 

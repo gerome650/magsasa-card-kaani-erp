@@ -1025,3 +1025,39 @@
 - [x] Link to batch orders system
 - [ ] Integrate with delivery routes
 - [x] Add supplier role to authentication system
+
+
+## New Feature: Bulk Actions for Supplier Portal
+
+### Bulk Order Management
+- [x] Add checkbox selection for multiple orders
+- [x] Implement "Select All" functionality with filters
+- [x] Create bulk confirm orders action
+- [x] Create bulk decline orders action
+- [x] Add bulk status update (mark as preparing/shipped)
+- [x] Display bulk action progress and results
+- [ ] Add undo capability for bulk actions
+
+### Bulk Inventory Updates
+- [x] Add checkbox selection for multiple products
+- [x] Implement category-based bulk selection
+- [x] Create bulk stock adjustment interface
+- [x] Add percentage-based bulk updates (increase/decrease by %)
+- [ ] Implement bulk reorder point updates
+- [ ] Add CSV import for inventory updates
+- [ ] Add CSV export for current inventory
+- [x] Display bulk update preview before applying
+
+### Bulk Shipment Management
+- [ ] Add checkbox selection for multiple shipments
+- [ ] Create bulk tracking number assignment
+- [ ] Implement bulk carrier assignment
+- [ ] Add bulk status updates for shipments
+- [ ] Generate bulk delivery manifests
+
+### UI/UX Enhancements
+- [x] Add bulk action toolbar when items selected
+- [x] Display selection count and summary
+- [ ] Add confirmation dialogs for bulk actions
+- [ ] Implement loading states for bulk operations
+- [x] Add success/error notifications with details

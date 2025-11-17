@@ -21,13 +21,17 @@ import {
   Truck,
   AlertCircle,
   MessageSquare,
-  FileText
+  FileText,
+  Square,
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SupplierDashboard() {
   const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState<string>("all");
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
 
   // For demo, use first supplier (Atlas Fertilizer)
   // In production, this would be based on logged-in supplier user
@@ -65,7 +69,53 @@ export default function SupplierDashboard() {
     cancelled: { label: 'Cancelled', color: 'bg-red-500', icon: AlertCircle }
   };
 
-  // Handlers
+  // Selection handlers
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrders(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map(o => o.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOrders([]);
+  };
+
+  // Bulk action handlers
+  const handleBulkConfirm = () => {
+    const count = selectedOrders.length;
+    toast.success(`${count} orders confirmed!`, {
+      description: "CARD MRI has been notified of your confirmations."
+    });
+    setSelectedOrders([]);
+  };
+
+  const handleBulkDecline = () => {
+    const count = selectedOrders.length;
+    toast.error(`${count} orders declined`, {
+      description: "Please provide reasons in the communication log."
+    });
+    setSelectedOrders([]);
+  };
+
+  const handleBulkMarkPreparing = () => {
+    const count = selectedOrders.length;
+    toast.success(`${count} orders marked as preparing`, {
+      description: "Status updated successfully."
+    });
+    setSelectedOrders([]);
+  };
+
+  // Single order handlers
   const handleConfirmOrder = (orderId: string) => {
     toast.success("Order confirmed!", {
       description: "CARD MRI has been notified of your confirmation."
@@ -192,10 +242,74 @@ export default function SupplierDashboard() {
         </Card>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedOrders.length > 0 && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                  <span className="font-semibold text-blue-900 dark:text-blue-100">
+                    {selectedOrders.length} {selectedOrders.length === 1 ? 'order' : 'orders'} selected
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearSelection}
+                  className="text-blue-700 hover:text-blue-900"
+                >
+                  Clear selection
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                {filteredOrders.filter(o => selectedOrders.includes(o.id) && o.status === 'pending').length > 0 && (
+                  <>
+                    <Button
+                      onClick={handleBulkConfirm}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Confirm All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleBulkDecline}
+                    >
+                      Decline All
+                    </Button>
+                  </>
+                )}
+                {filteredOrders.filter(o => selectedOrders.includes(o.id) && o.status === 'confirmed').length > 0 && (
+                  <Button
+                    onClick={handleBulkMarkPreparing}
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Mark as Preparing
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Orders List */}
       <Card>
         <CardHeader>
-          <CardTitle>Orders</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Orders</CardTitle>
+            {filteredOrders.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+              >
+                {selectedOrders.length === filteredOrders.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs value={selectedTab} onValueChange={setSelectedTab}>
@@ -238,12 +352,30 @@ export default function SupplierDashboard() {
                     const status = statusConfig[order.status];
                     const StatusIcon = status.icon;
 
+                    const isSelected = selectedOrders.includes(order.id);
+
                     return (
-                      <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                      <Card key={order.id} className={`hover:shadow-lg transition-all ${
+                        isSelected ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950' : ''
+                      }`}>
                         <CardContent className="pt-6">
-                          <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3 mb-4">
+                            {/* Checkbox */}
+                            <button
+                              onClick={() => handleSelectOrder(order.id)}
+                              className="mt-1 flex-shrink-0"
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-5 h-5 text-blue-600" />
+                              ) : (
+                                <Square className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                              )}
+                            </button>
+                            
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
                                 <span className="font-mono text-sm text-muted-foreground">
                                   {order.orderNumber}
                                 </span>
@@ -251,27 +383,27 @@ export default function SupplierDashboard() {
                                   <StatusIcon className="w-3 h-3 mr-1" />
                                   {status.label}
                                 </Badge>
+                                  </div>
+                                  <h3 className="font-semibold text-lg mb-1">
+                                    {order.productName}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Ordered: {new Date(order.orderedAt).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-2xl font-bold">
+                                    ₱{order.totalAmount.toLocaleString()}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {order.quantity} {order.unit}
+                                  </p>
+                                </div>
                               </div>
-                              <h3 className="font-semibold text-lg mb-1">
-                                {order.productName}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Ordered: {new Date(order.orderedAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold">
-                                ₱{order.totalAmount.toLocaleString()}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {order.quantity} {order.unit}
-                              </p>
-                            </div>
-                          </div>
 
                           <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                             <div>
@@ -328,6 +460,8 @@ export default function SupplierDashboard() {
                               <MessageSquare className="w-4 h-4 mr-2" />
                               Message
                             </Button>
+                          </div>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
