@@ -1,5 +1,9 @@
 # MAGSASA-CARD Enhanced Platform - Unified System TODO
 
+## Urgent Bug Fixes
+
+- [x] Fix nested <a> tag error on homepage (React warning: <a> cannot contain nested <a>)
+
 ## Core Platform Features
 
 ### Navigation & Layout

@@ -338,12 +338,12 @@ export default function FarmList() {
                         </TableCell>
                         <TableCell>{getStatusBadge(farm.status)}</TableCell>
                         <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="sm">
                           <Link href={`/farms/${farm.id}`}>
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
+                            <Button variant="ghost" size="sm">
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Button>
                           </Link>
-                        </Button>
                         </TableCell>
                       </TableRow>
                   ))}
