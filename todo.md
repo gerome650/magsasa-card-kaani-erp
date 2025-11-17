@@ -2680,3 +2680,15 @@
 - [ ] Verify responsive design on mobile
 - [ ] Check all existing features still work (streaming, history, etc.)
 - [ ] Test suggested prompts interaction
+
+
+## KaAni Layout Refinement - Use Main Header
+
+### Layout Changes
+- [x] Remove KaAniHeader component - use main MAGSASA-CARD header instead
+- [x] Update KaAniChat to use Layout component (restore main header)
+- [x] Remove blue gradient background from KaAni page
+- [x] Add black hairline borders (border-gray-200 or border-gray-300) between sections
+- [x] Ensure sub-header stays below main header
+- [x] Keep white background for clean, minimal look
+- [x] Maintain all existing functionality (streaming, conversations, etc.)

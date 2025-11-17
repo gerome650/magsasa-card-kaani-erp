@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { sendMessageToKaAniSSE } from "@/services/kaaniService";
 import { toast } from "sonner";
 import TypingIndicator from "@/components/TypingIndicator";
-import { KaAniHeader } from "@/components/KaAniHeader";
+
 import { KaAniSubHeader } from "@/components/KaAniSubHeader";
 import { SuggestedPrompts } from "@/components/SuggestedPrompts";
 import { trpcClient } from "@/lib/trpcClient";
@@ -292,34 +292,33 @@ export default function KaAniChat() {
 
   if (isLoadingConversations) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-b from-blue-600 to-blue-400">
+      <div className="flex items-center justify-center h-screen bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white">Loading conversations...</p>
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading conversations...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-600 to-blue-400">
-      {/* Green Header */}
-      <KaAniHeader />
-
+    <div className="flex flex-col h-full">
       {/* Sub-header with role tabs and dialect selector */}
-      <KaAniSubHeader
-        onRoleChange={setSelectedRole}
-        onContextChange={setSelectedContext}
-        onDialectChange={setSelectedDialect}
-      />
+      <div className="border-b border-gray-200">
+        <KaAniSubHeader
+          onRoleChange={setSelectedRole}
+          onContextChange={setSelectedContext}
+          onDialectChange={setSelectedDialect}
+        />
+      </div>
 
       {/* Main Chat Container */}
-      <div className="flex-1 px-4 pb-6">
+      <div className="flex-1 px-4 pb-6 bg-white">
         <div className="max-w-5xl mx-auto h-full flex flex-col">
-          {/* White Chat Container */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl flex-1 flex flex-col overflow-hidden my-6">
+          {/* Chat Container */}
+          <div className="bg-white border border-gray-200 rounded-lg flex-1 flex flex-col overflow-hidden my-6">
             {/* Conversation Menu Button */}
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2">
@@ -426,7 +425,7 @@ export default function KaAniChat() {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 border-t bg-gray-50">
+            <div className="p-4 border-t border-gray-200 bg-white">
               <div className="flex gap-3 items-end">
                 <div className="flex-1 bg-gray-800 rounded-full px-6 py-3 flex items-center gap-3">
                   <Textarea
@@ -453,12 +452,7 @@ export default function KaAniChat() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-white pb-6 px-4">
-        <p className="text-sm">
-          Powered by AgSense. KaAni is a Diagnostic tool meant to supplement Farmer and Agricultural professional knowledge
-        </p>
-      </div>
+
     </div>
   );
 }

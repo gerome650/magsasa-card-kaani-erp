@@ -43,91 +43,89 @@ export function KaAniSubHeader({
   };
 
   return (
-    <div className="bg-gradient-to-b from-blue-600 to-blue-400 px-6 py-8">
+    <div className="bg-white px-6 py-4">
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl">
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Role Tabs */}
-            <Button
-              variant={selectedRole === "farmer" ? "default" : "ghost"}
-              className={
-                selectedRole === "farmer"
-                  ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
-                  : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
-              }
-              onClick={() => handleRoleChange("farmer")}
-            >
-              Farmer
-            </Button>
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Role Tabs */}
+          <Button
+            variant={selectedRole === "farmer" ? "default" : "ghost"}
+            className={
+              selectedRole === "farmer"
+                ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
+                : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
+            }
+            onClick={() => handleRoleChange("farmer")}
+          >
+            Farmer
+          </Button>
 
-            <Button
-              variant={selectedRole === "technician" ? "default" : "ghost"}
-              className={
-                selectedRole === "technician"
-                  ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
-                  : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
-              }
-              onClick={() => handleRoleChange("technician")}
-            >
-              Technician
-            </Button>
+          <Button
+            variant={selectedRole === "technician" ? "default" : "ghost"}
+            className={
+              selectedRole === "technician"
+                ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
+                : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
+            }
+            onClick={() => handleRoleChange("technician")}
+          >
+            Technician
+          </Button>
 
-            {/* Divider */}
-            <div className="h-8 w-px bg-gray-300" />
+          {/* Divider */}
+          <div className="h-8 w-px bg-gray-300" />
 
-            {/* Context Options */}
-            <Button
-              variant="ghost"
-              className={
-                selectedContext === "loan_matching"
-                  ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
-                  : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
-              }
-              onClick={() => handleContextToggle("loan_matching")}
-            >
-              Loan Matching
-            </Button>
+          {/* Context Options */}
+          <Button
+            variant="ghost"
+            className={
+              selectedContext === "loan_matching"
+                ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
+                : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
+            }
+            onClick={() => handleContextToggle("loan_matching")}
+          >
+            Loan Matching
+          </Button>
 
-            <Button
-              variant="ghost"
-              className={
-                selectedContext === "risk_scoring"
-                  ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
-                  : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
-              }
-              onClick={() => handleContextToggle("risk_scoring")}
-            >
-              Risk Scoring
-            </Button>
+          <Button
+            variant="ghost"
+            className={
+              selectedContext === "risk_scoring"
+                ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
+                : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
+            }
+            onClick={() => handleContextToggle("risk_scoring")}
+          >
+            Risk Scoring
+          </Button>
 
-            {/* Divider */}
-            <div className="h-8 w-px bg-gray-300" />
+          {/* Divider */}
+          <div className="h-8 w-px bg-gray-300" />
 
-            {/* Dialect Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-gray-700 font-medium">Dialect:</span>
-              <Select value={selectedDialect} onValueChange={handleDialectChange}>
-                <SelectTrigger className="w-[180px] border-2 border-blue-300 focus:border-blue-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tagalog">Tagalog</SelectItem>
-                  <SelectItem value="cebuano">Cebuano</SelectItem>
-                  <SelectItem value="ilonggo">Ilonggo</SelectItem>
-                  <SelectItem value="ilocano">Ilocano</SelectItem>
-                  <SelectItem value="pangalatok">Pangalatok</SelectItem>
-                  <SelectItem value="kapampangan">Kapampangan</SelectItem>
-                  <SelectItem value="bicolano">Bicolano</SelectItem>
-                  <SelectItem value="waray">Waray</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Dialect Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 font-medium">Dialect:</span>
+            <Select value={selectedDialect} onValueChange={handleDialectChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tagalog">Tagalog</SelectItem>
+                <SelectItem value="cebuano">Cebuano</SelectItem>
+                <SelectItem value="ilonggo">Ilonggo</SelectItem>
+                <SelectItem value="ilocano">Ilocano</SelectItem>
+                <SelectItem value="pangalatok">Pangalatok</SelectItem>
+                <SelectItem value="kapampangan">Kapampangan</SelectItem>
+                <SelectItem value="bicolano">Bicolano</SelectItem>
+                <SelectItem value="waray">Waray</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Voice Input Toggle (visual only for now) */}
-            <div className="ml-auto">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-full" />
-              </div>
+          {/* Voice Input Toggle (visual only for now) */}
+          <div className="ml-auto">
+            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full" />
             </div>
           </div>
         </div>
