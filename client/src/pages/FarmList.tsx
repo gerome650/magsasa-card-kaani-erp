@@ -144,7 +144,23 @@ export default function FarmList() {
       {/* Crop Distribution Pie Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Crop Distribution</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Crop Distribution</CardTitle>
+            {cropFilter !== "all" && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setCropFilter("all")}
+              >
+                Clear Filter
+              </Button>
+            )}
+          </div>
+          {cropFilter !== "all" && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Showing farms growing: <Badge variant="outline">{cropFilter}</Badge>
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -158,9 +174,22 @@ export default function FarmList() {
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
+                onClick={(data) => {
+                  // Toggle filter: if clicking the same crop, clear filter; otherwise set new filter
+                  if (cropFilter === data.name) {
+                    setCropFilter("all");
+                  } else {
+                    setCropFilter(data.name);
+                  }
+                }}
+                cursor="pointer"
               >
                 {cropDistributionData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={COLORS[index % COLORS.length]}
+                    opacity={cropFilter === "all" || cropFilter === entry.name ? 1 : 0.3}
+                  />
                 ))}
               </Pie>
               <Tooltip formatter={(value: number) => [`${value} farms`, 'Count']} />

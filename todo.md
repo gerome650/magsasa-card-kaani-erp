@@ -1764,3 +1764,16 @@
 - [x] Add tooltip on hover showing exact counts
 - [x] Add chart title "Crop Distribution"
 - [x] Add percentage labels on pie slices
+
+
+## Enhancement: Interactive Pie Chart Filtering
+
+- [x] Add onClick handler to pie chart slices
+- [x] Update cropFilter state when slice is clicked
+- [x] Highlight active slice with opacity (inactive slices at 0.3 opacity)
+- [x] Add visual feedback (cursor pointer on hover)
+- [x] Crop filter dropdown automatically reflects pie chart selection (shared state)
+- [x] Add "Clear Filter" button when filter is active
+- [x] Click same slice to toggle off filter
+- [x] Show active filter indicator with badge near chart title
+- [x] Farm table updates automatically when filter changes (reactive)
