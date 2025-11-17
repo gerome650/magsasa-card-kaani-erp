@@ -2849,3 +2849,13 @@
 - [x] Add summary statistics overlay on map (farm count badge)
 - [x] Implement responsive design for mobile
 - [x] Add loading state while farms are loading
+
+
+## URL Synchronization Enhancement for Farms Page
+
+- [x] Implement debounced URL update (500ms delay) for filter changes
+- [x] Add useEffect with proper dependencies to sync URL with filter state
+- [x] Test that URL updates correctly after filter changes
+- [x] Verify no infinite render loops occur
+- [x] Test that shareable URLs work correctly when copied and pasted
+- [x] Ensure URL parameters persist across page refreshes

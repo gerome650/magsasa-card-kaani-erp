@@ -76,6 +76,29 @@ export default function Farms() {
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Debounced URL sync - update URL parameters after 500ms of no changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const params = new URLSearchParams();
+      
+      if (searchQuery) params.set("search", searchQuery);
+      if (dateRange?.from) params.set("startDate", dateRange.from.toISOString().split('T')[0]);
+      if (dateRange?.to) params.set("endDate", dateRange.to.toISOString().split('T')[0]);
+      if (selectedBarangay !== "all") params.set("barangay", selectedBarangay);
+      if (selectedCrop !== "all") params.set("crop", selectedCrop);
+      if (selectedStatus !== "all") params.set("status", selectedStatus);
+      
+      const newUrl = params.toString() ? `/farms?${params.toString()}` : "/farms";
+      
+      // Only update if URL actually changed to prevent unnecessary history entries
+      if (window.location.pathname + window.location.search !== newUrl) {
+        window.history.replaceState({}, "", newUrl);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus]);
+
   // Fetch farms from database via tRPC with search and date filters
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({
     search: debouncedSearch || undefined,
