@@ -1736,3 +1736,17 @@
 - [x] Add responsive design for mobile (flex-col on small screens)
 - [x] Update App.tsx to use FarmList as homepage
 - [x] Move old Dashboard to /dashboard route
+
+
+## New Feature: Summary Statistics Cards
+
+- [x] Calculate total farms count
+- [x] Calculate total area (sum of all farm sizes)
+- [x] Calculate active farms percentage
+- [x] Find most common crop type (using crop counts)
+- [x] Create 4 summary cards in a grid layout
+- [x] Add icons for each card (Tractor, Map, TrendingUp, Wheat)
+- [x] Display metrics with proper formatting (toFixed for decimals)
+- [x] Add percentage badge for active farms (green themed)
+- [x] Position cards above the main table
+- [x] Make cards responsive (4 cols on lg, 2 cols on sm, 1 col on mobile)

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Eye } from "lucide-react";
+import { Plus, Search, Eye, Tractor, Map, TrendingUp, Wheat } from "lucide-react";
 import { getFarms, type Farm } from "@/data/farmsData";
 
 export default function FarmList() {
@@ -33,6 +33,19 @@ export default function FarmList() {
     return matchesSearch && matchesStatus && matchesCrop;
   });
 
+  // Calculate statistics
+  const totalFarms = allFarms.length;
+  const totalArea = allFarms.reduce((sum, farm) => sum + farm.size, 0);
+  const activeFarms = allFarms.filter(farm => farm.status === 'active').length;
+  const activeFarmsPercentage = totalFarms > 0 ? (activeFarms / totalFarms) * 100 : 0;
+  
+  // Find most common crop
+  const cropCounts = allFarms.flatMap(farm => farm.crops).reduce((acc, crop) => {
+    acc[crop] = (acc[crop] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const mostCommonCrop = Object.entries(cropCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
   const getStatusBadge = (status: Farm['status']) => {
     const variants: Record<Farm['status'], { variant: "default" | "secondary" | "outline"; label: string }> = {
       active: { variant: "default", label: "Active" },
@@ -58,6 +71,64 @@ export default function FarmList() {
             Add New Farm
           </Link>
         </Button>
+      </div>
+
+      {/* Summary Statistics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Farms</CardTitle>
+            <Tractor className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalFarms}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Registered in system
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Area</CardTitle>
+            <Map className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalArea.toFixed(1)} ha</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Combined farm area
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Farms</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeFarms}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                {activeFarmsPercentage.toFixed(0)}%
+              </Badge>
+              {' '}of total farms
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Top Crop</CardTitle>
+            <Wheat className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold truncate">{mostCommonCrop}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Most common crop type
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
