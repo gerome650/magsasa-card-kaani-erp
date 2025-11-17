@@ -34,6 +34,7 @@ import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
 
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       {/* Public routes */}

@@ -1651,3 +1651,39 @@
 - [x] Green theme for profitability card
 - [x] Color-coded profit (green for positive, red for negative)
 - [x] Disclaimer about estimated prices
+
+
+## New Feature: Database Integration for Data Persistence
+
+- [x] Add web-db-user feature to project
+- [x] Design database schema for farms, boundaries, yields, costs
+- [x] Create Drizzle ORM schema definitions
+- [x] Run database migrations
+- [x] Create API endpoints for farm data CRUD operations
+- [x] Create API endpoints for boundary data
+- [x] Create API endpoints for yield records
+- [x] Create API endpoints for cost records
+- [ ] Load farm data from database on page mount
+- [ ] Load boundaries from database and render on map
+- [ ] Load yields from database into state
+- [ ] Load costs from database into state
+- [ ] Auto-save boundaries when Save Boundary is clicked
+- [ ] Auto-save yields when Record Harvest is submitted
+- [ ] Auto-save costs when Record Cost is submitted
+- [ ] Add loading indicators during data fetch
+- [ ] Add success/error toasts for save operations
+- [ ] Handle authentication redirect
+- [ ] Test data persistence across page refreshes
+- [ ] Test data persistence across browser sessions
+
+
+## New Feature: Map Loading Animation
+
+- [x] Add loading state for map initialization
+- [x] Create loading overlay with spinner
+- [x] Position loading overlay over map area
+- [x] Show loading animation while map is initializing
+- [x] Hide loading animation when map is ready
+- [x] Add Loader2 spinning icon
+- [x] Style loading overlay with semi-transparent background
+- [x] Add "Loading map..." text below spinner

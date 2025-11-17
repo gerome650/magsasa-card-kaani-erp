@@ -1,5 +1,7 @@
-import { useRoute, Link } from "wouter";
-import { useState } from "react";
+import { useRoute } from "wouter";
+import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,14 +30,65 @@ import {
   Sprout,
   Trash2,
   Coins,
+  Loader2,
 } from "lucide-react";
-import { getFarmById } from "@/data/farmsData";
+
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 
 export default function FarmDetail() {
   const [, params] = useRoute("/farms/:id");
-  const farm = params?.id ? getFarmById(params.id) : null;
+  const farmId = params?.id ? parseInt(params.id) : null;
+  
+  // Load farm data from database
+  const { data: farm, isLoading: farmLoading } = trpc.farms.getById.useQuery(
+    { id: farmId! },
+    { enabled: !!farmId }
+  );
+  
+  // Load boundaries from database
+  const { data: dbBoundaries } = trpc.boundaries.getByFarmId.useQuery(
+    { farmId: farmId! },
+    { enabled: !!farmId }
+  );
+  
+  // Load yields from database
+  const { data: dbYields } = trpc.yields.getByFarmId.useQuery(
+    { farmId: farmId! },
+    { enabled: !!farmId }
+  );
+  
+  // Load costs from database
+  const { data: dbCosts } = trpc.costs.getByFarmId.useQuery(
+    { farmId: farmId! },
+    { enabled: !!farmId }
+  );
+  
+  // Mutations for saving data
+  const saveBoundariesMutation = trpc.boundaries.save.useMutation({
+    onSuccess: () => toast.success("Boundaries saved successfully"),
+    onError: (error) => toast.error(`Failed to save boundaries: ${error.message}`),
+  });
+  
+  const createYieldMutation = trpc.yields.create.useMutation({
+    onSuccess: () => toast.success("Harvest record saved"),
+    onError: (error) => toast.error(`Failed to save harvest: ${error.message}`),
+  });
+  
+  const deleteYieldMutation = trpc.yields.delete.useMutation({
+    onSuccess: () => toast.success("Harvest record deleted"),
+    onError: (error) => toast.error(`Failed to delete harvest: ${error.message}`),
+  });
+  
+  const createCostMutation = trpc.costs.create.useMutation({
+    onSuccess: () => toast.success("Cost record saved"),
+    onError: (error) => toast.error(`Failed to save cost: ${error.message}`),
+  });
+  
+  const deleteCostMutation = trpc.costs.delete.useMutation({
+    onSuccess: () => toast.success("Cost record deleted"),
+    onError: (error) => toast.error(`Failed to delete cost: ${error.message}`),
+  });
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawnBoundaries, setDrawnBoundaries] = useState<google.maps.Polygon[]>([]);
   const [parcelAreas, setParcelAreas] = useState<number[]>([]);
@@ -51,6 +104,7 @@ export default function FarmDetail() {
   const [isCalculatingArea, setIsCalculatingArea] = useState(false);
   const [tempAreaPolygon, setTempAreaPolygon] = useState<google.maps.Polygon | null>(null);
   const [tempCalculatedArea, setTempCalculatedArea] = useState<number | null>(null);
+  const [isMapLoading, setIsMapLoading] = useState(true);
   
   // Yield tracking
   type YieldRecord = {
@@ -836,9 +890,18 @@ ${placemarks}
                   </div>
                 </div>
                 
-                <div className="h-96 rounded-lg overflow-hidden border">
+                <div className="h-96 rounded-lg overflow-hidden border relative">
+                  {isMapLoading && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <p className="mt-2 text-sm text-muted-foreground">Loading map...</p>
+                    </div>
+                  )}
                   <MapView
                     onMapReady={(map, google) => {
+                      // Hide loading overlay
+                      setIsMapLoading(false);
+                      
                       // Store map instance for map type switching
                       setMapInstance(map);
                       
