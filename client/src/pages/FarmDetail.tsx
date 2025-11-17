@@ -219,8 +219,63 @@ export default function FarmDetail() {
                   </div>
                 </div>
                 {calculatedArea && (
-                  <div className="text-sm text-muted-foreground">
-                    Calculated Area: <strong>{calculatedArea.toFixed(2)} hectares</strong>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Calculated Area: <strong>{calculatedArea.toFixed(2)} hectares</strong>
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        | Entered Size: <strong>{farm.size} hectares</strong>
+                      </span>
+                    </div>
+                    {(() => {
+                      const difference = Math.abs(calculatedArea - farm.size);
+                      const percentDiff = (difference / farm.size) * 100;
+                      
+                      if (percentDiff > 10) {
+                        return (
+                          <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-yellow-800">
+                                ⚠️ Area Mismatch Detected
+                              </p>
+                              <p className="text-xs text-yellow-700 mt-1">
+                                The drawn boundary area differs by {percentDiff.toFixed(1)}% from the entered farm size.
+                                {calculatedArea > farm.size 
+                                  ? ` The drawn area is ${difference.toFixed(2)} hectares larger.`
+                                  : ` The drawn area is ${difference.toFixed(2)} hectares smaller.`
+                                }
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                if (confirm(`Update farm size from ${farm.size} ha to ${calculatedArea.toFixed(2)} ha?`)) {
+                                  // TODO: Update farm size in backend
+                                  alert('Farm size would be updated to match drawn boundary');
+                                }
+                              }}
+                            >
+                              Update Size
+                            </Button>
+                          </div>
+                        );
+                      } else if (percentDiff > 5) {
+                        return (
+                          <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            ℹ️ Minor difference: {percentDiff.toFixed(1)}% ({difference.toFixed(2)} ha)
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                            ✓ Area matches entered size ({percentDiff.toFixed(1)}% difference)
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
                 <div className="h-96 rounded-lg overflow-hidden border">

@@ -1457,3 +1457,12 @@
 - [ ] Show boundary on farmer profile map view
 - [ ] Add boundary drawing to Add/Edit Farm dialogs
 - [ ] Validate boundary area matches entered farm size
+
+
+## Enhancement: Boundary Area Validation
+
+- [x] Calculate percentage difference between drawn area and entered farm size
+- [x] Display warning when difference exceeds 10%
+- [x] Show color-coded validation status (green=match, blue=minor, yellow=major difference)
+- [x] Add suggestion to update farm size to match drawn boundary
+- [x] Implement "Update Farm Size" button to sync with calculated area
