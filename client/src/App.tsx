@@ -27,6 +27,7 @@ import SupplierDeliveries from "./pages/SupplierDeliveries";
 import AuditLog from "./pages/AuditLog";
 import AuditArchive from "./pages/AuditArchive";
 import RetentionSettings from "./pages/RetentionSettings";
+import RolePermissions from "./pages/RolePermissions";
 
 function Router() {
   return (
@@ -177,6 +178,12 @@ function Router() {
             <RetentionSettings />
           </Layout>
         </ProtectedRoute>
+      </Route>
+      
+      <Route path="/role-permissions">
+        <Layout>
+          <RolePermissions />
+        </Layout>
       </Route>
       
       <Route path="/404" component={NotFound} />

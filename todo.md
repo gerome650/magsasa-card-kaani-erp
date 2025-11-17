@@ -1161,3 +1161,36 @@
 - [x] Update AutoArchiveManager to use configured retention period
 - [x] Add admin-only access control
 - [x] Show settings change in audit log
+
+
+## New Feature: Role-Based Access Control (RBAC) for Retention Settings
+
+### Permission System
+- [x] Create permission model (view, edit, delete for retention settings)
+- [x] Define role hierarchy (farmer < field_officer < manager < admin)
+- [x] Map permissions to roles
+- [x] Add permission checking utility functions
+
+### Access Control Implementation
+- [x] Restrict retention settings page access to authorized roles only
+- [x] Add permission checks for save/edit actions
+- [x] Disable UI elements for unauthorized users (read-only mode)
+- [x] Show permission badges indicating user's access level
+
+### Access Denied Handling
+- [x] Create access denied page/component
+- [x] Log unauthorized access attempts to audit log
+- [x] Show appropriate error messages for denied actions
+- [x] Add "View Permissions" link for unauthorized users
+
+### Role Management
+- [x] Create role permissions display page
+- [x] Show current user's permissions
+- [x] Display role hierarchy and capabilities
+- [ ] Add permission request workflow (optional)
+
+### Integration
+- [x] Update RetentionSettings page with RBAC checks
+- [x] Add permission indicators to UI
+- [x] Log access attempts in audit log
+- [ ] Add role-based navigation filtering

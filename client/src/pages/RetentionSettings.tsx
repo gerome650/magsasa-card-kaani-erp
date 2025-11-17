@@ -28,9 +28,20 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { addAuditLog } from "@/data/auditLogData";
+import { useLocation } from "wouter";
+import {
+  canModifyRetentionSettings,
+  canEnablePermanentDeletion,
+  canViewRetentionSettings,
+  getRoleDisplayName,
+  getRoleBadgeColor,
+  getRolePermissions,
+  PERMISSION_DESCRIPTIONS
+} from "@/lib/permissions";
 
 export default function RetentionSettings() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [retentionDays, setRetentionDays] = useState(retentionPolicy.retentionDays);
   const [autoArchiveEnabled, setAutoArchiveEnabled] = useState(retentionPolicy.autoArchiveEnabled);
   const [permanentDeletionEnabled, setPermanentDeletionEnabled] = useState(false);
@@ -67,11 +78,52 @@ export default function RetentionSettings() {
   const impact = getImpactPreview();
 
   const handleSave = () => {
+    if (!canEdit) {
+      // Log unauthorized access attempt
+      addAuditLog({
+        userId: user?.id || 'unknown',
+        userName: user?.name || 'Unknown User',
+        userRole: user?.role || 'farmer',
+        actionType: 'access_denied',
+        actionDescription: `Attempted to modify retention settings without permission`,
+        affectedItemsCount: 0,
+        affectedItems: ['retention-settings'],
+        details: {
+          requiredPermission: 'retention_settings:edit',
+          userRole: user?.role
+        },
+        category: 'security'
+      });
+      
+      toast.error("Access Denied", {
+        description: "You don't have permission to modify retention settings"
+      });
+      return;
+    }
+    
     setConfirmAction('save');
     setConfirmDialogOpen(true);
   };
 
   const handleDisableAutoArchive = (checked: boolean) => {
+    if (!canEdit) {
+      addAuditLog({
+        userId: user?.id || 'unknown',
+        userName: user?.name || 'Unknown User',
+        userRole: user?.role || 'farmer',
+        actionType: 'access_denied',
+        actionDescription: `Attempted to toggle auto-archive without permission`,
+        affectedItemsCount: 0,
+        affectedItems: ['auto-archive-setting'],
+        details: {
+          requiredPermission: 'retention_settings:edit',
+          userRole: user?.role
+        },
+        category: 'security'
+      });
+      return;
+    }
+    
     if (!checked && autoArchiveEnabled) {
       setConfirmAction('disable');
       setConfirmDialogOpen(true);
@@ -81,6 +133,28 @@ export default function RetentionSettings() {
   };
 
   const handleReset = () => {
+    if (!canEdit) {
+      addAuditLog({
+        userId: user?.id || 'unknown',
+        userName: user?.name || 'Unknown User',
+        userRole: user?.role || 'farmer',
+        actionType: 'access_denied',
+        actionDescription: `Attempted to reset retention settings without permission`,
+        affectedItemsCount: 0,
+        affectedItems: ['retention-settings'],
+        details: {
+          requiredPermission: 'retention_settings:edit',
+          userRole: user?.role
+        },
+        category: 'security'
+      });
+      
+      toast.error("Access Denied", {
+        description: "You don't have permission to reset retention settings"
+      });
+      return;
+    }
+    
     setConfirmAction('reset');
     setConfirmDialogOpen(true);
   };
@@ -132,18 +206,26 @@ export default function RetentionSettings() {
 
   const presetDays = [30, 60, 90, 180];
 
-  // Check if user is admin/manager
-  const isAdmin = user?.role === 'manager' || user?.role === 'supplier';
+  // Check permissions
+  const canView = canViewRetentionSettings(user?.role);
+  const canEdit = canModifyRetentionSettings(user?.role);
+  const canDelete = canEnablePermanentDeletion(user?.role);
 
-  if (!isAdmin) {
+  if (!canView) {
     return (
       <div className="container mx-auto py-8">
         <Card>
           <CardContent className="py-12 text-center">
             <Settings className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-2xl font-bold mb-2">Administrator Access Only</h2>
-            <p className="text-muted-foreground">
-              Retention settings are only accessible to administrators.
+            <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">
+              You do not have permission to view retention settings.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Required permission: <strong>retention_settings:view</strong>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Your role: <strong>{user?.role ? getRoleDisplayName(user.role) : 'Unknown'}</strong>
             </p>
           </CardContent>
         </Card>
@@ -156,12 +238,26 @@ export default function RetentionSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Retention Settings</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold">Retention Settings</h1>
+            <Badge className={`${getRoleBadgeColor(user?.role || 'farmer')} text-white`}>
+              {getRoleDisplayName(user?.role || 'farmer')}
+            </Badge>
+            {!canEdit && (
+              <Badge 
+                variant="outline" 
+                className="border-orange-500 text-orange-600 cursor-pointer hover:bg-orange-50"
+                onClick={() => setLocation('/role-permissions')}
+              >
+                Read-Only (View Permissions)
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             Configure data retention and archiving policies
           </p>
         </div>
-        {hasChanges && (
+        {hasChanges && canEdit && (
           <Badge className="bg-yellow-500 text-white">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Unsaved Changes
@@ -225,11 +321,12 @@ export default function RetentionSettings() {
             </div>
             <Slider
               value={[retentionDays]}
-              onValueChange={(value) => setRetentionDays(value[0])}
+              onValueChange={(value) => canEdit && setRetentionDays(value[0])}
               min={30}
               max={180}
               step={1}
               className="mb-4"
+              disabled={!canEdit}
             />
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>30 days</span>
@@ -246,7 +343,8 @@ export default function RetentionSettings() {
                   key={days}
                   variant={retentionDays === days ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setRetentionDays(days)}
+                  onClick={() => canEdit && setRetentionDays(days)}
+                  disabled={!canEdit}
                 >
                   {days} days
                 </Button>
@@ -305,6 +403,7 @@ export default function RetentionSettings() {
               id="auto-archive"
               checked={autoArchiveEnabled}
               onCheckedChange={handleDisableAutoArchive}
+              disabled={!canEdit}
             />
           </div>
 
@@ -356,7 +455,8 @@ export default function RetentionSettings() {
             <Switch
               id="permanent-deletion"
               checked={permanentDeletionEnabled}
-              onCheckedChange={setPermanentDeletionEnabled}
+              onCheckedChange={(checked) => canDelete && setPermanentDeletionEnabled(checked)}
+              disabled={!canDelete}
             />
           </div>
 
@@ -368,11 +468,12 @@ export default function RetentionSettings() {
                 </Label>
                 <Slider
                   value={[permanentDeletionDays]}
-                  onValueChange={(value) => setPermanentDeletionDays(value[0])}
+                  onValueChange={(value) => canDelete && setPermanentDeletionDays(value[0])}
                   min={180}
                   max={730}
                   step={30}
                   className="mb-2"
+                  disabled={!canDelete}
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>180 days (6 months)</span>
@@ -400,7 +501,7 @@ export default function RetentionSettings() {
       <div className="flex gap-4">
         <Button
           onClick={handleSave}
-          disabled={!hasChanges}
+          disabled={!hasChanges || !canEdit}
           className="flex-1"
         >
           <Save className="w-4 h-4 mr-2" />
@@ -409,6 +510,7 @@ export default function RetentionSettings() {
         <Button
           variant="outline"
           onClick={handleReset}
+          disabled={!canEdit}
         >
           <RotateCcw className="w-4 h-4 mr-2" />
           Reset to Defaults
