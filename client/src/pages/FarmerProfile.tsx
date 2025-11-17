@@ -15,15 +15,18 @@ import {
 } from 'lucide-react';
 import { farmersData } from '@/data/farmersData';
 import { harvestData } from '@/data/harvestData';
+import { getFarms } from '@/data/farmsData';
 import FarmerHistory from '@/components/FarmerHistory';
 
 export default function FarmerProfile() {
   const [, params] = useRoute('/farmers/:id');
   const farmerId = params?.id;
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'analytics' | 'activity'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'farms' | 'history' | 'analytics' | 'activity'>('overview');
 
   const farmer = farmersData.find(f => f.id === farmerId);
   const farmerHarvests = harvestData.filter(h => h.farmerId === farmerId);
+  const farmerFarms = getFarms().filter(farm => farm.farmerId === farmerId);
+  const totalFarmArea = farmerFarms.reduce((sum, farm) => sum + farm.size, 0);
 
   if (!farmer) {
     return (
@@ -146,7 +149,7 @@ export default function FarmerProfile() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                <span>Total Land: {farmer.totalLandArea} hectares</span>
+                <span>Total Land: {totalFarmArea.toFixed(2)} hectares ({farmerFarms.length} farms)</span>
               </div>
             </div>
           </div>
@@ -220,6 +223,16 @@ export default function FarmerProfile() {
             Overview
           </button>
           <button
+            onClick={() => setActiveTab('farms')}
+            className={`pb-3 px-1 border-b-2 transition-colors ${
+              activeTab === 'farms'
+                ? 'border-green-600 text-green-600 font-medium'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Farms ({farmerFarms.length})
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
             className={`pb-3 px-1 border-b-2 transition-colors ${
               activeTab === 'history'
@@ -253,6 +266,59 @@ export default function FarmerProfile() {
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'farms' && (
+        <div className="space-y-4">
+          {farmerFarms.length === 0 ? (
+            <Card className="p-12 text-center">
+              <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No farms registered yet</p>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {farmerFarms.map((farm) => (
+                <Card key={farm.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-lg">{farm.name}</h3>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="w-4 h-4" />
+                        {farm.location.barangay}, {farm.location.municipality}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {farm.crops.map((crop) => (
+                          <span key={crop} className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                            {crop}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Soil Type:</span>
+                          <span className="ml-2 font-medium">{farm.soilType}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Irrigation:</span>
+                          <span className="ml-2 font-medium">{farm.irrigationType}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">{farm.size} ha</div>
+                      <p className="text-sm text-muted-foreground">Farm Size</p>
+                      <Link href={`/farms/${farm.id}`}>
+                        <Button variant="outline" size="sm" className="mt-2">
+                          View Details
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Best Performing Crop */}

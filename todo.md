@@ -1397,3 +1397,30 @@
 - [x] Connect to existing FarmerProfile component
 - [x] Add loading states and empty state messages
 - [x] Test with all 158 farmers
+
+
+## New Feature: Multi-Farm Management for Farmers
+
+### Farmer Cards Enhancement
+- [x] Add farm count badge to farmer cards
+- [x] Display total cultivated area across all farms
+- [x] Show primary crop from largest farm
+- [ ] Add visual indicator for multi-farm farmers (e.g., icon or badge)
+
+### Farmer Profile Page
+- [x] Display farm count and total area in header statistics
+- [x] Show list of all farms owned by farmer in Farms tab
+- [ ] Add farm assignment interface
+- [x] Display aggregated statistics across all farms
+
+### Farm Statistics
+- [x] Calculate total area across all farms
+- [x] Count number of farms per farmer
+- [x] Identify primary crop (most common across farms)
+- [ ] Show farm distribution by barangay
+
+### Integration
+- [x] Update Farmers page to show multi-farm data
+- [x] Update FarmerProfile page with farms section
+- [x] Link farms to farmers in farmsData
+- [x] Test with farmers who have multiple farms

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { farmersData, type Farmer } from '@/data/farmersData';
 import { harvestData } from '@/data/harvestData';
+import { getFarms } from '@/data/farmsData';
 import Pagination from '@/components/Pagination';
 import FarmerQuickView from '@/components/FarmerQuickView';
 import AdvancedFilters, { type FilterOptions } from '@/components/AdvancedFilters';
@@ -30,6 +31,19 @@ export default function Farmers() {
     membershipYear: 'all',
     performance: 'all',
   });
+
+  const allFarms = getFarms();
+  
+  // Helper function to get farmer's farms
+  const getFarmerFarms = (farmerId: string) => {
+    return allFarms.filter(farm => farm.farmerId === farmerId);
+  };
+  
+  // Helper function to calculate total area
+  const getTotalArea = (farmerId: string) => {
+    const farms = getFarmerFarms(farmerId);
+    return farms.reduce((sum, farm) => sum + farm.size, 0);
+  };
 
   // Debug logging
   console.log('Farmers component render - currentPage:', currentPage);
@@ -211,12 +225,12 @@ export default function Farmers() {
 
             <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-xs text-muted-foreground">Land Area</p>
-                <p className="font-semibold">{farmer.totalLandArea} ha</p>
+                <p className="text-xs text-muted-foreground">Total Area</p>
+                <p className="font-semibold">{getTotalArea(farmer.id).toFixed(2)} ha</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Farms</p>
-                <p className="font-semibold">{farmer.activeFarms}</p>
+                <p className="font-semibold">{getFarmerFarms(farmer.id).length}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Harvest</p>
