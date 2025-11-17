@@ -128,7 +128,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
                     {showBadge && (
-                      <Badge className="ml-auto bg-red-500 text-white">
+                      <Badge className="ml-auto bg-red-500 text-white animate-pulse">
                         {pendingRequestsCount}
                       </Badge>
                     )}
@@ -171,7 +171,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
                     {showBadge && (
-                      <Badge className="ml-auto bg-red-500 text-white hover:bg-red-600">
+                      <Badge className="ml-auto bg-red-500 text-white hover:bg-red-600 animate-pulse">
                         {pendingRequestsCount}
                       </Badge>
                     )}

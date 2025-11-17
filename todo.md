@@ -1254,3 +1254,11 @@
 - [x] Show badge only for managers/admins
 - [x] Update badge count when requests are created/reviewed
 - [x] Hide badge when count is 0
+
+
+## Enhancement: Pulse Animation for Notification Badge
+
+- [x] Create CSS pulse animation with keyframes
+- [x] Apply animation to notification badge
+- [x] Use subtle, professional timing (not distracting)
+- [x] Test animation on both mobile and desktop
