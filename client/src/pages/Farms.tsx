@@ -69,6 +69,9 @@ export default function Farms() {
   const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get("status") || "all");
   const [selectedFarms, setSelectedFarms] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // Check if user came from Analytics page
+  const fromAnalytics = searchParams.get("from") === "analytics";
 
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -537,6 +540,7 @@ export default function Farms() {
         selectedBarangay={selectedBarangay}
         selectedCrop={selectedCrop}
         selectedStatus={selectedStatus}
+        showBackToAnalytics={fromAnalytics}
         onClearSearch={() => setSearchQuery("")}
         onClearDateRange={() => setDateRange(undefined)}
         onClearBarangay={() => setSelectedBarangay("all")}

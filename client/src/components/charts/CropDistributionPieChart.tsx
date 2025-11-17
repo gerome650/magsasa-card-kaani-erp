@@ -106,8 +106,8 @@ export function CropDistributionPieChart({ farms }: CropDistributionPieChartProp
       if (elements.length > 0) {
         const index = elements[0].index;
         const crop = chartData.labels[index];
-        // Navigate to Farms page with crop filter
-        navigate(`/farms?crop=${encodeURIComponent(crop)}`);
+        // Navigate to Farms page with crop filter and analytics referrer
+        navigate(`/farms?crop=${encodeURIComponent(crop)}&from=analytics`);
       }
     },
   };

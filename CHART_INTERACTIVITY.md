@@ -258,12 +258,52 @@ Active Filters: [Crop: Rice] [X] [Municipality: Los Baños] [X] [Status: Active]
 
 ---
 
+## Back to Analytics Navigation
+
+**Location**: Farms page breadcrumb (when navigated from Analytics)
+
+**Functionality**:
+- Appears automatically when user clicks a chart in the Analytics dashboard
+- Positioned at the top of the filter breadcrumb component
+- Styled as a subtle ghost button with left arrow icon
+- Returns user to `/analytics` page with one click
+
+**How It Works**:
+1. User clicks any chart element in Analytics dashboard
+2. Navigation URL includes `?from=analytics` parameter
+3. Farms page detects the parameter and shows "Back to Analytics Dashboard" link
+4. Link does NOT appear when navigating directly to `/farms`
+
+**Example Flow**:
+```
+Analytics Dashboard → Click "Rice" in Crop Distribution Chart
+  ↓
+Farms Page (/farms?crop=Rice&from=analytics)
+  ↓ Shows:
+  [← Back to Analytics Dashboard]
+  Active Filters: [Crop: Rice] [X]
+```
+
+**Implementation**:
+```typescript
+// Chart navigation includes referrer
+navigate(`/farms?crop=${crop}&from=analytics`);
+
+// Farms page detects referrer
+const fromAnalytics = searchParams.get("from") === "analytics";
+
+// FilterBreadcrumb shows link conditionally
+<FilterBreadcrumb showBackToAnalytics={fromAnalytics} />
+```
+
+---
+
 ## Future Enhancements
 
-- [ ] Add "Back to Analytics" quick link from filtered Farms page
 - [ ] Add filter history/saved filter sets
 - [ ] Implement advanced analytics with multi-level drill-down
 - [ ] Add export filtered results directly from breadcrumb
+- [ ] Add "View in Analytics" link from individual farm detail pages
 
 ---
 

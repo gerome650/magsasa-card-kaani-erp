@@ -83,8 +83,8 @@ export function MunicipalityBarChart({ farms }: MunicipalityBarChartProps) {
       if (elements.length > 0) {
         const index = elements[0].index;
         const municipality = chartData.labels[index];
-        // Navigate to Farms page with municipality filter
-        navigate(`/farms?barangay=${encodeURIComponent(municipality)}`);
+        // Navigate to Farms page with municipality filter and analytics referrer
+        navigate(`/farms?barangay=${encodeURIComponent(municipality)}&from=analytics`);
       }
     },
     scales: {

@@ -59,6 +59,15 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  // Check if user is using demo authentication (stored in localStorage)
+  const demoUser = localStorage.getItem('magsasa_user');
+  if (demoUser) {
+    // User is logged in with demo account, redirect to /login instead of OAuth
+    window.location.href = '/login';
+    return;
+  }
+
+  // Otherwise use OAuth login
   window.location.href = getLoginUrl();
 };
 

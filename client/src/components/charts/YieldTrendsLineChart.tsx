@@ -119,8 +119,8 @@ export function YieldTrendsLineChart({ farms }: YieldTrendsLineChartProps) {
         const month = date.getMonth();
         const lastDay = new Date(year, month + 1, 0).getDate();
         const endDate = `${monthKey}-${lastDay.toString().padStart(2, '0')}`;
-        // Navigate to Farms page with date range filter
-        navigate(`/farms?startDate=${startDate}&endDate=${endDate}`);
+        // Navigate to Farms page with date range filter and analytics referrer
+        navigate(`/farms?startDate=${startDate}&endDate=${endDate}&from=analytics`);
       }
     },
     scales: {

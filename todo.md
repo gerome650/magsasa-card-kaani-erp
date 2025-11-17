@@ -2413,3 +2413,44 @@
 - [ ] Test date range formatting is human-readable
 - [ ] Test multiple filters display in logical order
 - [ ] Save checkpoint after implementation
+
+
+## Back to Analytics Quick Link
+
+### FilterBreadcrumb Enhancement
+- [x] Add "Back to Analytics" link to FilterBreadcrumb component
+- [x] Show link only when user came from Analytics page
+- [x] Position link on the left side of breadcrumb bar
+- [x] Add arrow icon for visual clarity
+- [x] Style as subtle link (not primary button)
+
+### Referrer Tracking
+- [x] Add referrer parameter to chart navigation URLs
+- [x] Update MunicipalityBarChart to include ?from=analytics
+- [x] Update CropDistributionPieChart to include ?from=analytics
+- [x] Update YieldTrendsLineChart to include ?from=analytics
+- [x] Read referrer from URL in Farms page
+
+### Testing
+- [ ] Test clicking chart navigates with referrer parameter
+- [ ] Test "Back to Analytics" link appears when from=analytics
+- [ ] Test link does not appear when navigating directly to Farms
+- [ ] Test clicking link returns to Analytics page
+- [ ] Update documentation with navigation flow
+- [ ] Save checkpoint after implementation
+
+
+## Fix OAuth Callback Error for Demo Login
+
+### Issue
+- [x] OAuth callback error occurs when using demo username/password login
+- [x] Demo authentication needs to bypass OAuth backend entirely
+- [x] AuthContext currently tries to authenticate through OAuth API
+
+### Solution
+- [x] Update AuthContext to detect demo credentials (already client-side only)
+- [x] Bypass OAuth API calls for demo users (updated main.tsx redirect logic)
+- [x] Store demo user session in localStorage only (already implemented)
+- [x] Ensure role-based routing works with demo sessions (ProtectedRoute uses AuthContext)
+- [ ] Test all three demo accounts (farmer, officer, manager)
+- [ ] Verify no OAuth errors in browser console

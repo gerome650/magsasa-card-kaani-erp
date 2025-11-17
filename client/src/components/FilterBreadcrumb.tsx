@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Filter } from "lucide-react";
+import { X, Filter, ArrowLeft } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { Link } from "wouter";
 
 interface FilterBreadcrumbProps {
   searchQuery?: string;
@@ -10,6 +11,7 @@ interface FilterBreadcrumbProps {
   selectedBarangay?: string;
   selectedCrop?: string;
   selectedStatus?: string;
+  showBackToAnalytics?: boolean;
   onClearSearch?: () => void;
   onClearDateRange?: () => void;
   onClearBarangay?: () => void;
@@ -24,6 +26,7 @@ export function FilterBreadcrumb({
   selectedBarangay,
   selectedCrop,
   selectedStatus,
+  showBackToAnalytics = false,
   onClearSearch,
   onClearDateRange,
   onClearBarangay,
@@ -92,6 +95,22 @@ export function FilterBreadcrumb({
 
   return (
     <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
+      {/* Back to Analytics Link */}
+      {showBackToAnalytics && (
+        <div className="mb-3 pb-3 border-b border-border">
+          <Link href="/analytics">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Analytics Dashboard
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         {/* Active Filters Section */}
         <div className="flex items-center gap-2 flex-wrap">
