@@ -2604,3 +2604,11 @@
 - [x] Add active state highlighting when on KaAni page
 - [x] Ensure responsive design on mobile devices
 - [x] Test navigation from all pages
+
+### Update KaAni Button to Black Oval Style
+- [x] Change KaAni button to black oval background (bg-black)
+- [x] Update icon and text to white color
+- [x] Add rounded-full styling for oval shape
+- [x] Ensure proper padding for oval appearance (px-4 py-2)
+- [x] Test on both mobile and desktop views
+- [x] Verify contrast and accessibility

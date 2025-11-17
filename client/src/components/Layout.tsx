@@ -106,12 +106,12 @@ export default function Layout({ children }: LayoutProps) {
           {/* KaAni AI Button - Centered */}
           <Link href="/kaani">
             <Button
-              variant={isActive('/kaani') ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
-              className={isActive('/kaani') ? 'bg-green-600 hover:bg-green-700' : ''}
+              className="bg-black hover:bg-gray-800 text-white rounded-full px-4 py-2"
             >
-              <MessageCircle className="w-4 h-4 mr-1" />
-              <span className="text-xs">KaAni</span>
+              <MessageCircle className="w-4 h-4 mr-1.5" />
+              <span className="text-xs font-medium">KaAni</span>
             </Button>
           </Link>
           
@@ -172,11 +172,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="px-4 py-4 border-b">
             <Link href="/kaani">
               <Button
-                variant={isActive('/kaani') ? 'default' : 'outline'}
-                className={`w-full justify-start ${isActive('/kaani') ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50 hover:text-green-600 hover:border-green-600'}`}
+                variant="ghost"
+                className="w-full justify-start bg-black hover:bg-gray-800 text-white rounded-full px-4 py-2.5"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
-                Ask KaAni AI
+                <span className="font-medium">Ask KaAni AI</span>
               </Button>
             </Link>
           </div>
