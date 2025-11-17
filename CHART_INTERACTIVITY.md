@@ -221,14 +221,49 @@ client/src/
 
 ---
 
+## Filter Breadcrumb Navigation
+
+**Location**: Farms page, above the farm list
+
+**Features**:
+- **Visual Filter Summary**: Displays all active filters as styled badges
+- **Individual Clear Buttons**: Each filter badge has an X button to remove that specific filter
+- **Clear All Button**: Appears when 2+ filters are active for quick reset
+- **Smart Display**: Only shows when at least one filter is active
+- **URL Sync**: Clearing filters automatically updates the URL
+
+**Filter Badge Format**:
+- Search: `Search: [query]`
+- Municipality: `Municipality: [name]`
+- Crop: `Crop: [type]`
+- Status: `Status: [status]`
+- Date Range: `Date Range: MMM d, yyyy - MMM d, yyyy`
+
+**Example**:
+```
+Active Filters: [Crop: Rice] [X] [Municipality: Los Baños] [X] [Status: Active] [X]  [Clear All]
+3 filters applied
+```
+
+**Implementation**:
+```typescript
+// File: client/src/components/FilterBreadcrumb.tsx
+<FilterBreadcrumb
+  searchQuery={searchQuery}
+  selectedCrop={selectedCrop}
+  onClearCrop={() => setSelectedCrop("all")}
+  onClearAll={clearAllFilters}
+/>
+```
+
+---
+
 ## Future Enhancements
 
-- [ ] Add breadcrumb navigation showing active filters
-- [ ] Implement filter chips with individual clear buttons
 - [ ] Add "Back to Analytics" quick link from filtered Farms page
-- [ ] Support multiple filter combinations (e.g., crop + municipality)
 - [ ] Add filter history/saved filter sets
 - [ ] Implement advanced analytics with multi-level drill-down
+- [ ] Add export filtered results directly from breadcrumb
 
 ---
 

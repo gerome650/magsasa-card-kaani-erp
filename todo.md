@@ -2385,3 +2385,31 @@
 - [ ] Test chart interactivity after login
 - [ ] Document demo credentials in README
 - [ ] Add note that OAuth can be re-enabled for production
+
+
+## Breadcrumb Navigation for Active Filters
+
+### FilterBreadcrumb Component
+- [x] Create FilterBreadcrumb component in components folder
+- [x] Display active filters as breadcrumb chips/badges
+- [x] Add individual X button to each filter chip
+- [x] Show filter type and value (e.g., "Crop: Rice", "Municipality: Los Baños")
+- [x] Format date range filters as readable text (e.g., "Jan 1 - Jan 31, 2024")
+- [x] Add "Clear All" button when multiple filters are active
+- [x] Style breadcrumb to match Robinhood theme
+
+### Integration with Farms Page
+- [x] Add FilterBreadcrumb above farm list
+- [x] Pass all active filter states as props
+- [x] Connect individual clear handlers to filter state setters
+- [x] Update URL when individual filters are cleared (handled by existing useEffect)
+- [x] Show breadcrumb only when at least one filter is active
+- [x] Add smooth transition animation when filters change (CSS transitions)
+
+### Testing
+- [ ] Test clearing individual filters updates URL and farm list
+- [ ] Test "Clear All" button removes all filters
+- [ ] Test breadcrumb displays correctly for each filter type
+- [ ] Test date range formatting is human-readable
+- [ ] Test multiple filters display in logical order
+- [ ] Save checkpoint after implementation

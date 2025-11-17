@@ -45,6 +45,7 @@ import { DateRangePicker } from "@/components/DateRangePicker";
 import { DateRange } from "react-day-picker";
 import { FilterChips } from "@/components/FilterChips";
 import { HighlightText } from "@/components/HighlightText";
+import { FilterBreadcrumb } from "@/components/FilterBreadcrumb";
 
 export default function Farms() {
   const [, navigate] = useLocation();
@@ -528,6 +529,27 @@ export default function Farms() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Filter Breadcrumb - Shows active filters with individual clear buttons */}
+      <FilterBreadcrumb
+        searchQuery={searchQuery}
+        dateRange={dateRange}
+        selectedBarangay={selectedBarangay}
+        selectedCrop={selectedCrop}
+        selectedStatus={selectedStatus}
+        onClearSearch={() => setSearchQuery("")}
+        onClearDateRange={() => setDateRange(undefined)}
+        onClearBarangay={() => setSelectedBarangay("all")}
+        onClearCrop={() => setSelectedCrop("all")}
+        onClearStatus={() => setSelectedStatus("all")}
+        onClearAll={() => {
+          setSearchQuery("");
+          setDateRange(undefined);
+          setSelectedBarangay("all");
+          setSelectedCrop("all");
+          setSelectedStatus("all");
+        }}
+      />
 
       {/* Filter Chips */}
       <FilterChips
