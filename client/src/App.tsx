@@ -38,6 +38,7 @@ import DebugFarm from "./pages/DebugFarm";
 import FarmNew from "./pages/FarmNew";
 import TRPCClientTest from "./pages/TRPCClientTest";
 import SkeletonDemo from "./pages/SkeletonDemo";
+import Analytics from "./pages/Analytics";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -220,6 +221,13 @@ function Router() {
       <Route path="/my-requests">
         <Layout>
           <MyRequests />
+        </Layout>
+      </Route>
+
+      {/* Analytics Route */}
+      <Route path="/analytics">
+        <Layout>
+          <Analytics />
         </Layout>
       </Route>
 

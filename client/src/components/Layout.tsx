@@ -16,7 +16,8 @@ import {
   Box,
   FileText,
   Shield,
-  MapPin
+  MapPin,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'] },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['manager', 'field_officer'] },
     { name: 'Orders', href: '/supplier', icon: Package, roles: ['supplier'] },
     { name: 'Inventory', href: '/supplier/inventory', icon: Box, roles: ['supplier'] },
     { name: 'Deliveries', href: '/supplier/deliveries', icon: Truck, roles: ['supplier'] },

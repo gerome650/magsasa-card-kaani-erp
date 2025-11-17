@@ -2242,3 +2242,67 @@
 - [ ] Test clear buttons (manual testing required)
 - [ ] Create documentation for search feature
 - [ ] Save checkpoint after implementation
+
+
+## Analytics Dashboard with Chart.js
+
+### Setup and Installation
+- [x] Install chart.js and react-chartjs-2 (v4.5.1 and v5.3.1)
+- [x] Create Analytics page component (Analytics.tsx)
+- [x] Add Analytics route to App.tsx (/analytics)
+- [x] Add navigation link to Analytics (Layout.tsx with BarChart3 icon)
+
+### Farms by Municipality Chart
+- [x] Create BarChart component for farms by municipality (MunicipalityBarChart.tsx)
+- [x] Aggregate farm counts by municipality (Record<string, number>)
+- [x] Configure horizontal bar chart (indexAxis: 'y')
+- [x] Add colors and labels (blue-500 with border)
+- [x] Add responsive sizing (maintainAspectRatio: false, h-[300px])
+- [x] Add tooltips with farm counts (custom callback with plural handling)
+- [ ] Add click interaction to filter farms (future enhancement)
+
+### Crop Distribution Chart
+- [x] Create PieChart component for crop distribution (CropDistributionPieChart.tsx)
+- [x] Aggregate crop counts across all farms (Record<string, number>)
+- [x] Configure pie chart with colors (8 distinct colors)
+- [x] Add legend with crop names (position: 'right')
+- [x] Add percentage labels (custom tooltip callback)
+- [x] Add tooltips with counts (farm count + percentage)
+- [x] Add responsive sizing (maintainAspectRatio: false, h-[300px])
+
+### Yield Trends Chart
+- [x] Create LineChart component for yield trends (YieldTrendsLineChart.tsx)
+- [x] Aggregate yield data by month (startOfMonth grouping)
+- [x] Calculate average yields over time (total / count)
+- [x] Configure line chart with time axis (format: 'MMM yyyy')
+- [x] Add tooltips with yield values (custom callback: 't/ha')
+- [x] Add responsive sizing (maintainAspectRatio: false, h-[300px])
+- [x] Add filled area under line (fill: true with green gradient)
+- [ ] Add multiple lines for different crops (future enhancement)
+- [ ] Add date range selector (future enhancement)
+
+### Dashboard Statistics
+- [x] Create summary cards (total farms, total area, avg yield, activity rate)
+- [x] Add icons for each stat (Wheat, MapPin, TrendingUp, Activity)
+- [x] Calculate percentage changes (active farms percentage)
+- [x] Add secondary metrics (avg ha/farm, active count)
+- [ ] Add trend indicators (up/down arrows) (future enhancement)
+- [ ] Add color coding (green for positive, red for negative) (future enhancement)
+
+### Dashboard Layout
+- [x] Create responsive grid layout (1 col mobile, 4 cols desktop for stats)
+- [x] Position charts in cards (2 col grid for bar/pie, full width for line)
+- [x] Add chart titles and descriptions (with icons)
+- [x] Add loading states for charts (skeleton cards)
+- [x] Add empty states when no data ("No data available" messages)
+- [ ] Add export buttons for charts (future enhancement)
+- [ ] Add date range filter for all charts (future enhancement)
+
+### Testing & Documentation
+- [x] Charts render with real farm data
+- [x] Responsive behavior (grid collapses on mobile)
+- [x] Empty states display when no data
+- [ ] Test all charts with sample data (manual testing required)
+- [ ] Test chart interactions (manual testing required)
+- [ ] Create documentation for dashboard
+- [ ] Save checkpoint after implementation
