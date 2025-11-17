@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Trash2, Edit2, Check, X } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, Search, XCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ interface ConversationSidebarProps {
   onNewConversation: () => void;
   onDeleteConversation: (id: number) => void;
   onRenameConversation: (id: number, newTitle: string) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
 export default function ConversationSidebar({
@@ -26,6 +28,8 @@ export default function ConversationSidebar({
   onNewConversation,
   onDeleteConversation,
   onRenameConversation,
+  searchQuery,
+  onSearchChange,
 }: ConversationSidebarProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -68,7 +72,7 @@ export default function ConversationSidebar({
   return (
     <div className="w-80 bg-card border-r flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b space-y-3">
         <Button
           onClick={onNewConversation}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -76,15 +80,58 @@ export default function ConversationSidebar({
           <Plus className="w-4 h-4 mr-2" />
           New Conversation
         </Button>
+        
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search conversations..."
+            className="w-full pl-9 pr-9 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-background"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full transition-colors"
+              aria-label="Clear search"
+            >
+              <XCircle className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
+        {/* Search result count */}
+        {searchQuery && (
+          <div className="px-4 py-2 text-xs text-muted-foreground border-b">
+            {conversations.length === 0 ? (
+              <span>No conversations found</span>
+            ) : (
+              <span>
+                {conversations.length} result{conversations.length !== 1 ? 's' : ''} found
+              </span>
+            )}
+          </div>
+        )}
+        
         {conversations.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="text-sm">No conversations yet</p>
-            <p className="text-xs mt-1">Start a new conversation with KaAni</p>
+            {searchQuery ? (
+              <>
+                <p className="text-sm">No conversations found</p>
+                <p className="text-xs mt-1">Try a different search term</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">No conversations yet</p>
+                <p className="text-xs mt-1">Start a new conversation with KaAni</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="p-2 space-y-1">

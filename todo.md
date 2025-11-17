@@ -2559,3 +2559,36 @@
 - [x] Test conversation persistence across page refreshes
 - [x] Test empty state handling
 - [x] Create documentation
+
+
+## Conversation Search Feature
+
+### Backend Implementation
+- [x] Add conversations.search tRPC query with full-text search
+- [x] Implement SQL LIKE queries for conversation titles
+- [x] Implement SQL LIKE queries for message content
+- [x] Return matching conversations with message count
+- [x] Add debounce support for search queries
+
+### Frontend Implementation
+- [x] Add search input to ConversationSidebar component
+- [x] Implement useDebounce hook for search input (300ms delay)
+- [x] Add Search icon and clear button to input
+- [x] Filter conversations based on search query
+- [ ] Highlight matching text in conversation titles (future enhancement)
+- [x] Show "No results found" empty state
+- [x] Display search result count
+
+### UI/UX Enhancements
+- [ ] Add search result highlighting (yellow background) (future enhancement)
+- [ ] Show snippet of matching message content (future enhancement)
+- [x] Add "Clear search" button when query exists
+- [x] Preserve active conversation during search
+- [ ] Add keyboard shortcuts (Ctrl+K to focus search) (future enhancement)
+
+### Testing & Documentation
+- [x] Test search with various queries
+- [x] Test search across titles and messages
+- [x] Test empty search results
+- [x] Test search performance with many conversations
+- [x] Create CONVERSATION_SEARCH.md documentation

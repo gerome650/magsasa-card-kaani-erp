@@ -491,3 +491,74 @@ export async function touchConversation(id: number) {
     .set({ updatedAt: new Date() })
     .where(eq(conversations.id, id));
 }
+
+export async function searchConversations(userId: number, query: string) {
+  const db = await getDb();
+  const { conversations, chatMessages } = await import("../drizzle/schema");
+  const { desc, eq, like, or, sql } = await import("drizzle-orm");
+  
+  if (!query || query.trim() === "") {
+    // Return all conversations if no query
+    return await getConversationsByUserId(userId);
+  }
+  
+  const searchTerm = `%${query}%`;
+  
+  // Search in conversation titles
+  const matchingConversations = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        like(conversations.title, searchTerm)
+      )
+    )
+    .orderBy(desc(conversations.updatedAt));
+  
+  // Search in message content
+  const matchingMessages = await db
+    .select({
+      conversationId: chatMessages.conversationId,
+      messageCount: sql<number>`COUNT(DISTINCT ${chatMessages.id})`.as('messageCount'),
+    })
+    .from(chatMessages)
+    .innerJoin(conversations, eq(chatMessages.conversationId, conversations.id))
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        like(chatMessages.content, searchTerm)
+      )
+    )
+    .groupBy(chatMessages.conversationId);
+  
+  // Get conversation IDs that match messages
+  const messageConversationIds = new Set(matchingMessages.map(m => m.conversationId));
+  
+  // Fetch full conversation details for message matches
+  const messageConversations = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        sql`${conversations.id} IN (${messageConversationIds.size > 0 ? Array.from(messageConversationIds).join(',') : 'NULL'})`
+      )
+    )
+    .orderBy(desc(conversations.updatedAt));
+  
+  // Combine results and remove duplicates
+  const allResults = [...matchingConversations, ...messageConversations];
+  const uniqueResults = Array.from(
+    new Map(allResults.map(c => [c.id, c])).values()
+  );
+  
+  // Sort by updatedAt (newest first)
+  uniqueResults.sort((a, b) => {
+    const dateA = new Date(a.updatedAt).getTime();
+    const dateB = new Date(b.updatedAt).getTime();
+    return dateB - dateA;
+  });
+  
+  return uniqueResults;
+}

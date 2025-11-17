@@ -33,11 +33,50 @@ export default function KaAniChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Debounced search function
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Debounce search by 300ms
+    searchTimeoutRef.current = setTimeout(async () => {
+      if (query.trim() === "") {
+        // If search is cleared, reload all conversations
+        try {
+          const convos = await trpc.conversations.list.query();
+          setConversations(convos as Conversation[]);
+        } catch (error) {
+          console.error("Error loading conversations:", error);
+          toast.error("Failed to load conversations");
+        }
+      } else {
+        // Perform search
+        setIsSearching(true);
+        try {
+          const results = await trpc.conversations.search.query({ query });
+          setConversations(results as Conversation[]);
+        } catch (error) {
+          console.error("Error searching conversations:", error);
+          toast.error("Search failed");
+        } finally {
+          setIsSearching(false);
+        }
+      }
+    }, 300);
   };
 
   // Load conversations on mount
@@ -291,6 +330,8 @@ export default function KaAniChat() {
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
         onRenameConversation={handleRenameConversation}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
       />
 
       {/* Main Chat Area */}
