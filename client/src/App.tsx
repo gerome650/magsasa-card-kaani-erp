@@ -28,6 +28,7 @@ import AuditLog from "./pages/AuditLog";
 import AuditArchive from "./pages/AuditArchive";
 import Farms from "./pages/Farms";
 import FarmDetail from "./pages/FarmDetail";
+import FarmList from "./pages/FarmList";
 import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
@@ -42,6 +43,14 @@ function Router() {
       
       {/* Protected routes */}
       <Route path="/">
+        <ProtectedRoute>
+          <Layout>
+            <FarmList />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/dashboard">
         <ProtectedRoute>
           <Layout>
             <Dashboard />

@@ -1717,3 +1717,22 @@
 - [x] Clear redo history when new action is performed (slice history)
 - [x] Update map polygons when undoing/redoing (clear and restore)
 - [x] Recalculate areas after undo/redo
+
+
+## New Feature: Farm List Dashboard Homepage
+
+- [x] Create new FarmList.tsx page component
+- [x] Add route for homepage (/) to show farm list
+- [x] Create table with columns: Farm Name, Farmer, Location, Size, Crops, Status, Actions
+- [x] Add search input to filter farms by name, farmer, or location
+- [x] Add status filter dropdown (All, Active, Inactive, Fallow)
+- [x] Add crop type filter dropdown with all unique crops
+- [x] Display status badges with color coding (Active=green, Inactive=gray, Fallow=yellow)
+- [x] Add "View Details" button for each farm linking to /farms/:id
+- [x] Add "Add New Farm" button in header
+- [x] Show total farm count and filtered count
+- [x] Add empty state when no farms exist or match filters
+- [x] Use shadcn/ui Table component
+- [x] Add responsive design for mobile (flex-col on small screens)
+- [x] Update App.tsx to use FarmList as homepage
+- [x] Move old Dashboard to /dashboard route
