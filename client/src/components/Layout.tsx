@@ -102,6 +102,19 @@ export default function Layout({ children }: LayoutProps) {
               <p className="text-xs text-muted-foreground">Enhanced Platform</p>
             </div>
           </div>
+          
+          {/* KaAni AI Button - Centered */}
+          <Link href="/kaani">
+            <Button
+              variant={isActive('/kaani') ? 'default' : 'ghost'}
+              size="sm"
+              className={isActive('/kaani') ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              <MessageCircle className="w-4 h-4 mr-1" />
+              <span className="text-xs">KaAni</span>
+            </Button>
+          </Link>
+          
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-lg hover:bg-gray-100"
@@ -153,6 +166,19 @@ export default function Layout({ children }: LayoutProps) {
               <h1 className="font-bold">MAGSASA-CARD</h1>
               <p className="text-xs text-muted-foreground">Enhanced Platform</p>
             </div>
+          </div>
+          
+          {/* KaAni AI Quick Access */}
+          <div className="px-4 py-4 border-b">
+            <Link href="/kaani">
+              <Button
+                variant={isActive('/kaani') ? 'default' : 'outline'}
+                className={`w-full justify-start ${isActive('/kaani') ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50 hover:text-green-600 hover:border-green-600'}`}
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                Ask KaAni AI
+              </Button>
+            </Link>
           </div>
 
           {/* Navigation */}
