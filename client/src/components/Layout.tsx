@@ -121,22 +121,19 @@ export default function Layout({ children }: LayoutProps) {
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 border-b ${
+                    isActive(item.href)
+                      ? 'bg-green-50 text-green-600 border-l-4 border-l-green-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
-                  <a
-                    className={`flex items-center gap-3 px-4 py-3 border-b ${
-                      isActive(item.href)
-                        ? 'bg-green-50 text-green-600 border-l-4 border-l-green-600'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.name}</span>
-                    {showBadge && (
-                      <Badge className="ml-auto bg-red-500 text-white animate-pulse">
-                        {pendingRequestsCount}
-                      </Badge>
-                    )}
-                  </a>
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                  {showBadge && (
+                    <Badge className="ml-auto bg-red-500 text-white animate-pulse">
+                      {pendingRequestsCount}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}
@@ -164,22 +161,22 @@ export default function Layout({ children }: LayoutProps) {
               const Icon = item.icon;
               const showBadge = item.href === '/permission-approval' && pendingRequestsCount > 0;
               return (
-                <Link key={item.name} href={item.href}>
-                  <a
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-green-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.name}</span>
-                    {showBadge && (
-                      <Badge className="ml-auto bg-red-500 text-white hover:bg-red-600 animate-pulse">
-                        {pendingRequestsCount}
-                      </Badge>
-                    )}
-                  </a>
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive(item.href)
+                      ? 'bg-green-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                  {showBadge && (
+                    <Badge className="ml-auto bg-red-500 text-white hover:bg-red-600 animate-pulse">
+                      {pendingRequestsCount}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}
