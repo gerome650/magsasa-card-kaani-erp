@@ -22,9 +22,15 @@ export const appRouter = router({
 
   // Farm management routers
   farms: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getFarmsByUserId(ctx.user.id);
-    }),
+    list: protectedProcedure
+      .input(z.object({
+        search: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getFarmsByUserId(ctx.user.id, input);
+      }),
     
     getById: publicProcedure  // Temporarily public for testing
       .input(z.object({ id: z.number() }))

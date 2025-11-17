@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { and, or, like, gte, lte } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -95,10 +96,39 @@ export async function getUserByOpenId(openId: string) {
 // Farm management queries
 
 // Farms
-export async function getFarmsByUserId(userId: number) {
+export async function getFarmsByUserId(
+  userId: number,
+  filters?: {
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(farms).where(eq(farms.userId, userId));
+  
+  const conditions = [eq(farms.userId, userId)];
+  
+  // Add search filter (farm name OR farmer name)
+  if (filters?.search && filters.search.trim() !== '') {
+    const searchTerm = `%${filters.search}%`;
+    conditions.push(
+      or(
+        like(farms.name, searchTerm),
+        like(farms.farmerName, searchTerm)
+      )!
+    );
+  }
+  
+  // Add date range filter
+  if (filters?.startDate) {
+    conditions.push(gte(farms.registrationDate, filters.startDate));
+  }
+  if (filters?.endDate) {
+    conditions.push(lte(farms.registrationDate, filters.endDate));
+  }
+  
+  return await db.select().from(farms).where(and(...conditions));
 }
 
 export async function getFarmById(farmId: number) {

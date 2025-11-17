@@ -40,18 +40,31 @@ import { FarmsSkeleton } from "@/components/FarmsSkeleton";
 import { type Farm } from "@/data/farmsData";
 import { Link, useLocation } from "wouter";
 import { EmptyState } from "@/components/EmptyState";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
+import { FilterChips } from "@/components/FilterChips";
+import { HighlightText } from "@/components/HighlightText";
 
 export default function Farms() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedBarangay, setSelectedBarangay] = useState("all");
   const [selectedCrop, setSelectedCrop] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedFarms, setSelectedFarms] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Fetch farms from database via tRPC
-  const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery();
+  // Debounce search query to reduce API calls
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Fetch farms from database via tRPC with search and date filters
+  const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({
+    search: debouncedSearch || undefined,
+    startDate: dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined,
+    endDate: dateRange?.to ? dateRange.to.toISOString().split('T')[0] : undefined,
+  });
   const utils = trpc.useUtils();
   const bulkDeleteMutation = trpc.farms.bulkDelete.useMutation({
     onMutate: async (variables) => {
@@ -421,16 +434,33 @@ export default function Farms() {
       )}
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="relative">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
-            placeholder="Search farms..."
+            placeholder="Search by farm name or farmer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
+        
+        <DateRangePicker
+          value={dateRange}
+          onChange={setDateRange}
+        />
+
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="fallow">Fallow</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select value={selectedBarangay} onValueChange={setSelectedBarangay}>
           <SelectTrigger>
@@ -470,6 +500,27 @@ export default function Farms() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Filter Chips */}
+      <FilterChips
+        searchQuery={searchQuery}
+        dateRange={dateRange}
+        selectedBarangay={selectedBarangay}
+        selectedCrop={selectedCrop}
+        selectedStatus={selectedStatus}
+        onClearSearch={() => setSearchQuery("")}
+        onClearDateRange={() => setDateRange(undefined)}
+        onClearBarangay={() => setSelectedBarangay("all")}
+        onClearCrop={() => setSelectedCrop("all")}
+        onClearStatus={() => setSelectedStatus("all")}
+        onClearAll={() => {
+          setSearchQuery("");
+          setDateRange(undefined);
+          setSelectedBarangay("all");
+          setSelectedCrop("all");
+          setSelectedStatus("all");
+        }}
+      />
 
       {/* Farms Grid or Empty State */}
       {filteredFarms.length === 0 ? (
@@ -533,11 +584,13 @@ export default function Farms() {
                   className="mt-1 mr-3"
                 />
                 <div className="flex-1">
-                  <CardTitle className="text-lg">{farm.name}</CardTitle>
+                  <CardTitle className="text-lg">
+                    <HighlightText text={farm.name} highlight={searchQuery} />
+                  </CardTitle>
                   <div className="flex items-center gap-2 mt-1">
                     <User className="w-3 h-3 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
-                      {farm.farmerName}
+                      <HighlightText text={farm.farmerName} highlight={searchQuery} />
                     </span>
                   </div>
                 </div>

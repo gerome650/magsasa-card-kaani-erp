@@ -2162,3 +2162,83 @@
 - [ ] Test manual input override (manual testing)
 - [ ] Test error handling (no results, API failure) (manual testing)
 - [ ] Save checkpoint after implementation
+
+
+## Full-Text Search and Date Range Filtering
+
+### Search Input Component
+- [x] Add search input field to Farms page header
+- [x] Add Search icon to input
+- [x] Implement debounced search (300ms delay with useDebounce hook)
+- [x] Add clear button to reset search (via FilterChips)
+- [x] Show search result count (in stats cards)
+- [x] Highlight matching text in results (HighlightText component)
+- [x] Add placeholder text ("Search by farm name or farmer...")
+- [x] Handle empty search state (EmptyState component)
+
+### Date Range Picker
+- [x] Install date picker library (date-fns for formatting)
+- [x] Create DateRangePicker component
+- [x] Add calendar icon button to trigger picker
+- [x] Implement date range selection (from/to with react-day-picker)
+- [x] Add preset ranges (Today, Last 7 days, Last 30 days, This month)
+- [x] Display selected date range in UI (formatted in button)
+- [x] Add clear button to reset date filter (X button in picker)
+- [x] Format dates for display (MMM DD, YYYY with date-fns)
+- [x] Validate date range (handled by react-day-picker)
+
+### Backend Search Implementation
+- [x] Update farms.list tRPC query to accept search parameter
+- [x] Add date range parameters (startDate, endDate)
+- [x] Implement SQL LIKE search for farm name (drizzle like())
+- [x] Implement SQL LIKE search for farmer name (drizzle like())
+- [x] Combine search conditions with OR (drizzle or())
+- [x] Add date range filtering with BETWEEN (drizzle gte() and lte())
+- [x] Combine all filters with AND (drizzle and())
+- [x] Maintain existing filters (barangay, status, crops - client-side)
+- [ ] Optimize query performance with indexes (future enhancement)
+
+### Frontend State Management
+- [x] Add searchQuery state (string)
+- [x] Add dateRange state (DateRange | undefined)
+- [x] Implement useDebounce hook for search input (300ms delay)
+- [x] Update tRPC query with search and date params
+- [x] Clear search on X button click (via FilterChips)
+- [x] Clear date range on clear button click (via FilterChips)
+- [ ] Persist filters in URL query params (future enhancement)
+- [x] Show loading state during search (FarmsSkeleton)
+
+### Filter Chips UI
+- [x] Create FilterChips component
+- [x] Display active search query as chip
+- [x] Display active date range as chip (formatted)
+- [x] Display active barangay filter as chip
+- [x] Display active status filter as chip
+- [x] Display active crop filter as chip
+- [x] Add remove button (X) to each chip
+- [x] Add Clear All Filters button
+- [x] Show filter count (via "Active filters:" label)
+
+### Search Result Highlighting
+- [x] Create HighlightText component
+- [x] Highlight matching text in farm names
+- [x] Highlight matching text in farmer names
+- [x] Use bold and background color for highlights (yellow-200 bg)
+- [x] Case-insensitive matching (regex with 'gi' flags)
+- [x] Handle multiple matches in same text (split and map)
+
+### Empty States
+- [x] Show "No results found" message when search returns empty (EmptyState)
+- [x] Show "Try different keywords" suggestion (existing EmptyState)
+- [x] Show Clear filters button in empty state (existing functionality)
+- [x] Differentiate between no farms and no search results (conditional rendering)
+
+### Testing & Documentation
+- [ ] Test search with farm names (manual testing required)
+- [ ] Test search with farmer names (manual testing required)
+- [ ] Test date range filtering (manual testing required)
+- [ ] Test combined search + date + other filters (manual testing required)
+- [ ] Test debouncing behavior (manual testing required)
+- [ ] Test clear buttons (manual testing required)
+- [ ] Create documentation for search feature
+- [ ] Save checkpoint after implementation
