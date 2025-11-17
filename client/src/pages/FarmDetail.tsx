@@ -30,6 +30,7 @@ import {
   Ruler,
   Calculator,
   FileDown,
+<<<<<<< HEAD
   Sprout,
   Trash2,
   Coins,
@@ -38,7 +39,6 @@ import {
   Redo2,
   DollarSign,
 } from "lucide-react";
-
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 import { PhotoGallery } from "@/components/PhotoGallery";
@@ -1257,6 +1257,7 @@ ${placemarks}
                             pdf.setFontSize(10);
                             pdf.text(`Farm Name: ${farm.name}`, 20, yPos);
                             yPos += 6;
+<<<<<<< HEAD
                             pdf.text(`Farmer: ${farm.farmerName}`, 20, yPos);
                             yPos += 6;
                             pdf.text(`Location: ${farm.location.barangay}, ${farm.location.municipality}`, 20, yPos);
