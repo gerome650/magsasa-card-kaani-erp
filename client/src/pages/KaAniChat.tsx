@@ -1,13 +1,22 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Send } from "lucide-react";
+import { Send, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { sendMessageToKaAniSSE } from "@/services/kaaniService";
 import { toast } from "sonner";
 import TypingIndicator from "@/components/TypingIndicator";
-import ConversationSidebar from "@/components/ConversationSidebar";
+import { KaAniHeader } from "@/components/KaAniHeader";
+import { KaAniSubHeader } from "@/components/KaAniSubHeader";
+import { SuggestedPrompts } from "@/components/SuggestedPrompts";
 import { trpcClient } from "@/lib/trpcClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
   id: string;
@@ -33,51 +42,19 @@ export default function KaAniChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isWaitingForFirstChunk, setIsWaitingForFirstChunk] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"farmer" | "technician">("farmer");
+  const [selectedContext, setSelectedContext] = useState<"loan_matching" | "risk_scoring" | null>(null);
+  const [selectedDialect, setSelectedDialect] = useState("tagalog");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Debounced search function
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    // Debounce search by 300ms
-    searchTimeoutRef.current = setTimeout(async () => {
-      if (query.trim() === "") {
-        // If search is cleared, reload all conversations
-        try {
-          const convos = await trpcClient.conversations.list.query();
-          setConversations(convos as Conversation[]);
-        } catch (error) {
-          console.error("Error loading conversations:", error);
-          toast.error("Failed to load conversations");
-        }
-      } else {
-        // Perform search
-        setIsSearching(true);
-        try {
-          const results = await trpcClient.conversations.search.query({ query });
-          setConversations(results as Conversation[]);
-        } catch (error) {
-          console.error("Error searching conversations:", error);
-          toast.error("Search failed");
-        } finally {
-          setIsSearching(false);
-        }
-      }
-    }, 300);
-  };
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -100,73 +77,46 @@ export default function KaAniChat() {
         setIsLoadingConversations(false);
       }
     };
+
     loadConversations();
   }, []);
 
   // Load messages when active conversation changes
   useEffect(() => {
-    if (!activeConversationId) return;
+    if (activeConversationId) {
+      loadMessages(activeConversationId);
+    }
+  }, [activeConversationId]);
 
-    const loadMessages = async () => {
-      setIsLoadingMessages(true);
-      try {
-        const msgs = await trpcClient.conversations.getMessages.query({
-          conversationId: activeConversationId,
-        });
-        
-        if (msgs.length > 0) {
-          const formattedMessages: Message[] = msgs.map((msg, idx) => ({
-            id: `msg-${msg.id}`,
-            role: msg.role,
-            content: msg.content,
-            timestamp: new Date(msg.createdAt),
-          }));
-          setMessages(formattedMessages);
-        } else {
-          // Show welcome message for new conversation
-          setMessages([{
-            id: "welcome",
-            role: "assistant",
-            content: `Kumusta ${user?.name}! Ako si KaAni, ang iyong agricultural assistant. Paano kita matutulungan ngayong araw?`,
-            timestamp: new Date(),
-          }]);
-        }
-      } catch (error) {
-        console.error("Error loading messages:", error);
-        toast.error("Failed to load messages");
-      } finally {
-        setIsLoadingMessages(false);
-      }
-    };
-
-    loadMessages();
-  }, [activeConversationId, user?.name]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const loadMessages = async (conversationId: number) => {
+    setIsLoadingMessages(true);
+    try {
+      const msgs = await trpcClient.conversations.getMessages.query({ conversationId });
+      const formattedMessages: Message[] = msgs.map((msg: any) => ({
+        id: msg.id.toString(),
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        timestamp: new Date(msg.createdAt),
+      }));
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error("Error loading messages:", error);
+      toast.error("Failed to load messages");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
 
   const handleNewConversation = async () => {
     try {
-      const result = await trpcClient.conversations.create.mutate({
+      const newConvo = await trpcClient.conversations.create.mutate({
         title: "New Conversation",
       });
       
-      const newConversation: Conversation = {
-        id: result.conversationId,
-        title: "New Conversation",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      
-      setConversations((prev) => [newConversation, ...prev]);
-      setActiveConversationId(result.conversationId);
-      setMessages([{
-        id: "welcome",
-        role: "assistant",
-        content: `Kumusta ${user?.name}! Ako si KaAni, ang iyong agricultural assistant. Paano kita matutulungan ngayong araw?`,
-        timestamp: new Date(),
-      }]);
+      const conversation = newConvo as Conversation;
+      setConversations((prev) => [conversation, ...prev]);
+      setActiveConversationId(conversation.id);
+      setMessages([]);
       
       toast.success("New conversation started");
     } catch (error) {
@@ -175,7 +125,7 @@ export default function KaAniChat() {
     }
   };
 
-  const handleSelectConversation = (id: number) => {
+  const handleSelectConversation = async (id: number) => {
     setActiveConversationId(id);
   };
 
@@ -185,7 +135,6 @@ export default function KaAniChat() {
       
       setConversations((prev) => prev.filter((c) => c.id !== id));
       
-      // If deleted conversation was active, switch to another or create new
       if (activeConversationId === id) {
         const remaining = conversations.filter((c) => c.id !== id);
         if (remaining.length > 0) {
@@ -252,9 +201,25 @@ export default function KaAniChat() {
           content: msg.content,
         }));
 
+      // Add context from selected role and options
+      let contextPrefix = "";
+      if (selectedRole === "technician") {
+        contextPrefix = "[As an agricultural technician] ";
+      }
+      if (selectedContext === "loan_matching") {
+        contextPrefix += "[Focus on loan matching and financial assistance] ";
+      } else if (selectedContext === "risk_scoring") {
+        contextPrefix += "[Focus on risk assessment and AgScore] ";
+      }
+      if (selectedDialect !== "tagalog") {
+        contextPrefix += `[Respond in ${selectedDialect} dialect] `;
+      }
+
+      const contextualMessage = contextPrefix + userMessageContent;
+
       // Call KaAni API with TRUE real-time SSE streaming
       await sendMessageToKaAniSSE(
-        userMessageContent,
+        contextualMessage,
         conversationHistory,
         (chunk) => {
           // Hide typing indicator when first chunk arrives
@@ -302,6 +267,11 @@ export default function KaAniChat() {
     }
   };
 
+  const handlePromptClick = (prompt: string) => {
+    setInput(prompt);
+    textareaRef.current?.focus();
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -309,118 +279,185 @@ export default function KaAniChat() {
     });
   };
 
+  // Suggested prompts based on role
+  const suggestedPrompts = selectedRole === "farmer" 
+    ? [
+        "Magpatingin ng problema sa kasalukuyang tanim.",
+        "Humingi ng gabay para sa bagong itatanim.",
+      ]
+    : [
+        "Analyze soil health for this farm.",
+        "Recommend fertilizer schedule for rice.",
+      ];
+
   if (isLoadingConversations) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-b from-blue-600 to-blue-400">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading conversations...</p>
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white">Loading conversations...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
-      {/* Conversation Sidebar */}
-      <ConversationSidebar
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
-        onDeleteConversation={handleDeleteConversation}
-        onRenameConversation={handleRenameConversation}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-600 to-blue-400">
+      {/* Green Header */}
+      <KaAniHeader />
+
+      {/* Sub-header with role tabs and dialect selector */}
+      <KaAniSubHeader
+        onRoleChange={setSelectedRole}
+        onContextChange={setSelectedContext}
+        onDialectChange={setSelectedDialect}
       />
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="border-b bg-card px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
-              K
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">KaAni</h1>
-              <p className="text-sm text-muted-foreground">
-                Agricultural AI Assistant
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Main Chat Container */}
+      <div className="flex-1 px-4 pb-6">
+        <div className="max-w-5xl mx-auto h-full flex flex-col">
+          {/* White Chat Container */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl flex-1 flex flex-col overflow-hidden my-6">
+            {/* Conversation Menu Button */}
+            <div className="p-4 border-b flex items-center justify-between">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Menu className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {conversations.find(c => c.id === activeConversationId)?.title || "Conversations"}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuItem onClick={handleNewConversation}>
+                    + New Conversation
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {conversations.slice(0, 10).map((convo) => (
+                    <DropdownMenuItem
+                      key={convo.id}
+                      onClick={() => handleSelectConversation(convo.id)}
+                      className={activeConversationId === convo.id ? "bg-green-50" : ""}
+                    >
+                      <div className="flex-1 truncate">{convo.title}</div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-        {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {isLoadingMessages ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p className="text-sm text-muted-foreground">Loading messages...</p>
+              <div className="text-sm text-muted-foreground">
+                {user?.role === "farmer" ? "Farmer Mode" : user?.role === "field_officer" ? "Field Officer Mode" : "Manager Mode"}
               </div>
             </div>
-          ) : (
-            <>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {messages.length === 0 && !isLoadingMessages && (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-3xl font-bold text-green-700">K</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    Ano po ang pangunahin ninyong kailangan ngayon?
+                  </h2>
+                  <p className="text-gray-600 mb-8">
+                    Ask KaAni anything about farming, loans, or agricultural advice
+                  </p>
+                  <SuggestedPrompts prompts={suggestedPrompts} onPromptClick={handlePromptClick} />
+                </div>
+              )}
+
+              {isLoadingMessages && (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading messages...</p>
+                </div>
+              )}
+
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${
+                  className={`flex gap-3 ${
                     message.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
+                  {message.role === "assistant" && (
+                    <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                      K
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[70%] rounded-lg px-4 py-3 ${
+                    className={`max-w-[70%] rounded-2xl px-4 py-3 ${
                       message.role === "user"
                         ? "bg-green-600 text-white"
-                        : "bg-muted text-foreground"
+                        : "bg-gray-100 text-gray-900"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content}
-                    </p>
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
                     <p
-                      className={`text-xs mt-1 ${
-                        message.role === "user"
-                          ? "text-green-100"
-                          : "text-muted-foreground"
+                      className={`text-xs mt-2 ${
+                        message.role === "user" ? "text-green-100" : "text-gray-500"
                       }`}
                     >
                       {formatTime(message.timestamp)}
                     </p>
                   </div>
+                  {message.role === "user" && (
+                    <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                      {user?.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                  )}
                 </div>
               ))}
 
-              {/* Show typing indicator while waiting for first chunk */}
-              {isWaitingForFirstChunk && <TypingIndicator />}
+              {isWaitingForFirstChunk && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                    K
+                  </div>
+                  <div className="bg-gray-100 rounded-2xl px-4 py-3">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
 
               <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* Input Area */}
-        <div className="border-t bg-card px-6 py-4">
-          <div className="flex gap-3">
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message... (Shift+Enter for new line)"
-              className="flex-1 min-h-[60px] max-h-[200px] resize-none"
-              disabled={isLoading || !activeConversationId}
-            />
-            <Button
-              onClick={handleSend}
-              disabled={isLoading || !input.trim() || !activeConversationId}
-              className="bg-green-600 hover:bg-green-700 text-white px-6"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
+            {/* Input Area */}
+            <div className="p-4 border-t bg-gray-50">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 bg-gray-800 rounded-full px-6 py-3 flex items-center gap-3">
+                  <Textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Pumili ng opsyon sa itaas o i-type ang iyong sagot..."
+                    className="flex-1 bg-transparent border-none text-white placeholder:text-gray-400 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-0 h-auto"
+                    rows={1}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className="w-12 h-12 rounded-full bg-green-600 hover:bg-green-700 flex items-center justify-center p-0"
+                >
+                  <Send className="w-5 h-5 text-white" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center text-white pb-6 px-4">
+        <p className="text-sm">
+          Powered by AgSense. KaAni is a Diagnostic tool meant to supplement Farmer and Agricultural professional knowledge
+        </p>
       </div>
     </div>
   );

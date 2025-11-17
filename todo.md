@@ -2633,3 +2633,50 @@
 - [x] Add superjson transformer to both client and server
 - [x] Ensure conversations array is properly initialized
 - [x] Test conversation creation and loading
+
+
+
+## KaAni Layout Redesign - Google AI Studio Style
+
+### Design Requirements from Screenshots
+- [x] Green header bar (#2D5F2E) with KaAni logo and "Sample Formats" button
+- [x] Sub-header menu with role tabs (Farmer, Technician, Loan Matching, Risk Scoring)
+- [x] Dialect selector dropdown (Tagalog, Cebuano, Ilonggo, Ilocano, Pangalatok, Kapampangan, Bicolano, Waray)
+- [x] Remove left sidebar - move conversations to dropdown or separate menu
+- [x] Centered chat interface with blue gradient background
+- [x] Bottom input bar with rounded dark background (gray-800)
+- [x] Green send button (circular, right side)
+- [x] White/light chat container with rounded corners
+- [x] Suggested prompts as green-outlined pills
+
+### Component Creation
+- [x] Create KaAniHeader component (green bar with logo and Sample Formats)
+- [x] Create KaAniSubHeader component (role tabs and context options)
+- [x] Create DialectSelector component (dropdown with Filipino dialects)
+- [x] Create ConversationMenu component (replace sidebar, possibly dropdown)
+- [x] Create SuggestedPrompts component (green pill buttons)
+
+### Page Redesign
+- [x] Update KaAniChat.tsx to use new full-width layout
+- [x] Remove ConversationSidebar from KaAni page
+- [x] Add blue gradient background (from screenshots)
+- [x] Center chat messages area in white rounded container
+- [x] Style input bar to match Google AI Studio (dark rounded)
+- [x] Update routing to bypass Layout component (no sidebar)
+- [x] Move conversation history to dropdown menu
+
+### Features to Preserve
+- [x] Streaming responses (SSE)
+- [x] Typing indicator
+- [x] Conversation management (create, delete, rename)
+- [ ] Conversation search (moved to dropdown, needs testing)
+- [x] Message history persistence
+- [x] All existing tRPC endpoints
+
+### Testing
+- [ ] Test role tab switching (Farmer vs Technician)
+- [ ] Test dialect selector (8 dialects)
+- [ ] Test conversation menu/dropdown
+- [ ] Verify responsive design on mobile
+- [ ] Check all existing features still work (streaming, history, etc.)
+- [ ] Test suggested prompts interaction

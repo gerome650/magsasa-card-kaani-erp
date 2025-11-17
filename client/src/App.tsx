@@ -110,9 +110,7 @@ function Router() {
       
       <Route path="/kaani">
         <ProtectedRoute>
-          <Layout>
-            <KaAniChat />
-          </Layout>
+          <KaAniChat />
         </ProtectedRoute>
       </Route>
       
