@@ -21,7 +21,9 @@ import {
   TrendingUp,
   Edit,
 } from "lucide-react";
-import { getFarms, type Farm } from "@/data/farmsData";
+import { trpc } from "@/lib/trpc";
+import { FarmsSkeleton } from "@/components/FarmsSkeleton";
+import { type Farm } from "@/data/farmsData";
 import { Link } from "wouter";
 
 export default function Farms() {
@@ -30,8 +32,30 @@ export default function Farms() {
   const [selectedCrop, setSelectedCrop] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
-
-  const farms = getFarms();
+  // Fetch farms from database via tRPC
+  const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery();
+  
+  // Transform database format to frontend format
+  const farms: Farm[] = dbFarms ? dbFarms.map(farm => ({
+    id: farm.id.toString(),
+    name: farm.name,
+    farmerName: farm.farmerName,
+    location: {
+      barangay: farm.barangay,
+      municipality: farm.municipality,
+      coordinates: {
+        lat: parseFloat(farm.latitude as unknown as string),
+        lng: parseFloat(farm.longitude as unknown as string),
+      },
+    },
+    size: parseFloat(farm.size as unknown as string),
+    crops: Array.isArray(farm.crops) ? farm.crops : JSON.parse(farm.crops as unknown as string),
+    soilType: farm.soilType || 'Unknown',
+    irrigationType: farm.irrigationType || 'Rainfed',
+    status: farm.status as 'active' | 'inactive' | 'fallow',
+    dateRegistered: farm.registrationDate ? new Date(farm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    averageYield: farm.averageYield ? parseFloat(farm.averageYield as unknown as string) : undefined,
+  })) : [];
 
   // Get unique values for filters
   const barangays = ["all", ...Array.from(new Set(farms.map((f) => f.location.barangay)))];
@@ -96,6 +120,33 @@ export default function Farms() {
       day: "numeric",
     });
   };
+
+  // Show loading skeleton while fetching data
+  if (isLoading) {
+    return <FarmsSkeleton />;
+  }
+  
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Farms</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage farm locations, crops, and production data
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-red-600 font-semibold mb-2">Failed to load farms</p>
+            <p className="text-muted-foreground">{error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

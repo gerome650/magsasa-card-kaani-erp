@@ -37,6 +37,7 @@ import TRPCTest from "./pages/TRPCTest";
 import DebugFarm from "./pages/DebugFarm";
 import FarmNew from "./pages/FarmNew";
 import TRPCClientTest from "./pages/TRPCClientTest";
+import SkeletonDemo from "./pages/SkeletonDemo";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/trpc-test" component={TRPCTest} />
       <Route path="/debug-farm" component={DebugFarm} />
       <Route path="/trpc-client-test" component={TRPCClientTest} />
+      <Route path="/skeleton-demo" component={SkeletonDemo} />
       
       {/* Protected routes */}
       <Route path="/">

@@ -7,13 +7,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Eye, Tractor, Map, Wheat, TrendingUp } from "lucide-react";
-import { getFarms, type Farm } from "@/data/farmsData";
+import { trpc } from "@/lib/trpc";
+import { FarmListSkeleton } from "@/components/FarmListSkeleton";
+import { type Farm } from "@/data/farmsData";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 
 
 export default function FarmList() {
-  const allFarms = getFarms();
+  // Fetch farms from database via tRPC
+  const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery();
+  
+  // Transform database format to frontend format
+  const allFarms: Farm[] = dbFarms ? dbFarms.map(farm => ({
+    id: farm.id.toString(),
+    name: farm.name,
+    farmerName: farm.farmerName,
+    location: {
+      barangay: farm.barangay,
+      municipality: farm.municipality,
+      coordinates: {
+        lat: parseFloat(farm.latitude as unknown as string),
+        lng: parseFloat(farm.longitude as unknown as string),
+      },
+    },
+    size: parseFloat(farm.size as unknown as string),
+    crops: Array.isArray(farm.crops) ? farm.crops : JSON.parse(farm.crops as unknown as string),
+    soilType: farm.soilType || 'Unknown',
+    irrigationType: farm.irrigationType || 'Rainfed',
+    status: farm.status as 'active' | 'inactive' | 'fallow',
+    dateRegistered: farm.registrationDate ? new Date(farm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    averageYield: farm.averageYield ? parseFloat(farm.averageYield as unknown as string) : undefined,
+  })) : [];
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cropFilter, setCropFilter] = useState<string>("all");
@@ -67,6 +92,33 @@ export default function FarmList() {
     const config = variants[status];
     return <Badge variant={config.variant} className={status === 'active' ? 'bg-green-600' : status === 'fallow' ? 'bg-yellow-600' : ''}>{config.label}</Badge>;
   };
+
+  // Show loading skeleton while fetching data
+  if (isLoading) {
+    return <FarmListSkeleton />;
+  }
+  
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Farm Management Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and monitor all registered farms in the MAGSASA-CARD system
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <p className="text-red-600 font-semibold mb-2">Failed to load farms</p>
+            <p className="text-muted-foreground">{error.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
