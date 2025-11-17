@@ -18,6 +18,7 @@ import {
   Layers,
   X,
   Ruler,
+  Calculator,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { MapView } from "@/components/Map";
@@ -37,6 +38,9 @@ export default function FarmDetail() {
   const [measurementMarkers, setMeasurementMarkers] = useState<google.maps.Marker[]>([]);
   const [measurementLine, setMeasurementLine] = useState<google.maps.Polyline | null>(null);
   const [measuredDistance, setMeasuredDistance] = useState<number | null>(null);
+  const [isCalculatingArea, setIsCalculatingArea] = useState(false);
+  const [tempAreaPolygon, setTempAreaPolygon] = useState<google.maps.Polygon | null>(null);
+  const [tempCalculatedArea, setTempCalculatedArea] = useState<number | null>(null);
 
   if (!farm) {
     return (
@@ -271,6 +275,24 @@ export default function FarmDetail() {
                       <Ruler className="w-4 h-4 mr-1" />
                       {isMeasuring ? "Stop Measuring" : "Measure Distance"}
                     </Button>
+                    <Button
+                      variant={isCalculatingArea ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setIsCalculatingArea(!isCalculatingArea);
+                        if (isCalculatingArea) {
+                          // Clear temporary polygon when exiting
+                          if (tempAreaPolygon) {
+                            tempAreaPolygon.setMap(null);
+                            setTempAreaPolygon(null);
+                            setTempCalculatedArea(null);
+                          }
+                        }
+                      }}
+                    >
+                      <Calculator className="w-4 h-4 mr-1" />
+                      {isCalculatingArea ? "Stop Calculating" : "Calculate Area"}
+                    </Button>
                     {drawnBoundaries.length > 0 && (
                       <>
                         <Button
@@ -437,6 +459,22 @@ ${placemarks}
                           ? `${measuredDistance.toFixed(2)} meters`
                           : `${(measuredDistance / 1000).toFixed(2)} kilometers`
                         }
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {tempCalculatedArea !== null && (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Calculator className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-800">
+                        Quick Area Calculation:
+                      </span>
+                      <span className="text-sm font-bold text-orange-900">
+                        {tempCalculatedArea.toFixed(2)} hectares
+                      </span>
+                      <span className="text-xs text-orange-700">
+                        (Temporary - not saved)
                       </span>
                     </div>
                   </div>
@@ -836,6 +874,51 @@ ${placemarks}
                         // User can click "Stop Drawing" to exit
                       });
 
+                      // Initialize Area Calculation Drawing Manager
+                      const areaCalcDrawingManager = new google.maps.drawing.DrawingManager({
+                        drawingMode: null,
+                        drawingControl: false,
+                        polygonOptions: {
+                          fillColor: '#f97316',
+                          fillOpacity: 0.35,
+                          strokeWeight: 3,
+                          strokeColor: '#ea580c',
+                          editable: true,
+                          draggable: true,
+                        },
+                      });
+                      areaCalcDrawingManager.setMap(map);
+
+                      // Toggle area calculation drawing mode
+                      const checkAreaCalcMode = setInterval(() => {
+                        if (isCalculatingArea && !tempAreaPolygon) {
+                          areaCalcDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+                        } else {
+                          areaCalcDrawingManager.setDrawingMode(null);
+                        }
+                      }, 100);
+
+                      // Handle area calculation polygon complete
+                      google.maps.event.addListener(areaCalcDrawingManager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
+                        setTempAreaPolygon(polygon);
+                        setIsCalculatingArea(false);
+                        
+                        // Calculate area
+                        const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                        const hectares = area / 10000;
+                        setTempCalculatedArea(hectares);
+
+                        // Update area on edit
+                        google.maps.event.addListener(polygon.getPath(), 'set_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                          setTempCalculatedArea(newArea / 10000);
+                        });
+                        google.maps.event.addListener(polygon.getPath(), 'insert_at', () => {
+                          const newArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+                          setTempCalculatedArea(newArea / 10000);
+                        });
+                      });
+
                       // Add measurement click listener
                       const measurementClickListener = google.maps.event.addListener(map, 'click', (event: google.maps.MapMouseEvent) => {
                         if (!isMeasuring) return;
@@ -899,6 +982,7 @@ ${placemarks}
 
                       return () => {
                         clearInterval(checkDrawingMode);
+                        clearInterval(checkAreaCalcMode);
                         google.maps.event.removeListener(measurementClickListener);
                       };
                     }}

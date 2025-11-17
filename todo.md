@@ -1564,3 +1564,23 @@
 - [x] Add Ruler icon from lucide-react
 - [x] Style measurement line (purple, solid, 3px weight)
 - [x] Style measurement markers (purple circles with white border)
+
+
+## New Feature: Quick Area Calculation Tool (Temporary Polygon)
+
+- [x] Add "Calculate Area" button to map controls
+- [x] Add isCalculatingArea state to track calculation mode
+- [x] Add tempAreaPolygon state to store temporary polygon
+- [x] Add tempCalculatedArea state to store calculated area
+- [x] Create separate drawing manager for area calculation
+- [x] Style temporary polygon differently (orange theme)
+- [x] Make temporary polygon editable and draggable
+- [x] Calculate area automatically on polygon complete
+- [x] Update area on polygon edit (set_at and insert_at listeners)
+- [x] Display calculated area in distinct orange info card
+- [x] Clear temporary polygon when clicking "Stop Calculating"
+- [x] Exit calculation mode after drawing polygon
+- [x] Add Calculator icon from lucide-react
+- [x] Separate drawing manager ensures no interference with farm boundaries
+- [x] Show area in hectares with 2 decimal precision
+- [x] Add "(Temporary - not saved)" label to clarify purpose
