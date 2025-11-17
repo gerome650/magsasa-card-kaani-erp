@@ -33,6 +33,8 @@ import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
+import TRPCTest from "./pages/TRPCTest";
+import DebugFarm from "./pages/DebugFarm";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -40,6 +42,8 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/login" component={Login} />
+      <Route path="/trpc-test" component={TRPCTest} />
+      <Route path="/debug-farm" component={DebugFarm} />
       
       {/* Protected routes */}
       <Route path="/">

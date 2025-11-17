@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -44,10 +44,30 @@ export default function FarmDetail() {
   const farmId = params?.id ? parseInt(params.id) : null;
   
   // Load farm data from database
-  const { data: farm, isLoading: farmLoading } = trpc.farms.getById.useQuery(
+  const { data: dbFarm, isLoading: farmLoading } = trpc.farms.getById.useQuery(
     { id: farmId! },
     { enabled: !!farmId }
   );
+  
+  // Transform database format to frontend format
+  const farm = dbFarm ? {
+    ...dbFarm,
+    location: {
+      barangay: dbFarm.barangay,
+      municipality: dbFarm.municipality,
+      coordinates: {
+        lat: parseFloat(dbFarm.latitude as unknown as string),
+        lng: parseFloat(dbFarm.longitude as unknown as string),
+      },
+    },
+    size: parseFloat(dbFarm.size as unknown as string),
+    crops: Array.isArray(dbFarm.crops) ? dbFarm.crops : JSON.parse(dbFarm.crops as unknown as string),
+    averageYield: dbFarm.averageYield ? parseFloat(dbFarm.averageYield as unknown as string) : undefined,
+    // Add default values for fields that might be missing
+    soilType: dbFarm.soilType || 'Unknown',
+    irrigationType: dbFarm.irrigationType || 'Rainfed',
+    dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+  } : undefined;
   
   // Load boundaries from database
   const { data: dbBoundaries } = trpc.boundaries.getByFarmId.useQuery(

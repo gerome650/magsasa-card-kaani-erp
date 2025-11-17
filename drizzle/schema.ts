@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -31,12 +31,24 @@ export const farms = mysqlTable("farms", {
   userId: int("userId").notNull(), // Owner of the farm
   name: varchar("name", { length: 255 }).notNull(),
   farmerName: varchar("farmerName", { length: 255 }).notNull(),
-  location: varchar("location", { length: 255 }).notNull(),
-  latitude: varchar("latitude", { length: 50 }),
-  longitude: varchar("longitude", { length: 50 }),
-  size: varchar("size", { length: 100 }), // Entered size (e.g., "2.5 hectares")
-  crops: text("crops"), // Comma-separated crop types
-  status: mysqlEnum("status", ["Active", "Inactive", "Pending"]).default("Active").notNull(),
+  
+  // Location fields (separate for better querying)
+  barangay: varchar("barangay", { length: 255 }).notNull(),
+  municipality: varchar("municipality", { length: 255 }).notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 6 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 6 }).notNull(),
+  
+  // Farm characteristics
+  size: decimal("size", { precision: 10, scale: 2 }).notNull(), // Size in hectares
+  crops: json("crops").$type<string[]>().notNull(), // Array of crop names
+  soilType: varchar("soilType", { length: 100 }),
+  irrigationType: mysqlEnum("irrigationType", ["Irrigated", "Rainfed", "Upland"]),
+  
+  // Performance metrics
+  averageYield: decimal("averageYield", { precision: 10, scale: 2 }), // MT/ha
+  
+  // Status
+  status: mysqlEnum("status", ["active", "inactive", "fallow"]).default("active").notNull(),
   registrationDate: timestamp("registrationDate").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -51,7 +63,7 @@ export const boundaries = mysqlTable("boundaries", {
   farmId: int("farmId").notNull(),
   parcelIndex: int("parcelIndex").notNull(), // 0, 1, 2... for multiple parcels
   geoJson: text("geoJson").notNull(), // Full GeoJSON polygon
-  area: varchar("area", { length: 50 }).notNull(), // Calculated area in hectares
+  area: decimal("area", { precision: 10, scale: 2 }).notNull(), // Calculated area in hectares
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -66,7 +78,7 @@ export const yields = mysqlTable("yields", {
   parcelIndex: int("parcelIndex").notNull(),
   cropType: varchar("cropType", { length: 100 }).notNull(),
   harvestDate: varchar("harvestDate", { length: 50 }).notNull(), // ISO date string
-  quantity: varchar("quantity", { length: 50 }).notNull(), // Numeric value as string
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(), // Numeric value
   unit: mysqlEnum("unit", ["kg", "tons"]).notNull(),
   qualityGrade: mysqlEnum("qualityGrade", ["Premium", "Standard", "Below Standard"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -83,7 +95,7 @@ export const costs = mysqlTable("costs", {
   date: varchar("date", { length: 50 }).notNull(), // ISO date string
   category: mysqlEnum("category", ["Fertilizer", "Pesticides", "Seeds", "Labor", "Equipment", "Other"]).notNull(),
   description: text("description"),
-  amount: varchar("amount", { length: 50 }).notNull(), // Numeric value as string
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Numeric value
   parcelIndex: int("parcelIndex"), // null means applies to all parcels
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

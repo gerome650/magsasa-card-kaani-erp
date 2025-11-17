@@ -1795,3 +1795,38 @@
 - [x] Preview doesn't interfere with row clicks (separate trigger)
 - [x] Add 300ms delay to prevent accidental triggers (openDelay)
 - [x] Underline farm name with dotted decoration for discoverability
+
+
+## Day 1 Task 1.1: tRPC Client Integration
+
+- [ ] Verify tRPC client configuration in client/src/lib/trpc.ts
+- [ ] Check tRPC provider setup in client/src/main.tsx
+- [ ] Create test component to verify API connection
+- [ ] Test basic query (farms.list)
+- [ ] Verify loading states work
+- [ ] Verify error handling works
+- [ ] Remove test component after verification
+
+
+## Day 1: Database Integration (Current Sprint)
+
+- [x] Remove HoverCard syntax error from FarmList.tsx
+- [x] Verify tRPC client configuration
+- [x] Create test component for tRPC connection
+- [x] Verify database migrations are applied
+- [x] Update database schema to match frontend Farm type structure
+- [x] Add missing fields: barangay, municipality, soilType, irrigationType, averageYield
+- [x] Change location to separate fields (barangay, municipality, latitude, longitude)
+- [x] Change crops from text to JSON array
+- [x] Change size from string to decimal
+- [x] Run database migration (pnpm db:push)
+- [x] Seed database with 5 sample farms
+- [x] Update tRPC routers with new schema validation
+- [x] Add data transformation layer in FarmDetail.tsx
+- [x] Fix database connection to use mysql2 properly
+- [x] Integrate boundary save mutations (already implemented)
+- [x] Integrate yield create/delete mutations (already implemented)
+- [x] Integrate cost create/delete mutations (already implemented)
+- [ ] Debug and test farm detail page loading
+- [ ] Test data persistence across page refreshes
+- [ ] Save Day 1 completion checkpoint

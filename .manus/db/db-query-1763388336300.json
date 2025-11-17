@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, name, farmerName, barangay, municipality FROM farms LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3Lpn2UbgQzmwtdB.46bda7f541c5 --database PhyUG6zBt8aRKJV3CUqs6D --execute SELECT id, name, farmerName, barangay, municipality FROM farms LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Santos Rice Farm",
+      "farmerName": "Maria Santos",
+      "barangay": "San Isidro",
+      "municipality": "Calauan"
+    },
+    {
+      "id": "2",
+      "name": "Cruz Vegetable Farm",
+      "farmerName": "Juan Cruz",
+      "barangay": "Dayap",
+      "municipality": "Calauan"
+    },
+    {
+      "id": "3",
+      "name": "Reyes Corn Field",
+      "farmerName": "Pedro Reyes",
+      "barangay": "Lamot 1",
+      "municipality": "Calauan"
+    },
+    {
+      "id": "4",
+      "name": "Garcia Mixed Farm",
+      "farmerName": "Rosa Garcia",
+      "barangay": "Balayhangin",
+      "municipality": "Calauan"
+    },
+    {
+      "id": "5",
+      "name": "Mendoza Upland Farm",
+      "farmerName": "Carlos Mendoza",
+      "barangay": "Kanluran Talaongan",
+      "municipality": "Cavinti"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tfarmerName\tbarangay\tmunicipality\n1\tSantos Rice Farm\tMaria Santos\tSan Isidro\tCalauan\n2\tCruz Vegetable Farm\tJuan Cruz\tDayap\tCalauan\n3\tReyes Corn Field\tPedro Reyes\tLamot 1\tCalauan\n4\tGarcia Mixed Farm\tRosa Garcia\tBalayhangin\tCalauan\n5\tMendoza Upland Farm\tCarlos Mendoza\tKanluran Talaongan\tCavinti\n",
+  "stderr": "",
+  "execution_time_ms": 1516
+}
