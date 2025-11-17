@@ -38,7 +38,7 @@ const mockFarms: Farm[] = [
   {
     id: 'farm-001',
     name: 'Santos Rice Farm',
-    farmerId: '1',
+    farmerId: 'F001',
     farmerName: 'Maria Santos',
     location: {
       barangay: 'San Isidro',
@@ -57,8 +57,8 @@ const mockFarms: Farm[] = [
   {
     id: 'farm-002',
     name: 'Cruz Vegetable Farm',
-    farmerId: '2',
-    farmerName: 'Juan Cruz',
+    farmerId: 'F002',
+    farmerName: 'Juan Dela Cruz',
     location: {
       barangay: 'Dayap',
       municipality: 'Calauan',
@@ -76,8 +76,8 @@ const mockFarms: Farm[] = [
   {
     id: 'farm-003',
     name: 'Reyes Corn Field',
-    farmerId: '3',
-    farmerName: 'Pedro Reyes',
+    farmerId: 'F003',
+    farmerName: 'Rosa Reyes',
     location: {
       barangay: 'Lamot 1',
       municipality: 'Calauan',
@@ -95,8 +95,8 @@ const mockFarms: Farm[] = [
   {
     id: 'farm-004',
     name: 'Garcia Coconut Plantation',
-    farmerId: '4',
-    farmerName: 'Ana Garcia',
+    farmerId: 'F004',
+    farmerName: 'Pedro Garcia',
     location: {
       barangay: 'Balayhangin',
       municipality: 'Calauan',
@@ -113,8 +113,8 @@ const mockFarms: Farm[] = [
   {
     id: 'farm-005',
     name: 'Mendoza Mixed Farm',
-    farmerId: '5',
-    farmerName: 'Rosa Mendoza',
+    farmerId: 'F005',
+    farmerName: 'Ana Mendoza',
     location: {
       barangay: 'Prinza',
       municipality: 'Calauan',
@@ -135,7 +135,7 @@ const mockFarms: Farm[] = [
 const mockActivities: FarmerActivity[] = [
   {
     id: 'act-001',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'order',
     title: 'Fertilizer Order',
     description: 'Ordered 10 bags of Urea fertilizer',
@@ -145,7 +145,7 @@ const mockActivities: FarmerActivity[] = [
   },
   {
     id: 'act-002',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'harvest',
     title: 'Rice Harvest',
     description: 'Harvested 14.5 MT of rice from 2.5 hectares',
@@ -154,7 +154,7 @@ const mockActivities: FarmerActivity[] = [
   },
   {
     id: 'act-003',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'agscore',
     title: 'AgScore™ Calculation',
     description: 'AgScore™ calculated: 379/1000 (Tier 3)',
@@ -162,7 +162,7 @@ const mockActivities: FarmerActivity[] = [
   },
   {
     id: 'act-004',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'loan',
     title: 'Agricultural Loan',
     description: 'Approved loan of ₱50,000 for farm inputs',
@@ -172,7 +172,7 @@ const mockActivities: FarmerActivity[] = [
   },
   {
     id: 'act-005',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'payment',
     title: 'Loan Payment',
     description: 'Made monthly payment of ₱5,000',
@@ -182,7 +182,7 @@ const mockActivities: FarmerActivity[] = [
   },
   {
     id: 'act-006',
-    farmerId: '1',
+    farmerId: 'F001',
     type: 'training',
     title: 'Organic Farming Training',
     description: 'Attended 2-day organic farming workshop',

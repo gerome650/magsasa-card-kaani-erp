@@ -42,10 +42,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.warn('Invalid stored user data, clearing localStorage');
             localStorage.removeItem('magsasa_user');
           }
+        } else {
+          // DEMO MODE: Auto-login as manager for presentation
+          const demoUser = {
+            id: 'demo-manager',
+            name: 'Demo Manager',
+            email: 'demo@magsasa.com',
+            role: 'manager' as UserRole,
+            barangay: 'All'
+          };
+          setUser(demoUser);
+          localStorage.setItem('magsasa_user', JSON.stringify(demoUser));
         }
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('magsasa_user');
+        // DEMO MODE: Auto-login as manager for presentation
+        const demoUser = {
+          id: 'demo-manager',
+          name: 'Demo Manager',
+          email: 'demo@magsasa.com',
+          role: 'manager' as UserRole,
+          barangay: 'All'
+        };
+        setUser(demoUser);
+        localStorage.setItem('magsasa_user', JSON.stringify(demoUser));
       } finally {
         setIsLoading(false);
       }

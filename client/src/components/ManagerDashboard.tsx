@@ -17,7 +17,7 @@ export default function ManagerDashboard() {
   
   // Calculate harvest metrics
   const totalHarvest = harvestData.reduce((sum: number, h: any) => sum + h.quantity, 0);
-  const totalRevenue = harvestData.reduce((sum: number, h: any) => sum + h.estimatedValue, 0);
+  const totalRevenue = harvestData.reduce((sum: number, h: any) => sum + h.totalValue, 0);
   
   // Quality distribution
   const qualityDistribution = harvestData.reduce((acc: Record<string, number>, h: any) => {
@@ -35,7 +35,7 @@ export default function ManagerDashboard() {
   const farmerPerformance = farmersData.map((f: any) => {
     const farmerHarvests = harvestData.filter((h: any) => h.farmerId === f.id);
     const totalHarvest = farmerHarvests.reduce((sum: number, h: any) => sum + h.quantity, 0);
-    const totalValue = farmerHarvests.reduce((sum: number, h: any) => sum + h.estimatedValue, 0);
+    const totalValue = farmerHarvests.reduce((sum: number, h: any) => sum + h.totalValue, 0);
     return {
       ...f,
       totalHarvest,
