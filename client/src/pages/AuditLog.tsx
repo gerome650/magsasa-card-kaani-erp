@@ -34,9 +34,12 @@ import {
   Download
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
+import AutoArchiveManager from "@/components/AutoArchiveManager";
 
 export default function AuditLog() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [actionTypeFilter, setActionTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,11 +125,20 @@ export default function AuditLog() {
             Track all bulk actions and changes made in the supplier portal
           </p>
         </div>
-        <Button onClick={handleExport}>
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setLocation('/supplier/audit-archive')}>
+            <FileText className="w-4 h-4 mr-2" />
+            View Archives
+          </Button>
+          <Button onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
+
+      {/* Auto Archive Manager */}
+      <AutoArchiveManager />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -24,6 +24,8 @@ import BatchOrders from "./pages/BatchOrders";
 import SupplierDashboard from "./pages/SupplierDashboardBulk";
 import SupplierInventory from "./pages/SupplierInventory";
 import SupplierDeliveries from "./pages/SupplierDeliveries";
+import AuditLog from "./pages/AuditLog";
+import AuditArchive from "./pages/AuditArchive";
 
 function Router() {
   return (
@@ -156,6 +158,14 @@ function Router() {
         <ProtectedRoute allowedRoles={['supplier']}>
           <Layout>
             <AuditLog />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/supplier/audit-archive">
+        <ProtectedRoute allowedRoles={['supplier']}>
+          <Layout>
+            <AuditArchive />
           </Layout>
         </ProtectedRoute>
       </Route>

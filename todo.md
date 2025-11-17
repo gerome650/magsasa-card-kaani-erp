@@ -1092,3 +1092,38 @@
 - [ ] Add CSV export for audit logs (UI ready, needs implementation)
 - [x] Add date range selector for reports
 - [x] Include summary statistics (total actions, by type, by user)
+
+
+## New Feature: Data Retention Policy & Archive System
+
+### Archive Data Model
+- [x] Create archived audit logs data structure
+- [x] Add archive metadata (archived_date, original_date_range, entry_count, compressed_size)
+- [x] Implement 90-day retention policy logic
+- [x] Add archive status tracking (active, archived, restored)
+
+### Archive Interface
+- [x] Create archive viewing page
+- [x] Display archived log batches by month/quarter
+- [ ] Add search and filter for archived logs
+- [x] Implement restore functionality for archived logs
+- [x] Show archive statistics (total archived, storage saved, oldest archive)
+
+### Automatic Archiving
+- [x] Implement automatic archiving scheduler (runs daily)
+- [x] Archive logs older than 90 days
+- [x] Compress archived data for storage efficiency
+- [x] Add manual archive trigger for administrators
+- [x] Send notifications when archiving completes
+
+### Storage Management
+- [x] Display storage statistics dashboard
+- [x] Show active vs archived log counts
+- [x] Calculate storage savings from compression
+- [ ] Add retention policy configuration (adjustable days)
+- [ ] Implement permanent deletion for very old archives (optional)
+
+### Integration
+- [x] Add "View Archives" button to Audit Log page
+- [x] Integrate archive status in audit log timeline
+- [x] Add archive indicator badges for restored logs
