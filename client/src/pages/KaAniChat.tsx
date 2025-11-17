@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { sendMessageToKaAni, loadChatHistory } from "@/services/kaaniService";
+import { sendMessageToKaAniStream, loadChatHistory } from "@/services/kaaniService";
 import { toast } from "sonner";
 
 interface Message {
@@ -82,6 +82,16 @@ export default function KaAniChat() {
     setInput("");
     setIsLoading(true);
 
+    // Create placeholder message for streaming
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: Message = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, aiMessage]);
+
     try {
       // Build conversation history (last 10 messages for context)
       const conversationHistory = messages
@@ -91,17 +101,21 @@ export default function KaAniChat() {
           content: msg.content,
         }));
 
-      // Call KaAni API with conversation context
-      const response = await sendMessageToKaAni(input.trim(), conversationHistory);
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
+      // Call KaAni API with streaming and update message content
+      await sendMessageToKaAniStream(
+        input.trim(),
+        conversationHistory,
+        (chunk) => {
+          // Update the AI message content with each chunk
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === aiMessageId
+                ? { ...msg, content: chunk }
+                : msg
+            )
+          );
+        }
+      );
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message. Please try again.");

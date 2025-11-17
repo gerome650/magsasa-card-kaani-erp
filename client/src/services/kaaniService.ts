@@ -68,6 +68,76 @@ export async function loadChatHistory(limit: number = 50): Promise<KaAniMessage[
 }
 
 /**
+ * Send a message to KaAni AI with streaming response
+ * @param message - User's message
+ * @param conversationHistory - Optional conversation history for context
+ * @param onChunk - Callback function called for each text chunk
+ * @returns Complete AI response text
+ */
+export async function sendMessageToKaAniStream(
+  message: string,
+  conversationHistory: KaAniMessage[] | undefined,
+  onChunk: (chunk: string) => void
+): Promise<string> {
+  try {
+    const result = await trpc.kaani.sendMessageStream.mutate({
+      message,
+      conversationHistory,
+    });
+    
+    // Simulate streaming by displaying chunks with delay
+    let displayedText = "";
+    const chunks = result.chunks || [];
+    
+    // If we have chunks, stream them word-by-word
+    if (chunks.length > 0) {
+      for (const chunk of chunks) {
+        // Split chunk into words for smoother streaming
+        const words = chunk.split(/\s+/);
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          displayedText += (i === 0 && displayedText ? " " : "") + word;
+          onChunk(displayedText);
+          
+          // Add small delay between words for streaming effect
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
+      }
+    } else {
+      // Fallback: split response into words and stream
+      const words = result.response.split(/\s+/);
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        displayedText += (i > 0 ? " " : "") + word;
+        onChunk(displayedText);
+        
+        // Add small delay between words for streaming effect
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+    }
+    
+    return result.response;
+  } catch (error) {
+    console.error("[KaAni] Error sending message:", error);
+    
+    // User-friendly error messages
+    if (error instanceof Error) {
+      if (error.message.includes("API key not configured")) {
+        throw new Error("KaAni AI is not configured. Please contact support.");
+      }
+      if (error.message.includes("UNAUTHORIZED")) {
+        throw new Error("Please log in to use KaAni AI.");
+      }
+      if (error.message.includes("quota")) {
+        throw new Error("API quota exceeded. Please try again later.");
+      }
+    }
+    
+    throw new Error("Failed to get response from KaAni. Please try again.");
+  }
+}
+
+/**
  * Clear all chat history for current user
  */
 export async function clearChatHistory(): Promise<void> {
