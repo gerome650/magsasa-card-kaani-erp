@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -706,31 +707,51 @@ ${placemarks}
                                 </span>
                                 <div className="flex items-center gap-1">
                                   <span className="font-medium">{area.toFixed(2)} ha</span>
-                                  <button
-                                    onClick={() => {
-                                      // Remove polygon from map
-                                      drawnBoundaries[index].setMap(null);
-                                      
-                                      // Remove from arrays
-                                      const newBoundaries = drawnBoundaries.filter((_, i) => i !== index);
-                                      const newAreas = parcelAreas.filter((_, i) => i !== index);
-                                      
-                                      setDrawnBoundaries(newBoundaries);
-                                      setParcelAreas(newAreas);
-                                      
-                                      // Recalculate total area
-                                      if (newAreas.length > 0) {
-                                        const totalArea = newAreas.reduce((sum, a) => sum + a, 0);
-                                        setCalculatedArea(totalArea);
-                                      } else {
-                                        setCalculatedArea(null);
-                                      }
-                                    }}
-                                    className="p-0.5 hover:bg-red-100 rounded transition-colors"
-                                    title="Delete this parcel"
-                                  >
-                                    <X className="w-3 h-3 text-red-600" />
-                                  </button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <button
+                                        className="p-0.5 hover:bg-red-100 rounded transition-colors"
+                                        title="Delete this parcel"
+                                      >
+                                        <X className="w-3 h-3 text-red-600" />
+                                      </button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Parcel {index + 1}?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete Parcel {index + 1} ({area.toFixed(2)} ha)? This action cannot be undone and will remove the parcel boundary from the map.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => {
+                                            // Remove polygon from map
+                                            drawnBoundaries[index].setMap(null);
+                                            
+                                            // Remove from arrays
+                                            const newBoundaries = drawnBoundaries.filter((_, i) => i !== index);
+                                            const newAreas = parcelAreas.filter((_, i) => i !== index);
+                                            
+                                            setDrawnBoundaries(newBoundaries);
+                                            setParcelAreas(newAreas);
+                                            
+                                            // Recalculate total area
+                                            if (newAreas.length > 0) {
+                                              const totalArea = newAreas.reduce((sum, a) => sum + a, 0);
+                                              setCalculatedArea(totalArea);
+                                            } else {
+                                              setCalculatedArea(null);
+                                            }
+                                          }}
+                                          className="bg-red-600 hover:bg-red-700"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               </div>
                             );

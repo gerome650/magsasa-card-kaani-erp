@@ -1687,3 +1687,16 @@
 - [x] Add Loader2 spinning icon
 - [x] Style loading overlay with semi-transparent background
 - [x] Add "Loading map..." text below spinner
+
+
+## New Feature: Parcel Deletion Confirmation Dialog
+
+- [x] Import AlertDialog component from shadcn/ui
+- [x] Replace direct delete button with AlertDialog trigger
+- [x] Create AlertDialog with warning message
+- [x] Show parcel number and area in confirmation message
+- [x] Add Cancel button to dismiss dialog
+- [x] Add Delete button with destructive styling (red-600)
+- [x] Call deleteParcel only after confirmation
+- [x] AlertDialog automatically handles open/close state
+- [x] Warning message: "This action cannot be undone"
