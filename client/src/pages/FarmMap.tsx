@@ -300,7 +300,8 @@ export default function FarmMap() {
             <div className="h-[600px] relative">
               <MapView
                 onMapReady={(map) => setMapInstance(map)}
-                intent="navigational"
+                initialCenter={{ lat: 14.5995, lng: 120.9842 }}
+                initialZoom={10}
               />
             </div>
           )}

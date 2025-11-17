@@ -2904,3 +2904,12 @@
 - [x] Fix farm coordinates data structure
 - [x] Run comprehensive QA tests
 - [x] All critical bugs fixed and verified
+
+## Critical Bug: React Error #185 in Maps Section
+- [ ] Fix React error #185 in maps section (production build crash)
+- [ ] Investigate hydration mismatch in Map component
+- [ ] Test maps functionality after fix
+
+- [x] Fixed React error #185 in maps section (removed invalid intent prop)
+- [x] MapView component now uses correct props only
+- [x] Map loads correctly with Philippines coordinates
