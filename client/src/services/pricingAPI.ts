@@ -238,7 +238,7 @@ class PricingAPIService {
       });
       return response.ok;
     } catch (error) {
-      console.error('API health check failed:', error);
+      // Silently return false - API unavailable is expected behavior
       return false;
     }
   }

@@ -27,8 +27,16 @@ export default function PriceComparison() {
 
   const checkAPIStatus = async () => {
     setApiStatus('checking');
-    const isOnline = await pricingAPI.checkHealth();
-    setApiStatus(isOnline ? 'online' : 'offline');
+    try {
+      const isOnline = await pricingAPI.checkHealth();
+      setApiStatus(isOnline ? 'online' : 'offline');
+      if (!isOnline) {
+        console.info('Pricing API unavailable, using demo data');
+      }
+    } catch (error) {
+      // Silently fall back to offline mode with demo data
+      setApiStatus('offline');
+    }
   };
 
   const fetchProducts = async () => {

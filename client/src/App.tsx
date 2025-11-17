@@ -20,6 +20,7 @@ import Marketplace from "./pages/Marketplace";
 import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import OrderHistory from "./pages/OrderHistory";
+import BatchOrders from "./pages/BatchOrders";
 
 function Router() {
   return (
@@ -112,6 +113,14 @@ function Router() {
         <ProtectedRoute allowedRoles={['farmer']}>
           <Layout>
             <OrderHistory />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/batch-orders">
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+          <Layout>
+            <BatchOrders />
           </Layout>
         </ProtectedRoute>
       </Route>

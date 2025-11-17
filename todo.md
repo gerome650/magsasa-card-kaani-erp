@@ -902,3 +902,88 @@
 - [x] Tested marketplace access (✅ Working)
 - [x] Tested order history access (✅ Working)
 - [x] No more "Access Denied" errors on farmer-only pages
+
+
+## Bug Fix: Price Comparison API Health Check Error
+
+### Problem
+- [ ] "Failed to fetch" error on /price-comparison page
+- [ ] API health check failing at pricingAPI.ts:132
+- [ ] TypeError: Failed to fetch prevents page from loading properly
+
+### Root Cause Analysis
+- [ ] Check pricingAPI.ts checkHealth() method
+- [ ] Identify the external API endpoint being called
+- [ ] Verify if endpoint exists or requires authentication
+- [ ] Check if error handling is implemented
+
+### Fix Implementation
+- [ ] Add try-catch error handling to checkHealth()
+- [ ] Implement mock fallback when API is unavailable
+- [ ] Add graceful degradation for offline mode
+- [ ] Update PriceComparison component to handle API failures
+- [ ] Show user-friendly message when API is down
+
+### Testing
+- [ ] Test Price Comparison page loads without errors
+- [ ] Verify mock data displays when API unavailable
+- [ ] Test with network disabled (offline mode)
+- [ ] Verify error message is user-friendly
+
+
+## New Feature: Order Batching & Distribution Management System
+
+### Batch Order Management
+- [x] Create batch order creation interface for Field Officers/Managers
+- [x] Implement MOQ (Minimum Order Quantity) aggregation logic
+- [x] Add farmer order collection system (individual orders → batch)
+- [x] Display MOQ progress indicators (e.g., "45/100 bags collected")
+- [x] Add batch status tracking (collecting, ready, ordered, in-transit, delivered)
+- [x] Implement automatic batch closure when MOQ is met
+- [x] Add manual batch creation for urgent orders
+
+### Cost Sharing & Pricing
+- [x] Calculate per-farmer cost based on quantity ordered
+- [x] Implement bulk discount pricing tiers
+- [x] Add delivery cost sharing algorithm (split by quantity or equal)
+- [x] Display individual farmer cost breakdown
+- [x] Show savings from bulk purchasing vs individual orders
+- [x] Add payment tracking per farmer in batch
+
+### Logistics & Delivery Management
+- [x] Create delivery route planning interface
+- [x] Implement barangay-based delivery grouping
+- [x] Add delivery schedule calendar
+- [x] Display delivery status tracking (pending, in-transit, delivered)
+- [x] Add driver assignment and tracking
+- [ ] Implement delivery confirmation system (photo upload, signature)
+- [x] Add delivery cost calculation based on distance/location
+
+### Supplier Coordination
+- [ ] Create supplier order dashboard
+- [ ] Add batch order submission to suppliers
+- [ ] Implement supplier confirmation workflow
+- [ ] Add estimated delivery date tracking
+- [ ] Display supplier inventory status
+- [ ] Add supplier communication log
+
+### Farmer Notifications
+- [ ] Add SMS/email notifications when batch is forming
+- [ ] Notify farmers when MOQ is reached
+- [ ] Send delivery schedule notifications
+- [ ] Add delivery confirmation notifications
+- [ ] Implement payment reminder notifications
+
+### Analytics & Reporting
+- [ ] Create batch order analytics dashboard
+- [ ] Display cost savings from bulk purchasing
+- [ ] Show delivery efficiency metrics
+- [ ] Add supplier performance tracking
+- [ ] Generate batch order reports (PDF/Excel)
+
+### Integration
+- [x] Add "Batch Orders" navigation item to sidebar
+- [ ] Integrate with existing marketplace orders
+- [ ] Link to farmer profiles and order history
+- [ ] Connect to supplier management system
+- [ ] Add to Manager and Field Officer dashboards
