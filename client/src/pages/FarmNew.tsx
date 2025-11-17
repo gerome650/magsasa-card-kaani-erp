@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, ArrowRight, Check, MapPin, Tractor } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { ImageUpload } from "@/components/ImageUpload";
 
 type FormData = {
   name: string;
@@ -23,6 +24,7 @@ type FormData = {
   soilType: string;
   irrigationType: "Irrigated" | "Rainfed" | "Upland";
   status: "active" | "inactive" | "fallow";
+  photoUrls: string[];
 };
 
 const CROP_OPTIONS = [
@@ -78,6 +80,7 @@ export default function FarmNew() {
     soilType: "Loam",
     irrigationType: "Irrigated",
     status: "active",
+    photoUrls: [],
   });
 
   const [drawnBoundaries, setDrawnBoundaries] = useState<google.maps.Polygon[]>([]);
@@ -86,6 +89,36 @@ export default function FarmNew() {
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
 
   const utils = trpc.useContext();
+  
+  const uploadPhotoMutation = trpc.farms.uploadPhoto.useMutation({
+    onError: (error) => {
+      toast.error(`Photo upload failed: ${error.message}`);
+    },
+  });
+  
+  const handlePhotoUpload = async (file: File): Promise<string> => {
+    // Convert file to base64
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve, reject) => {
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    
+    const base64Data = await base64Promise;
+    
+    // Upload to S3 via tRPC
+    const result = await uploadPhotoMutation.mutateAsync({
+      fileName: file.name,
+      fileData: base64Data,
+      contentType: file.type,
+    });
+    
+    return result.url;
+  };
   
   const createFarmMutation = trpc.farms.create.useMutation({
     onMutate: async (newFarm) => {
@@ -279,6 +312,7 @@ export default function FarmNew() {
         soilType: formData.soilType,
         irrigationType: formData.irrigationType,
         status: formData.status,
+        photoUrls: formData.photoUrls,
       });
 
       // Save boundaries if any were drawn
@@ -543,6 +577,21 @@ export default function FarmNew() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              
+              {/* Photo Upload */}
+              <div className="space-y-2">
+                <Label>Farm Photos (Optional)</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Upload photos of your farm to help with identification and documentation.
+                </p>
+                <ImageUpload
+                  value={formData.photoUrls}
+                  onChange={(urls) => updateFormData("photoUrls", urls)}
+                  maxImages={5}
+                  maxSizeMB={5}
+                  onUpload={handlePhotoUpload}
+                />
               </div>
             </div>
           )}

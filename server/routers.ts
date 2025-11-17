@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { storagePut } from "./storage";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -45,6 +46,7 @@ export const appRouter = router({
         irrigationType: z.enum(["Irrigated", "Rainfed", "Upland"]).optional(),
         averageYield: z.number().optional(),
         status: z.enum(["active", "inactive", "fallow"]).optional(),
+        photoUrls: z.array(z.string()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const farmId = await db.createFarm({
@@ -104,6 +106,30 @@ export const appRouter = router({
         }
         
         return results;
+      }),
+    
+    uploadPhoto: protectedProcedure
+      .input(z.object({
+        farmId: z.number().optional(),
+        fileName: z.string(),
+        fileData: z.string(), // base64 encoded
+        contentType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Decode base64 to buffer
+        const buffer = Buffer.from(input.fileData, 'base64');
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const farmPrefix = input.farmId ? `farm-${input.farmId}` : 'temp';
+        const extension = input.fileName.split('.').pop() || 'jpg';
+        const uniqueFileName = `${farmPrefix}-${timestamp}.${extension}`;
+        const s3Key = `farms/photos/${uniqueFileName}`;
+        
+        // Upload to S3
+        const { url } = await storagePut(s3Key, buffer, input.contentType);
+        
+        return { url, key: s3Key };
       }),
   }),
   

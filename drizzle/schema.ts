@@ -43,6 +43,7 @@ export const farms = mysqlTable("farms", {
   crops: json("crops").$type<string[]>().notNull(), // Array of crop names
   soilType: varchar("soilType", { length: 100 }),
   irrigationType: mysqlEnum("irrigationType", ["Irrigated", "Rainfed", "Upland"]),
+  photoUrls: json("photoUrls").$type<string[]>(), // Array of S3 photo URLs
   
   // Performance metrics
   averageYield: decimal("averageYield", { precision: 10, scale: 2 }), // MT/ha

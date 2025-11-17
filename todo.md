@@ -2023,3 +2023,63 @@
 - [x] Document best practices
 - [x] Document future enhancements
 - [ ] Save checkpoint after implementation
+
+
+## Farm Photo Upload Feature
+
+### Drag-and-Drop Component
+- [x] Create ImageUpload component with drag-and-drop zone
+- [x] Add file input (hidden) for click-to-upload
+- [x] Implement drag events (dragEnter, dragOver, dragLeave, drop)
+- [x] Add visual feedback for drag state (border color, background)
+- [x] Validate file types (jpg, jpeg, png, webp)
+- [x] Validate file size (max 5MB per image)
+- [x] Show upload progress indicator (Loader2 with count)
+- [x] Display preview thumbnails after upload (grid with remove buttons)
+- [x] Add remove button for each uploaded image (hover overlay)
+- [x] Support multiple image uploads (max 5 images)
+
+### Backend S3 Upload
+- [x] Create tRPC mutation for photo upload (farms.uploadPhoto)
+- [x] Use storagePut() helper from server/storage.ts
+- [x] Generate unique filename with timestamp and farm ID
+- [x] Store in S3 with proper content type (farms/photos/ directory)
+- [x] Return public URL and S3 key
+- [x] Add error handling for upload failures (toast notifications)
+- [x] Implement file size validation on backend (via base64 buffer)
+- [ ] Add image optimization/compression (optional - future enhancement)
+
+### Database Schema Updates
+- [x] Add photoUrls column to farms table (JSON array)
+- [x] Update farm creation mutation to accept photoUrls
+- [x] Run migration (drizzle/0003_worthless_christian_walker.sql)
+- [ ] Update farm update mutation to handle photo changes (future)
+
+### Integration with Farm Creation Wizard
+- [x] Add ImageUpload component to Step 2 (Characteristics)
+- [x] Update form state to include photos array (photoUrls: [])
+- [x] Upload photos to S3 when user selects files (handlePhotoUpload)
+- [x] Store S3 URLs in form state (updateFormData)
+- [x] Pass photoUrls to farm creation mutation
+- [x] Show upload progress during submission (built into ImageUpload)
+- [x] Handle upload errors gracefully (try-catch with toast)
+
+### Photo Display UI
+- [x] Create PhotoGallery component for farm detail page
+- [x] Display uploaded photos in grid layout (2-4 columns responsive)
+- [x] Add lightbox/modal for full-size image view (Dialog with navigation)
+- [x] Show placeholder when no photos uploaded (ImageIcon with message)
+- [x] Add thumbnail strip in lightbox for navigation
+- [x] Add keyboard navigation (arrow buttons)
+- [x] Integrate PhotoGallery into FarmDetail.tsx
+- [ ] Add delete photo functionality (farm owner only - future)
+- [ ] Add photo count badge on farm cards (future)
+
+### Testing & Documentation
+- [ ] Test drag-and-drop upload
+- [ ] Test click-to-upload
+- [ ] Test file validation (type and size)
+- [ ] Test multiple image upload
+- [ ] Test S3 storage and retrieval
+- [ ] Create documentation for photo upload feature
+- [ ] Save checkpoint after implementation

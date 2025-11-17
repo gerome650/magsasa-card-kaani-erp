@@ -1,0 +1,1 @@
+ALTER TABLE `farms` ADD `photoUrls` json;

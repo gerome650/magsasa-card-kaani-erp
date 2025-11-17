@@ -39,6 +39,7 @@ import {
 
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
+import { PhotoGallery } from "@/components/PhotoGallery";
 
 export default function FarmDetail() {
   const [, params] = useRoute("/farms/:id");
@@ -68,6 +69,7 @@ export default function FarmDetail() {
     soilType: dbFarm.soilType || 'Unknown',
     irrigationType: dbFarm.irrigationType || 'Rainfed',
     dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    photoUrls: dbFarm.photoUrls || [],
   } : undefined;
   
   // Load boundaries from database
@@ -1503,6 +1505,16 @@ ${placemarks}
                   </Badge>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+          
+          {/* Farm Photos Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Farm Photos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PhotoGallery photos={farm.photoUrls} />
             </CardContent>
           </Card>
 
