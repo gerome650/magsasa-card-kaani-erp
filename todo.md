@@ -1958,3 +1958,68 @@
 - [x] Document common use cases and troubleshooting
 - [x] Document performance monitoring features
 - [ ] Save checkpoint after implementation
+
+
+## Bulk Operations for Farm Lists
+
+### Multi-Select System
+- [x] Add checkbox to each farm card
+- [x] Add "Select All" checkbox above farm grid
+- [x] Implement selected farms state management (Set<string>)
+- [x] Add individual farm checkboxes
+- [x] Implement select/deselect individual farm (handleSelectFarm)
+- [x] Implement select/deselect all farms (handleSelectAll)
+- [x] Add visual feedback for selected cards (ring-2 ring-primary bg-primary/5)
+- [x] Show selected count in bulk action toolbar
+
+### Bulk Delete Functionality
+- [x] Create bulk delete tRPC mutation (farms.bulkDelete)
+- [x] Add bulk delete button to toolbar (red with Trash2 icon)
+- [x] Implement confirmation dialog before deletion (AlertDialog)
+- [x] Show list of farms to be deleted in dialog (up to 5 farms)
+- [x] Handle deletion with optimistic updates (onMutate, onError, onSuccess)
+- [x] Show success/error toast notifications (loading, success, error, warning)
+- [x] Clear selection after successful deletion
+- [x] Handle partial failures (results.success and results.failed arrays)
+- [x] Automatic rollback on error (restore previousFarms)
+- [x] Return detailed results (success IDs and failed with error messages)
+
+### CSV Export Functionality
+- [x] Create CSV generation utility function (handleExportSelected)
+- [x] Add bulk export button to toolbar (outline with Download icon)
+- [x] Generate CSV with all farm fields (13 columns)
+- [x] Include headers (Farm Name, Farmer Name, Barangay, Municipality, etc.)
+- [x] Format data properly (crops as semicolon-separated, quoted cells)
+- [x] Trigger browser download with Blob and createElement('a')
+- [x] Add timestamp to filename (farms_export_YYYY-MM-DD.csv)
+- [x] Show success toast after export
+
+### Bulk Action Toolbar
+- [x] Create bulk action toolbar (Card with muted background)
+- [x] Show toolbar only when farms are selected (conditional render)
+- [x] Display selected count ("X farm(s) selected")
+- [x] Add "Clear Selection" button (ghost variant with X icon)
+- [x] Add "Delete Selected" button (destructive variant with Trash2 icon)
+- [x] Add "Export Selected" button (outline variant with Download icon)
+- [x] Position toolbar between stats and filters
+- [x] Style with bg-muted/50 and border-primary/20
+
+### UI/UX Enhancements
+- [x] Disable bulk actions when no farms selected (toolbar hidden)
+- [x] Add loading states during bulk operations (toast.loading)
+- [x] Selection works with filtered results (filteredFarms)
+- [x] Visual feedback on selected cards (ring border + background tint)
+- [x] Accessible checkboxes with proper labels
+- [x] Responsive toolbar layout (flex with gap)
+
+### Documentation
+- [x] Create comprehensive guide at docs/BULK_OPERATIONS.md
+- [x] Document multi-select system usage
+- [x] Document CSV export format and fields
+- [x] Document bulk delete workflow
+- [x] Document optimistic updates implementation
+- [x] Document partial failure handling
+- [x] Document troubleshooting steps
+- [x] Document best practices
+- [x] Document future enhancements
+- [ ] Save checkpoint after implementation

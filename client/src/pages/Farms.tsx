@@ -10,6 +10,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Plus,
   Search,
@@ -20,6 +31,9 @@ import {
   Calendar,
   TrendingUp,
   Edit,
+  Trash2,
+  Download,
+  X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { FarmsSkeleton } from "@/components/FarmsSkeleton";
@@ -33,9 +47,62 @@ export default function Farms() {
   const [selectedBarangay, setSelectedBarangay] = useState("all");
   const [selectedCrop, setSelectedCrop] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedFarms, setSelectedFarms] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Fetch farms from database via tRPC
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery();
+  const utils = trpc.useUtils();
+  const bulkDeleteMutation = trpc.farms.bulkDelete.useMutation({
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await utils.farms.list.cancel();
+      
+      // Snapshot previous value
+      const previousFarms = utils.farms.list.getData();
+      
+      // Optimistically update cache
+      utils.farms.list.setData(undefined, (old) => {
+        if (!old) return old;
+        return old.filter(farm => !variables.ids.includes(farm.id));
+      });
+      
+      // Show optimistic toast
+      import('sonner').then(({ toast }) => {
+        toast.loading(`Deleting ${variables.ids.length} farm${variables.ids.length !== 1 ? 's' : ''}...`);
+      });
+      
+      return { previousFarms };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousFarms) {
+        utils.farms.list.setData(undefined, context.previousFarms);
+      }
+      import('sonner').then(({ toast }) => {
+        toast.dismiss();
+        toast.error('Failed to delete farms', {
+          description: err.message,
+        });
+      });
+    },
+    onSuccess: (data) => {
+      import('sonner').then(({ toast }) => {
+        toast.dismiss();
+        if (data.failed.length === 0) {
+          toast.success(`Successfully deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}`);
+        } else {
+          toast.warning(`Deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}, ${data.failed.length} failed`, {
+            description: `Failed farms: ${data.failed.map(f => f.id).join(', ')}`,
+          });
+        }
+      });
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      utils.farms.list.invalidate();
+    },
+  });
   
   // Transform database format to frontend format
   const farms: Farm[] = dbFarms ? dbFarms.map(farm => ({
@@ -121,6 +188,93 @@ export default function Farms() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  // Bulk operations handlers
+  const handleSelectAll = () => {
+    if (selectedFarms.size === filteredFarms.length) {
+      setSelectedFarms(new Set());
+    } else {
+      setSelectedFarms(new Set(filteredFarms.map(f => f.id)));
+    }
+  };
+
+  const handleSelectFarm = (farmId: string) => {
+    const newSelected = new Set(selectedFarms);
+    if (newSelected.has(farmId)) {
+      newSelected.delete(farmId);
+    } else {
+      newSelected.add(farmId);
+    }
+    setSelectedFarms(newSelected);
+  };
+
+  const handleExportSelected = () => {
+    const selectedFarmData = filteredFarms.filter(f => selectedFarms.has(f.id));
+    
+    // CSV headers
+    const headers = [
+      'Farm Name',
+      'Farmer Name',
+      'Barangay',
+      'Municipality',
+      'Latitude',
+      'Longitude',
+      'Size (ha)',
+      'Crops',
+      'Soil Type',
+      'Irrigation Type',
+      'Status',
+      'Average Yield (MT/ha)',
+      'Date Registered'
+    ];
+
+    // CSV rows
+    const rows = selectedFarmData.map(farm => [
+      farm.name,
+      farm.farmerName,
+      farm.location.barangay,
+      farm.location.municipality,
+      farm.location.coordinates.lat,
+      farm.location.coordinates.lng,
+      farm.size,
+      farm.crops.join('; '),
+      farm.soilType,
+      farm.irrigationType,
+      farm.status,
+      farm.averageYield || '',
+      farm.dateRegistered
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `farms_export_${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show success message
+    import('sonner').then(({ toast }) => {
+      toast.success(`Exported ${selectedFarms.size} farm${selectedFarms.size !== 1 ? 's' : ''} to CSV`);
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    const farmIds = Array.from(selectedFarms).map(id => parseInt(id));
+    bulkDeleteMutation.mutate({ ids: farmIds });
+    setSelectedFarms(new Set());
+    setShowDeleteDialog(false);
   };
 
   // Show loading skeleton while fetching data
@@ -225,6 +379,47 @@ export default function Farms() {
         </Card>
       </div>
 
+      {/* Bulk Action Toolbar */}
+      {selectedFarms.size > 0 && (
+        <Card className="bg-muted/50 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">
+                  {selectedFarms.size} farm{selectedFarms.size !== 1 ? 's' : ''} selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedFarms(new Set())}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear Selection
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportSelected}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="relative">
@@ -305,11 +500,38 @@ export default function Farms() {
           />
         )
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredFarms.map((farm) => (
-          <Card key={farm.id} className="hover:shadow-lg transition-shadow">
+        <div className="space-y-4">
+          {/* Select All Checkbox */}
+          <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
+            <Checkbox
+              id="select-all"
+              checked={filteredFarms.length > 0 && selectedFarms.size === filteredFarms.length}
+              onCheckedChange={handleSelectAll}
+            />
+            <label
+              htmlFor="select-all"
+              className="text-sm font-medium cursor-pointer"
+            >
+              Select all {filteredFarms.length} farm{filteredFarms.length !== 1 ? 's' : ''}
+            </label>
+          </div>
+
+          {/* Farms Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredFarms.map((farm) => (
+            <Card 
+              key={farm.id} 
+              className={`hover:shadow-lg transition-all ${
+                selectedFarms.has(farm.id) ? 'ring-2 ring-primary bg-primary/5' : ''
+              }`}
+            >
             <CardHeader>
               <div className="flex items-start justify-between">
+                <Checkbox
+                  checked={selectedFarms.has(farm.id)}
+                  onCheckedChange={() => handleSelectFarm(farm.id)}
+                  className="mt-1 mr-3"
+                />
                 <div className="flex-1">
                   <CardTitle className="text-lg">{farm.name}</CardTitle>
                   <div className="flex items-center gap-2 mt-1">
@@ -399,11 +621,44 @@ export default function Farms() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))}
+          </div>
         </div>
       )}
 
-
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedFarms.size} farm{selectedFarms.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected farms and all associated data including boundaries, yields, and cost records.
+              {selectedFarms.size <= 5 && (
+                <div className="mt-4">
+                  <p className="font-medium mb-2">Farms to be deleted:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {filteredFarms
+                      .filter(f => selectedFarms.has(f.id))
+                      .map(f => (
+                        <li key={f.id} className="text-sm">{f.name} - {f.farmerName}</li>
+                      ))
+                    }
+                  </ul>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSelected}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete {selectedFarms.size} Farm{selectedFarms.size !== 1 ? 's' : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

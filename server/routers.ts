@@ -82,6 +82,29 @@ export const appRouter = router({
         await db.deleteFarm(input.id);
         return { success: true };
       }),
+    
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        const results = {
+          success: [] as number[],
+          failed: [] as { id: number; error: string }[],
+        };
+        
+        for (const id of input.ids) {
+          try {
+            await db.deleteFarm(id);
+            results.success.push(id);
+          } catch (error) {
+            results.failed.push({
+              id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        }
+        
+        return results;
+      }),
   }),
   
   boundaries: router({
