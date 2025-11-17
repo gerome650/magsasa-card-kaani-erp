@@ -17,11 +17,13 @@ import { farmersData } from '@/data/farmersData';
 import { harvestData } from '@/data/harvestData';
 import { getFarms } from '@/data/farmsData';
 import FarmerHistory from '@/components/FarmerHistory';
+import { MapView } from '@/components/Map';
 
 export default function FarmerProfile() {
   const [, params] = useRoute('/farmers/:id');
   const farmerId = params?.id;
   const [activeTab, setActiveTab] = useState<'overview' | 'farms' | 'history' | 'analytics' | 'activity'>('overview');
+  const [farmsView, setFarmsView] = useState<'list' | 'map'>('list');
 
   const farmer = farmersData.find(f => f.id === farmerId);
   const farmerHarvests = harvestData.filter(h => h.farmerId === farmerId);
@@ -274,47 +276,152 @@ export default function FarmerProfile() {
               <p className="text-muted-foreground">No farms registered yet</p>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {farmerFarms.map((farm) => (
-                <Card key={farm.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-lg">{farm.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4" />
-                        {farm.location.barangay}, {farm.location.municipality}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {farm.crops.map((crop) => (
-                          <span key={crop} className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
-                            {crop}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Soil Type:</span>
-                          <span className="ml-2 font-medium">{farm.soilType}</span>
+            <>
+              {/* View Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={farmsView === 'list' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFarmsView('list')}
+                  >
+                    List View
+                  </Button>
+                  <Button
+                    variant={farmsView === 'map' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFarmsView('map')}
+                  >
+                    Map View
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {farmerFarms.length} farms • {totalFarmArea.toFixed(2)} ha total
+                </div>
+              </div>
+
+              {/* List View */}
+              {farmsView === 'list' && (
+                <div className="grid gap-4">
+                  {farmerFarms.map((farm) => (
+                    <Card key={farm.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <h3 className="font-semibold text-lg">{farm.name}</h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            {farm.location.barangay}, {farm.location.municipality}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {farm.crops.map((crop) => (
+                              <span key={crop} className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                                {crop}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Soil Type:</span>
+                              <span className="ml-2 font-medium">{farm.soilType}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Irrigation:</span>
+                              <span className="ml-2 font-medium">{farm.irrigationType}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">Irrigation:</span>
-                          <span className="ml-2 font-medium">{farm.irrigationType}</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold">{farm.size} ha</div>
+                          <p className="text-sm text-muted-foreground">Farm Size</p>
+                          <Link href={`/farms/${farm.id}`}>
+                            <Button variant="outline" size="sm" className="mt-2">
+                              View Details
+                            </Button>
+                          </Link>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">{farm.size} ha</div>
-                      <p className="text-sm text-muted-foreground">Farm Size</p>
-                      <Link href={`/farms/${farm.id}`}>
-                        <Button variant="outline" size="sm" className="mt-2">
-                          View Details
-                        </Button>
-                      </Link>
-                    </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Map View */}
+              {farmsView === 'map' && (
+                <Card className="p-0 overflow-hidden">
+                  <div className="h-[600px]">
+                    <MapView
+                      onMapReady={(map, google) => {
+                        const bounds = new google.maps.LatLngBounds();
+                        const infoWindow = new google.maps.InfoWindow();
+
+                        farmerFarms.forEach((farm) => {
+                          const position = {
+                            lat: farm.location.coordinates.lat,
+                            lng: farm.location.coordinates.lng
+                          };
+
+                          const marker = new google.maps.Marker({
+                            position,
+                            map,
+                            title: farm.name,
+                            icon: {
+                              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+                                `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#22c55e" stroke="white" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`
+                              ),
+                              scaledSize: new google.maps.Size(32, 32),
+                              anchor: new google.maps.Point(16, 32)
+                            }
+                          });
+
+                          bounds.extend(position);
+
+                          marker.addListener('click', () => {
+                            const content = `
+                              <div style="padding: 8px; max-width: 250px;">
+                                <h3 style="font-weight: 600; margin-bottom: 8px;">${farm.name}</h3>
+                                <p style="color: #666; font-size: 14px; margin-bottom: 4px;">
+                                  📍 ${farm.location.barangay}, ${farm.location.municipality}
+                                </p>
+                                <p style="font-size: 14px; margin-bottom: 4px;">
+                                  <strong>Size:</strong> ${farm.size} hectares
+                                </p>
+                                <p style="font-size: 14px; margin-bottom: 4px;">
+                                  <strong>Crops:</strong> ${farm.crops.join(', ')}
+                                </p>
+                                <p style="font-size: 14px; margin-bottom: 4px;">
+                                  <strong>Soil:</strong> ${farm.soilType}
+                                </p>
+                                <p style="font-size: 14px;">
+                                  <strong>Irrigation:</strong> ${farm.irrigationType}
+                                </p>
+                              </div>
+                            `;
+                            infoWindow.setContent(content);
+                            infoWindow.open(map, marker);
+                          });
+                        });
+
+                        // Fit map to show all markers
+                        if (farmerFarms.length > 1) {
+                          map.fitBounds(bounds);
+                          // Add padding
+                          const listener = google.maps.event.addListener(map, 'idle', () => {
+                            if (map.getZoom() > 15) map.setZoom(15);
+                            google.maps.event.removeListener(listener);
+                          });
+                        } else if (farmerFarms.length === 1) {
+                          map.setCenter({
+                            lat: farmerFarms[0].location.coordinates.lat,
+                            lng: farmerFarms[0].location.coordinates.lng
+                          });
+                          map.setZoom(15);
+                        }
+                      }}
+                    />
                   </div>
                 </Card>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

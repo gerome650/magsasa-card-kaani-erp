@@ -1433,3 +1433,14 @@
 - [x] Add tooltip showing exact farm count
 - [x] Use consistent styling with existing badges
 - [x] Position badge prominently on card header
+
+
+## New Feature: Farm Location Map in Farmer Profile
+
+- [x] Add Google Maps integration to Farms tab
+- [x] Display markers for each farm location
+- [x] Add info windows showing farm details on marker click
+- [x] Auto-zoom map to fit all farm markers
+- [x] Add toggle between list view and map view
+- [x] Show farm count and total area in map view
+- [ ] Add legend for marker colors/types
