@@ -19,6 +19,7 @@ import KaAniChat from "./pages/KaAniChat";
 import Marketplace from "./pages/Marketplace";
 import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
+import OrderHistory from "./pages/OrderHistory";
 
 function Router() {
   return (
@@ -103,6 +104,14 @@ function Router() {
         <ProtectedRoute allowedRoles={['farmer']}>
           <Layout>
             <Checkout />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/orders">
+        <ProtectedRoute allowedRoles={['farmer']}>
+          <Layout>
+            <OrderHistory />
           </Layout>
         </ProtectedRoute>
       </Route>

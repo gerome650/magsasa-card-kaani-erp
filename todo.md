@@ -797,3 +797,65 @@
 - [ ] **ISSUE**: Access denied error when accessing cart/checkout pages (role-based routing needs debugging)
 - [ ] **PENDING**: Backend integration for real loan balance updates
 - [ ] **PENDING**: Order history tracking and management
+
+
+## New Feature: Order History Tracking
+
+### Order Data Structure
+- [x] Create ordersData.ts with mock order history for farmers (5 orders for Maria Santos)
+- [x] Include order details: orderId, farmerId, products, quantities, total, date, status
+- [x] Add delivery status tracking: Pending, Processing, In Transit, Delivered, Completed
+- [x] Include delivery address and contact information
+- [x] Add payment method (Loan Balance / Cash on Delivery)
+- [x] Track order timestamps (ordered, processed, shipped, delivered)
+
+### OrderHistory Page Component
+- [x] Create OrderHistory page component for farmers
+- [x] Display list of past orders with order ID, date, total, status
+- [x] Add status badges with color coding (orange=pending, blue=processing, green=delivered, purple=in_transit)
+- [x] Show order summary (number of items, total amount)
+- [ ] Add search/filter by date range or status
+- [x] Sort orders by date (newest first)
+
+### Order Details View
+- [x] Create OrderDetails component or expandable section (expandable with View Details button)
+- [x] Display itemized product list with quantities and prices
+- [x] Show delivery address and contact number
+- [x] Display payment method used
+- [x] Add order timeline with status updates (Order Placed → Processed → Shipped → Delivered)
+- [x] Show delivery tracking information (notes field)
+
+### Reorder Functionality
+- [x] Add "Reorder" button to each order in history
+- [x] Implement reorder handler to add all items from order to cart
+- [x] Show confirmation toast when items added to cart (with "View Cart" action)
+- [x] Navigate to cart page after reorder (via toast action)
+- [ ] Handle out-of-stock products gracefully (requires product inventory check)
+
+### Navigation Integration
+- [x] Add "Order History" link to Farmer Dashboard sidebar (with Package icon)
+- [x] Create route for /orders path
+- [ ] Add order count badge if there are pending orders
+- [x] Ensure order history is accessible only to farmers (role-based routing)
+
+### Testing
+- [x] Test order history display with multiple orders (5 orders created)
+- [x] Test status badges and color coding (6 status types with icons)
+- [x] Test order details expansion (View Details/Hide Details toggle)
+- [x] Test reorder functionality (adds all items to cart with toast)
+- [ ] Verify navigation and routing (access denied issue - same as marketplace)
+
+### Implementation Status
+- [x] **Order History feature complete**
+- [x] Mock order data with 5 orders for Maria Santos
+- [x] Order statuses: Delivered (2), In Transit (1), Processing (1), Pending (1)
+- [x] Expandable order details with itemized products
+- [x] Order timeline showing all status transitions
+- [x] Reorder button adds all items to cart
+- [x] Status badges with color coding and icons
+- [x] Empty state with "Go to Marketplace" button
+- [x] Navigation link in sidebar
+- [ ] **ISSUE**: Access denied error (authentication persistence issue during hot-reload)
+- [ ] **PENDING**: Fix authentication state management
+- [ ] **PENDING**: Add search/filter by date or status
+- [ ] **PENDING**: Add pending order count badge

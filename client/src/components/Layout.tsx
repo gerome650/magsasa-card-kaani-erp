@@ -10,7 +10,8 @@ import {
   Leaf,
   Wheat,
   LogOut,
-  MessageCircle
+  MessageCircle,
+  Package
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart },
     { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart, roles: ['farmer'] },
+    { name: 'Order History', href: '/orders', icon: Package, roles: ['farmer'] },
     { name: 'Ask KaAni', href: '/kaani', icon: MessageCircle },
   ];
 
