@@ -35,6 +35,7 @@ import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
 import TRPCTest from "./pages/TRPCTest";
 import DebugFarm from "./pages/DebugFarm";
+import FarmNew from "./pages/FarmNew";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -222,6 +223,11 @@ function Router() {
       <Route path="/farms">
         <Layout>
           <Farms />
+        </Layout>
+      </Route>
+      <Route path="/farms/new">
+        <Layout>
+          <FarmNew />
         </Layout>
       </Route>
       <Route path="/farms/:id">

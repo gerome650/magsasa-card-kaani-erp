@@ -1830,3 +1830,25 @@
 - [ ] Debug and test farm detail page loading
 - [ ] Test data persistence across page refreshes
 - [ ] Save Day 1 completion checkpoint
+
+
+## Add New Farm Form Feature
+
+- [x] Create FarmNew.tsx page component with multi-step form
+- [x] Design Step 1: Basic farm information (name, farmer, location)
+- [x] Design Step 2: Farm characteristics (size, crops, soil type, irrigation)
+- [x] Design Step 3: Map-based boundary drawing with Google Maps
+- [x] Implement Google Maps DrawingManager integration
+- [x] Add automatic area calculation from drawn polygons
+- [x] Implement form validation for all required fields
+- [x] Connect form submission to tRPC farms.create mutation
+- [x] Add success/error notifications with toast
+- [x] Navigate to new farm detail page after successful creation
+- [x] Add route for /farms/new in App.tsx
+- [x] Support for multiple parcels (non-contiguous farms)
+- [x] Editable boundaries after drawing
+- [x] Progress indicator with 3 steps
+- [x] Municipality dropdown with 22 Laguna municipalities
+- [x] Crop multi-select with 10 common crops
+- [ ] Test complete farm creation workflow end-to-end
+- [ ] Save checkpoint after feature completion
