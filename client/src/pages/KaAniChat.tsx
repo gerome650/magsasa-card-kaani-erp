@@ -13,6 +13,8 @@ import { SampleFormatsDialog } from "@/components/SampleFormatsDialog";
 import { ConversationManager } from "@/components/ConversationManager";
 import { KaAniEmptyState } from "@/components/KaAniEmptyState";
 import { trpcClient } from "@/lib/trpcClient";
+import { useConnectionHealth } from "@/hooks/useConnectionHealth";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 interface Message {
   id: string;
@@ -44,6 +46,9 @@ export default function KaAniChat() {
   const [selectedDialect, setSelectedDialect] = useState("tagalog");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Connection health monitoring
+  const connectionHealth = useConnectionHealth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -231,6 +236,8 @@ export default function KaAniChat() {
           // Hide typing indicator when first chunk arrives
           if (chunk.length > 0) {
             setIsWaitingForFirstChunk(false);
+            // Mark SSE as connected when receiving data
+            connectionHealth.setSSEConnected(true);
           }
           // Clear retry status when receiving data
           setRetryAttempt(null);
@@ -246,6 +253,7 @@ export default function KaAniChat() {
         // Retry callback
         (attempt, maxRetries) => {
           setRetryAttempt({ current: attempt, max: maxRetries });
+          connectionHealth.setReconnecting();
           toast.info(`Connection lost. Retrying (${attempt}/${maxRetries})...`);
         }
       );
@@ -283,6 +291,8 @@ export default function KaAniChat() {
       );
     } catch (error) {
       console.error("Error sending message:", error);
+      // Mark SSE as disconnected on error
+      connectionHealth.setSSEConnected(false);
       // Remove the placeholder AI message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== aiMessageId));
       toast.error(
@@ -365,7 +375,14 @@ export default function KaAniChat() {
                 onDeleteConversation={handleDeleteConversation}
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
+                {/* Connection Status Indicator */}
+                <ConnectionStatus
+                  status={connectionHealth.status}
+                  lastConnected={connectionHealth.lastConnected}
+                  lastDisconnected={connectionHealth.lastDisconnected}
+                />
+                
                 <SampleFormatsDialog />
                 <div className="text-sm text-muted-foreground">
                   {user?.role === "farmer" ? "Farmer Mode" : user?.role === "field_officer" ? "Field Officer Mode" : "Manager Mode"}

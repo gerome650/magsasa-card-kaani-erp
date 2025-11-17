@@ -2759,3 +2759,22 @@
 - [x] Clear retry status when data successfully received
 - [x] Remove placeholder message on final error after max retries
 - [x] Add user-friendly error messages for different failure scenarios
+
+
+## Connection Health Monitoring (November 18, 2025)
+
+### Connection Status Indicator
+- [x] Create useConnectionHealth hook to monitor browser online/offline events
+- [x] Track SSE connection state (connected, disconnected, reconnecting)
+- [x] Build ConnectionStatus component with visual indicators
+- [x] Add green dot for online, red dot for offline, yellow dot for reconnecting
+- [x] Display status text (Online, Offline, Reconnecting...)
+- [x] Integrate status indicator into KaAni header
+- [x] Update KaAniChat to call setSSEConnected when receiving data
+- [x] Update KaAniChat to call setReconnecting during retry attempts
+- [x] Update KaAniChat to call setSSEConnected(false) on error
+- [x] Position indicator in chat header next to user mode display
+- [x] Add Wifi/WifiOff icons from lucide-react
+- [x] Add pulsing animation for online status
+- [x] Add last connection timestamp display
+- [x] Verify TypeScript compilation passes with no errors
