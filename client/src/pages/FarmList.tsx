@@ -6,9 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Eye, Tractor, Map, TrendingUp, Wheat } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Plus, Search, Eye, Tractor, Map, TrendingUp, Wheat, TrendingDown } from "lucide-react";
 import { getFarms, type Farm } from "@/data/farmsData";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+
+// Helper function to generate mock farm statistics for preview
+const generateFarmStats = (farm: Farm) => {
+  // Generate mock yield data (2-4 recent harvests)
+  const harvestCount = Math.floor(Math.random() * 3) + 2;
+  const yields = Array.from({ length: harvestCount }, (_, i) => ({
+    date: new Date(Date.now() - (i + 1) * 90 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    quantity: Math.floor(Math.random() * 5000) + 1000,
+    crop: farm.crops[Math.floor(Math.random() * farm.crops.length)]
+  }));
+  
+  // Calculate mock financials
+  const totalRevenue = yields.reduce((sum, y) => sum + (y.quantity * 20), 0); // ₱20/kg average
+  const totalCosts = Math.floor(farm.size * (Math.random() * 30000 + 20000)); // ₱20k-50k per hectare
+  const profit = totalRevenue - totalCosts;
+  const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+  
+  return { yields, totalRevenue, totalCosts, profit, profitMargin };
+};
 
 export default function FarmList() {
   const allFarms = getFarms();
@@ -255,9 +275,61 @@ export default function FarmList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFarms.map(farm => (
+                  {filteredFarms.map(farm => {
+                    const stats = generateFarmStats(farm);
+                    return (
                     <TableRow key={farm.id}>
-                      <TableCell className="font-medium">{farm.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <HoverCard openDelay={300}>
+                          <HoverCardTrigger asChild>
+                            <span className="cursor-help underline decoration-dotted">{farm.name}</span>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80">
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="font-semibold text-sm mb-2">Recent Harvests</h4>
+                                <div className="space-y-1">
+                                  {stats.yields.slice(0, 3).map((harvest, idx) => (
+                                    <div key={idx} className="text-xs flex justify-between">
+                                      <span className="text-muted-foreground">{harvest.date}</span>
+                                      <span>{harvest.crop}: {harvest.quantity.toLocaleString()} kg</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="border-t pt-2">
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <p className="text-muted-foreground">Total Revenue</p>
+                                    <p className="font-semibold">₱{stats.totalRevenue.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Total Costs</p>
+                                    <p className="font-semibold">₱{stats.totalCosts.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="border-t pt-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Profit Margin</span>
+                                  <div className="flex items-center gap-1">
+                                    {stats.profitMargin >= 0 ? (
+                                      <TrendingUp className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                      <TrendingDown className="w-4 h-4 text-red-600" />
+                                    )}
+                                    <span className={`font-semibold text-sm ${
+                                      stats.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {stats.profitMargin.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </TableCell>
                       <TableCell>{farm.farmerName}</TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -290,7 +362,8 @@ export default function FarmList() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

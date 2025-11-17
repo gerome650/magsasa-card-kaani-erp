@@ -1777,3 +1777,21 @@
 - [x] Click same slice to toggle off filter
 - [x] Show active filter indicator with badge near chart title
 - [x] Farm table updates automatically when filter changes (reactive)
+
+
+## New Feature: Hover Preview for Farm Rows
+
+- [x] Import HoverCard component from shadcn/ui
+- [x] Wrap farm name cell with HoverCard trigger
+- [x] Generate mock yield data for each farm (2-4 harvests)
+- [x] Generate mock cost data for each farm
+- [x] Calculate total revenue from yields
+- [x] Calculate total costs
+- [x] Calculate profit margin percentage
+- [x] Create preview card showing recent harvests (up to 3)
+- [x] Show total costs and revenue in preview
+- [x] Display profit margin with color coding (green/red)
+- [x] Add TrendingUp/TrendingDown icons for profit direction
+- [x] Preview doesn't interfere with row clicks (separate trigger)
+- [x] Add 300ms delay to prevent accidental triggers (openDelay)
+- [x] Underline farm name with dotted decoration for discoverability
