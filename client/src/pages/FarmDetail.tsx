@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   MapPin,
@@ -20,6 +24,8 @@ import {
   Ruler,
   Calculator,
   FileDown,
+  Sprout,
+  Trash2,
 } from "lucide-react";
 import { getFarmById } from "@/data/farmsData";
 import { jsPDF } from "jspdf";
@@ -43,6 +49,19 @@ export default function FarmDetail() {
   const [isCalculatingArea, setIsCalculatingArea] = useState(false);
   const [tempAreaPolygon, setTempAreaPolygon] = useState<google.maps.Polygon | null>(null);
   const [tempCalculatedArea, setTempCalculatedArea] = useState<number | null>(null);
+  
+  // Yield tracking
+  type YieldRecord = {
+    id: string;
+    parcelIndex: number;
+    cropType: string;
+    harvestDate: string;
+    quantity: number;
+    unit: 'kg' | 'tons';
+    qualityGrade: 'Premium' | 'Standard' | 'Below Standard';
+  };
+  const [yieldRecords, setYieldRecords] = useState<YieldRecord[]>([]);
+  const [isYieldDialogOpen, setIsYieldDialogOpen] = useState(false);
 
   if (!farm) {
     return (
@@ -1124,6 +1143,227 @@ ${placemarks}
               </div>
             </CardContent>
           </Card>
+
+          {/* Yield Tracking Card */}
+          {drawnBoundaries.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sprout className="w-5 h-5" />
+                    Yield Tracking
+                  </CardTitle>
+                  <Dialog open={isYieldDialogOpen} onOpenChange={setIsYieldDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Sprout className="w-4 h-4 mr-1" />
+                        Record Harvest
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Record Harvest Yield</DialogTitle>
+                      </DialogHeader>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.currentTarget);
+                          const newRecord: YieldRecord = {
+                            id: Date.now().toString(),
+                            parcelIndex: parseInt(formData.get('parcel') as string),
+                            cropType: formData.get('crop') as string,
+                            harvestDate: formData.get('harvestDate') as string,
+                            quantity: parseFloat(formData.get('quantity') as string),
+                            unit: formData.get('unit') as 'kg' | 'tons',
+                            qualityGrade: formData.get('qualityGrade') as 'Premium' | 'Standard' | 'Below Standard',
+                          };
+                          setYieldRecords([...yieldRecords, newRecord]);
+                          setIsYieldDialogOpen(false);
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-2">
+                          <Label htmlFor="parcel">Parcel</Label>
+                          <Select name="parcel" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select parcel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {parcelAreas.map((_, index) => (
+                                <SelectItem key={index} value={index.toString()}>
+                                  Parcel {index + 1} ({parcelAreas[index].toFixed(2)} ha)
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="crop">Crop Type</Label>
+                          <Select name="crop" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select crop" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {farm.crops.map((crop) => (
+                                <SelectItem key={crop} value={crop}>
+                                  {crop}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="harvestDate">Harvest Date</Label>
+                          <Input
+                            type="date"
+                            name="harvestDate"
+                            required
+                            max={new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="quantity">Quantity</Label>
+                            <Input
+                              type="number"
+                              name="quantity"
+                              step="0.01"
+                              min="0"
+                              required
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="unit">Unit</Label>
+                            <Select name="unit" required>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                                <SelectItem value="tons">Tons</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="qualityGrade">Quality Grade</Label>
+                          <Select name="qualityGrade" required>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select grade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Premium">Premium</SelectItem>
+                              <SelectItem value="Standard">Standard</SelectItem>
+                              <SelectItem value="Below Standard">Below Standard</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsYieldDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit">Save Harvest</Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {yieldRecords.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No harvest records yet. Click "Record Harvest" to add yield data.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2">Parcel</th>
+                            <th className="text-left py-2">Crop</th>
+                            <th className="text-left py-2">Date</th>
+                            <th className="text-right py-2">Quantity</th>
+                            <th className="text-right py-2">Yield/ha</th>
+                            <th className="text-left py-2">Grade</th>
+                            <th className="text-right py-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {yieldRecords.map((record) => {
+                            const parcelArea = parcelAreas[record.parcelIndex];
+                            const quantityInTons = record.unit === 'tons' ? record.quantity : record.quantity / 1000;
+                            const yieldPerHa = quantityInTons / parcelArea;
+                            return (
+                              <tr key={record.id} className="border-b">
+                                <td className="py-2">Parcel {record.parcelIndex + 1}</td>
+                                <td className="py-2">{record.cropType}</td>
+                                <td className="py-2">{new Date(record.harvestDate).toLocaleDateString()}</td>
+                                <td className="text-right py-2">
+                                  {record.quantity} {record.unit}
+                                </td>
+                                <td className="text-right py-2">
+                                  {yieldPerHa.toFixed(2)} t/ha
+                                </td>
+                                <td className="py-2">
+                                  <Badge
+                                    variant={record.qualityGrade === 'Premium' ? 'default' : 'outline'}
+                                    className="text-xs"
+                                  >
+                                    {record.qualityGrade}
+                                  </Badge>
+                                </td>
+                                <td className="text-right py-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setYieldRecords(yieldRecords.filter(r => r.id !== record.id));
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-600" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                      <div>
+                        <p className="text-sm font-medium">Total Yield</p>
+                        <p className="text-2xl font-bold">
+                          {yieldRecords.reduce((sum, r) => {
+                            const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+                            return sum + tons;
+                          }, 0).toFixed(2)} tons
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Average Yield per Hectare</p>
+                        <p className="text-2xl font-bold">
+                          {(() => {
+                            const totalTons = yieldRecords.reduce((sum, r) => {
+                              const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+                              return sum + tons;
+                            }, 0);
+                            const totalArea = parcelAreas.reduce((sum, a) => sum + a, 0);
+                            return (totalTons / totalArea).toFixed(2);
+                          })()} t/ha
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}

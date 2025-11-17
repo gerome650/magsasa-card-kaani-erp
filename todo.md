@@ -1602,3 +1602,26 @@
 - [x] Add FileDown icon from lucide-react
 - [x] Handle case when no boundaries are drawn (show alert message)
 - [x] Color-coded validation status (green for pass, red for fail)
+
+
+## New Feature: Crop Yield Tracking per Parcel
+
+- [x] Create yield tracking data structure (harvest date, quantity, quality grade, crop type)
+- [x] Add "Record Harvest" button in farm detail page
+- [x] Create yield entry dialog/modal with form fields
+- [x] Add parcel selector dropdown (for multi-parcel farms)
+- [x] Add crop type selector (from farm.crops)
+- [x] Add harvest date picker input with max date validation
+- [x] Add quantity input with unit selector (kg/tons)
+- [x] Add quality grade selector (Premium/Standard/Below Standard)
+- [x] Store yield records in state (array of yield entries)
+- [x] Display yield history table with all harvest data
+- [x] Show yield per hectare calculation (quantity / parcel area)
+- [x] Add delete button for yield records (Trash2 icon)
+- [x] Calculate total yield across all parcels
+- [x] Show average yield per hectare
+- [x] Use Dialog component from shadcn/ui
+- [x] Add Sprout icon for yield tracking
+- [x] Show yield tracking card only when boundaries are drawn
+- [x] Convert kg to tons for yield per hectare calculation
+- [x] Badge styling for quality grades (Premium = default, others = outline)
