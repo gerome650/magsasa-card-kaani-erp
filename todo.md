@@ -1240,3 +1240,17 @@
 - [x] Add "Approval Queue" link to manager navigation
 - [x] Log permission changes in audit log
 - [ ] Update user permissions after approval (requires backend)
+
+
+## New Feature: Notification Badge for Pending Requests
+
+### Badge Component
+- [x] Create notification badge component with count display
+- [x] Add red badge indicator for pending counts > 0
+- [x] Style badge to appear on navigation item
+
+### Integration
+- [x] Add badge to "Permission Approval" nav item in Layout
+- [x] Show badge only for managers/admins
+- [x] Update badge count when requests are created/reviewed
+- [x] Hide badge when count is 0

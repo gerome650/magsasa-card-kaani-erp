@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { getPendingRequestsCount } from '@/data/permissionRequestsData';
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,6 +30,7 @@ export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const pendingRequestsCount = getPendingRequestsCount();
 
   const getRoleDisplay = (role: string) => {
     switch (role) {
@@ -108,6 +111,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="border-t bg-white">
             {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
+              const showBadge = item.href === '/permission-approval' && pendingRequestsCount > 0;
               return (
                 <Link
                   key={item.name}
@@ -123,6 +127,11 @@ export default function Layout({ children }: LayoutProps) {
                   >
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
+                    {showBadge && (
+                      <Badge className="ml-auto bg-red-500 text-white">
+                        {pendingRequestsCount}
+                      </Badge>
+                    )}
                   </a>
                 </Link>
               );
@@ -149,6 +158,7 @@ export default function Layout({ children }: LayoutProps) {
           <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
+              const showBadge = item.href === '/permission-approval' && pendingRequestsCount > 0;
               return (
                 <Link key={item.name} href={item.href}>
                   <a
@@ -160,6 +170,11 @@ export default function Layout({ children }: LayoutProps) {
                   >
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
+                    {showBadge && (
+                      <Badge className="ml-auto bg-red-500 text-white hover:bg-red-600">
+                        {pendingRequestsCount}
+                      </Badge>
+                    )}
                   </a>
                 </Link>
               );
