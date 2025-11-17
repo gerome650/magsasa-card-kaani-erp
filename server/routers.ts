@@ -423,6 +423,124 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
         // Return chunks for frontend streaming simulation
         return { response: fullResponse, chunks, category };
       }),
+
+    // True real-time SSE streaming using tRPC subscriptions
+    sendMessageStreamSSE: protectedProcedure
+      .input(z.object({
+        message: z.string(),
+        conversationHistory: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        })).optional(),
+      }))
+      .subscription(async ({ ctx, input }) => {
+        const { observable } = await import('@trpc/server/observable');
+        
+        return observable<{ type: 'chunk' | 'done' | 'error'; content: string; category?: string }>((emit) => {
+          (async () => {
+            try {
+              const apiKey = process.env.GOOGLE_AI_STUDIO_API_KEY;
+              if (!apiKey) {
+                emit.error(new Error("Google AI Studio API key not configured"));
+                return;
+              }
+
+              // Initialize Gemini API
+              const genAI = new GoogleGenerativeAI(apiKey);
+              const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+              // Build conversation context for Gemini
+              const systemPrompt = `You are KaAni, an AI assistant for Filipino farmers using the MAGSASA-CARD platform. You help with:
+- Rice farming advice (pagtatanim ng palay)
+- CARD MRI loan information and AgScore™ system
+- Pest control recommendations
+- Market prices and harvest tracking
+- Weather information
+- General agricultural guidance
+
+Respond in Filipino (Tagalog) when the user asks in Filipino, and in English when they ask in English. Be helpful, friendly, and provide practical agricultural advice.`;
+
+              // Build chat history
+              const history = input.conversationHistory?.map(msg => ({
+                role: msg.role === "user" ? "user" : "model",
+                parts: [{ text: msg.content }],
+              })) || [];
+
+              // Start chat with history
+              const chat = model.startChat({
+                history,
+                generationConfig: {
+                  maxOutputTokens: 1000,
+                  temperature: 0.7,
+                },
+              });
+
+              // Send message with system context and stream response
+              const fullMessage = history.length === 0 
+                ? `${systemPrompt}\n\nUser: ${input.message}` 
+                : input.message;
+              
+              const streamResult = await chat.sendMessageStream(fullMessage);
+              
+              // Stream chunks in real-time as they arrive
+              let fullResponse = "";
+              
+              for await (const chunk of streamResult.stream) {
+                const chunkText = chunk.text();
+                fullResponse += chunkText;
+                
+                // Emit each chunk immediately
+                emit.next({ type: 'chunk', content: chunkText });
+              }
+
+              // Categorize the message
+              const lowerMessage = input.message.toLowerCase();
+              let category = "general";
+              if (lowerMessage.includes("palay") || lowerMessage.includes("rice") || lowerMessage.includes("tanim")) {
+                category = "rice_farming";
+              } else if (lowerMessage.includes("loan") || lowerMessage.includes("pautang") || lowerMessage.includes("utang")) {
+                category = "loan";
+              } else if (lowerMessage.includes("agscore") || lowerMessage.includes("score")) {
+                category = "agscore";
+              } else if (lowerMessage.includes("peste") || lowerMessage.includes("pest")) {
+                category = "pest_control";
+              } else if (lowerMessage.includes("presyo") || lowerMessage.includes("price") || lowerMessage.includes("market")) {
+                category = "market_prices";
+              } else if (lowerMessage.includes("weather") || lowerMessage.includes("panahon")) {
+                category = "weather";
+              }
+
+              // Save user message to database
+              await db.createChatMessage({
+                userId: ctx.user.id,
+                role: "user",
+                content: input.message,
+                category,
+              });
+
+              // Save assistant response to database
+              await db.createChatMessage({
+                userId: ctx.user.id,
+                role: "assistant",
+                content: fullResponse,
+                category,
+              });
+
+              // Signal completion
+              emit.next({ type: 'done', content: fullResponse, category });
+              emit.complete();
+            } catch (error) {
+              console.error('[KaAni SSE] Error:', error);
+              emit.error(error instanceof Error ? error : new Error('Unknown error occurred'));
+            }
+          })();
+
+          // Cleanup function
+          return () => {
+            // No cleanup needed for Gemini API
+          };
+        });
+      }),
   }),
 });
 

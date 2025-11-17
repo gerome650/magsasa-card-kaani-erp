@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { sendMessageToKaAniStream, loadChatHistory } from "@/services/kaaniService";
+import { sendMessageToKaAniSSE, loadChatHistory } from "@/services/kaaniService";
 import { toast } from "sonner";
 
 interface Message {
@@ -101,12 +101,12 @@ export default function KaAniChat() {
           content: msg.content,
         }));
 
-      // Call KaAni API with streaming and update message content
-      await sendMessageToKaAniStream(
+      // Call KaAni API with TRUE real-time SSE streaming
+      await sendMessageToKaAniSSE(
         input.trim(),
         conversationHistory,
         (chunk) => {
-          // Update the AI message content with each chunk
+          // Update the AI message content with each chunk as it arrives
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === aiMessageId

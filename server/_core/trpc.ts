@@ -10,6 +10,9 @@ const t = initTRPC.context<TrpcContext>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+// Export observable for subscriptions (SSE streaming)
+export { observable } from '@trpc/server/observable';
+
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
 
