@@ -1478,3 +1478,14 @@
 - [x] Show success/error messages for file parsing
 - [x] Add file format validation and error handling
 - [x] Display imported filename and coordinate count
+
+
+## New Feature: Boundary Export (KML/GeoJSON)
+
+- [x] Add "Download Boundary" button with format dropdown
+- [x] Implement GeoJSON file generator from polygon coordinates
+- [x] Implement KML file generator from polygon coordinates
+- [x] Generate automatic filename with farm name and timestamp
+- [x] Trigger browser download for generated files
+- [x] Show success message after download
+- [x] Disable button when no boundary exists

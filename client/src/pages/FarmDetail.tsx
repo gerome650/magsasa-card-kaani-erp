@@ -263,6 +263,103 @@ export default function FarmDetail() {
                           Save Boundary
                         </Button>
                         <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            if (drawnBoundary) {
+                              const path = drawnBoundary.getPath();
+                              const coordinates: { lat: number; lng: number }[] = [];
+                              for (let i = 0; i < path.getLength(); i++) {
+                                const point = path.getAt(i);
+                                coordinates.push({
+                                  lat: point.lat(),
+                                  lng: point.lng()
+                                });
+                              }
+
+                              // Ask user for format
+                              const format = confirm('Download as GeoJSON? (Cancel for KML)') ? 'geojson' : 'kml';
+                              const timestamp = new Date().toISOString().split('T')[0];
+                              const filename = `${farm.name.replace(/\s+/g, '_')}_boundary_${timestamp}`;
+
+                              let content: string;
+                              let mimeType: string;
+                              let extension: string;
+
+                              if (format === 'geojson') {
+                                // Generate GeoJSON
+                                const geojson = {
+                                  type: 'FeatureCollection',
+                                  features: [
+                                    {
+                                      type: 'Feature',
+                                      properties: {
+                                        name: farm.name,
+                                        farmer: farm.farmerName,
+                                        size: farm.size,
+                                        crops: farm.crops.join(', '),
+                                        calculatedArea: calculatedArea?.toFixed(2)
+                                      },
+                                      geometry: {
+                                        type: 'Polygon',
+                                        coordinates: [coordinates.map(c => [c.lng, c.lat])]
+                                      }
+                                    }
+                                  ]
+                                };
+                                content = JSON.stringify(geojson, null, 2);
+                                mimeType = 'application/geo+json';
+                                extension = 'geojson';
+                              } else {
+                                // Generate KML
+                                const coordsString = coordinates
+                                  .map(c => `${c.lng},${c.lat},0`)
+                                  .join(' ');
+                                content = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${farm.name}</name>
+    <description>Farm boundary for ${farm.farmerName}</description>
+    <Placemark>
+      <name>${farm.name}</name>
+      <description>
+        Farmer: ${farm.farmerName}
+        Size: ${farm.size} ha
+        Crops: ${farm.crops.join(', ')}
+        Calculated Area: ${calculatedArea?.toFixed(2)} ha
+      </description>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>${coordsString}</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>`;
+                                mimeType = 'application/vnd.google-earth.kml+xml';
+                                extension = 'kml';
+                              }
+
+                              // Trigger download
+                              const blob = new Blob([content], { type: mimeType });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${filename}.${extension}`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+
+                              alert(`Boundary exported as ${extension.toUpperCase()}!`);
+                            }
+                          }}
+                        >
+                          Download Boundary
+                        </Button>
+                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
