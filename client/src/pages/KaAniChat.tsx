@@ -7,7 +7,7 @@ import { sendMessageToKaAniSSE } from "@/services/kaaniService";
 import { toast } from "sonner";
 import TypingIndicator from "@/components/TypingIndicator";
 import ConversationSidebar from "@/components/ConversationSidebar";
-import { trpc } from "@/lib/trpc";
+import { trpcClient } from "@/lib/trpcClient";
 
 interface Message {
   id: string;
@@ -57,7 +57,7 @@ export default function KaAniChat() {
       if (query.trim() === "") {
         // If search is cleared, reload all conversations
         try {
-          const convos = await trpc.conversations.list.query();
+          const convos = await trpcClient.conversations.list.query();
           setConversations(convos as Conversation[]);
         } catch (error) {
           console.error("Error loading conversations:", error);
@@ -67,7 +67,7 @@ export default function KaAniChat() {
         // Perform search
         setIsSearching(true);
         try {
-          const results = await trpc.conversations.search.query({ query });
+          const results = await trpcClient.conversations.search.query({ query });
           setConversations(results as Conversation[]);
         } catch (error) {
           console.error("Error searching conversations:", error);
@@ -83,7 +83,7 @@ export default function KaAniChat() {
   useEffect(() => {
     const loadConversations = async () => {
       try {
-        const convos = await trpc.conversations.list.query();
+        const convos = await trpcClient.conversations.list.query();
         setConversations(convos as Conversation[]);
         
         // Auto-select the most recent conversation if exists
@@ -110,7 +110,7 @@ export default function KaAniChat() {
     const loadMessages = async () => {
       setIsLoadingMessages(true);
       try {
-        const msgs = await trpc.conversations.getMessages.query({
+        const msgs = await trpcClient.conversations.getMessages.query({
           conversationId: activeConversationId,
         });
         
@@ -148,7 +148,7 @@ export default function KaAniChat() {
 
   const handleNewConversation = async () => {
     try {
-      const result = await trpc.conversations.create.mutate({
+      const result = await trpcClient.conversations.create.mutate({
         title: "New Conversation",
       });
       
@@ -181,7 +181,7 @@ export default function KaAniChat() {
 
   const handleDeleteConversation = async (id: number) => {
     try {
-      await trpc.conversations.delete.mutate({ id });
+      await trpcClient.conversations.delete.mutate({ id });
       
       setConversations((prev) => prev.filter((c) => c.id !== id));
       
@@ -204,7 +204,7 @@ export default function KaAniChat() {
 
   const handleRenameConversation = async (id: number, newTitle: string) => {
     try {
-      await trpc.conversations.updateTitle.mutate({ id, title: newTitle });
+      await trpcClient.conversations.updateTitle.mutate({ id, title: newTitle });
       
       setConversations((prev) =>
         prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c))
