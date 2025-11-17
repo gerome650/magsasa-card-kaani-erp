@@ -2781,3 +2781,10 @@
 
 ## Visual Enhancements
 - [x] Make background grey tone more pronounced in KaAni chat interface for better visual contrast
+
+## Data Generation for Presentation
+- [x] Generate 238 fictitious farmers from Bacolod and Laguna areas
+- [x] Create farm records with boundaries and GPS coordinates
+- [x] Generate harvest records for each farmer
+- [x] Create cost tracking data for farms
+- [x] Seed database with complete dataset
