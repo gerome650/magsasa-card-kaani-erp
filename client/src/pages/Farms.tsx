@@ -38,7 +38,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { FarmsSkeleton } from "@/components/FarmsSkeleton";
 import { type Farm } from "@/data/farmsData";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { EmptyState } from "@/components/EmptyState";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -48,16 +48,44 @@ import { HighlightText } from "@/components/HighlightText";
 
 export default function Farms() {
   const [, navigate] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [selectedBarangay, setSelectedBarangay] = useState("all");
-  const [selectedCrop, setSelectedCrop] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const searchParams = new URLSearchParams(useSearch());
+  
+  // Initialize state from URL parameters
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const start = searchParams.get("startDate");
+    const end = searchParams.get("endDate");
+    if (start && end) {
+      return {
+        from: new Date(start),
+        to: new Date(end),
+      };
+    }
+    return undefined;
+  });
+  const [selectedBarangay, setSelectedBarangay] = useState(searchParams.get("barangay") || "all");
+  const [selectedCrop, setSelectedCrop] = useState(searchParams.get("crop") || "all");
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get("status") || "all");
   const [selectedFarms, setSelectedFarms] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Debounce search query to reduce API calls
   const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Update URL when filters change (without page reload)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (searchQuery) params.set("search", searchQuery);
+    if (dateRange?.from) params.set("startDate", dateRange.from.toISOString().split('T')[0]);
+    if (dateRange?.to) params.set("endDate", dateRange.to.toISOString().split('T')[0]);
+    if (selectedBarangay !== "all") params.set("barangay", selectedBarangay);
+    if (selectedCrop !== "all") params.set("crop", selectedCrop);
+    if (selectedStatus !== "all") params.set("status", selectedStatus);
+    
+    const newUrl = params.toString() ? `/farms?${params.toString()}` : "/farms";
+    window.history.replaceState({}, "", newUrl);
+  }, [searchQuery, dateRange, selectedBarangay, selectedCrop, selectedStatus]);
 
   // Fetch farms from database via tRPC with search and date filters
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery({

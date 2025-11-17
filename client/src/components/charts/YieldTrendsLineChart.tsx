@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLocation } from 'wouter';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -34,22 +35,24 @@ interface YieldTrendsLineChartProps {
 }
 
 export function YieldTrendsLineChart({ farms }: YieldTrendsLineChartProps) {
+  const [, navigate] = useLocation();
   const chartData = useMemo(() => {
     if (farms.length === 0) {
       return {
         labels: [],
+        monthKeys: [],
         datasets: [],
       };
     }
 
     // Group farms by month and calculate average yield
-    const yieldByMonth: Record<string, { total: number; count: number }> = {};
+    const yieldByMonth: Record<string, { total: number; count: number; monthKey: string }> = {};
     
     farms.forEach(farm => {
       if (farm.averageYield > 0) {
         const monthKey = format(startOfMonth(farm.registrationDate), 'yyyy-MM');
         if (!yieldByMonth[monthKey]) {
-          yieldByMonth[monthKey] = { total: 0, count: 0 };
+          yieldByMonth[monthKey] = { total: 0, count: 0, monthKey };
         }
         yieldByMonth[monthKey].total += farm.averageYield;
         yieldByMonth[monthKey].count += 1;
@@ -62,9 +65,11 @@ export function YieldTrendsLineChart({ farms }: YieldTrendsLineChartProps) {
 
     const labels = sorted.map(([month]) => format(parseISO(month + '-01'), 'MMM yyyy'));
     const data = sorted.map(([, { total, count }]) => (total / count).toFixed(2));
+    const monthKeys = sorted.map(([month]) => month);
 
     return {
       labels,
+      monthKeys,
       datasets: [
         {
           label: 'Average Yield (t/ha)',
@@ -96,9 +101,27 @@ export function YieldTrendsLineChart({ farms }: YieldTrendsLineChartProps) {
         callbacks: {
           label: function(context: any) {
             return `${context.dataset.label}: ${context.parsed.y} t/ha`;
+          },
+          footer: function() {
+            return 'Click to filter farms by month';
           }
         }
       },
+    },
+    onClick: (_event: any, elements: any[]) => {
+      if (elements.length > 0) {
+        const index = elements[0].index;
+        const monthKey = chartData.monthKeys[index];
+        // Calculate start and end of month for date range filter
+        const startDate = `${monthKey}-01`;
+        const date = parseISO(startDate);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const endDate = `${monthKey}-${lastDay.toString().padStart(2, '0')}`;
+        // Navigate to Farms page with date range filter
+        navigate(`/farms?startDate=${startDate}&endDate=${endDate}`);
+      }
     },
     scales: {
       y: {
@@ -128,7 +151,7 @@ export function YieldTrendsLineChart({ farms }: YieldTrendsLineChartProps) {
   }
 
   return (
-    <div className="h-[300px]">
+    <div className="h-[300px] cursor-pointer">
       <Line data={chartData} options={options} />
     </div>
   );

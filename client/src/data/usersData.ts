@@ -4,6 +4,7 @@ export type UserRole = 'farmer' | 'manager' | 'field_officer';
 // User interface
 export interface User {
   id: string;
+  username: string; // Username for login
   email: string;
   password: string; // In production, this would be hashed
   name: string;
@@ -21,9 +22,10 @@ export const demoUsers: User[] = [
   // Farmer users
   {
     id: 'U001',
-    email: 'maria.santos@farmer.com',
-    password: 'farmer123', // Demo password
-    name: 'Maria Santos',
+    username: 'farmer',
+    email: 'juan.delacruz@example.com',
+    password: 'demo123',
+    name: 'Juan dela Cruz',
     role: 'farmer',
     phone: '+63 917 123 4567',
     location: 'Brgy. San Juan, Calauan, Laguna',
@@ -31,78 +33,35 @@ export const demoUsers: User[] = [
     createdAt: '2023-01-15',
     lastLogin: '2024-11-16'
   },
-  {
-    id: 'U002',
-    email: 'juan.delacruz@farmer.com',
-    password: 'farmer123',
-    name: 'Juan Dela Cruz',
-    role: 'farmer',
-    phone: '+63 918 234 5678',
-    location: 'Brgy. Dayap, Los Baños, Laguna',
-    farmerId: 'F002',
-    createdAt: '2023-02-20',
-    lastLogin: '2024-11-15'
-  },
+
   
   // Field Officer users
   {
-    id: 'U003',
-    email: 'pedro.garcia@fieldofficer.com',
-    password: 'officer123',
-    name: 'Pedro Garcia',
+    id: 'U002',
+    username: 'officer',
+    email: 'maria.santos@magsasa.org',
+    password: 'demo123',
+    name: 'Maria Santos',
     role: 'field_officer',
     phone: '+63 919 345 6789',
     location: 'CARD BDSFI - Laguna Branch',
     createdAt: '2022-06-10',
     lastLogin: '2024-11-16'
   },
-  {
-    id: 'U004',
-    email: 'ana.reyes@fieldofficer.com',
-    password: 'officer123',
-    name: 'Ana Reyes',
-    role: 'field_officer',
-    phone: '+63 920 456 7890',
-    location: 'CARD BDSFI - Laguna Branch',
-    createdAt: '2022-08-15',
-    lastLogin: '2024-11-15'
-  },
+
   
   // Manager users
   {
-    id: 'U005',
-    email: 'carlos.ramos@manager.com',
-    password: 'manager123',
-    name: 'Carlos Ramos',
+    id: 'U003',
+    username: 'manager',
+    email: 'roberto.garcia@magsasa.org',
+    password: 'demo123',
+    name: 'Roberto Garcia',
     role: 'manager',
     phone: '+63 921 567 8901',
     location: 'CARD BDSFI - Regional Office',
     createdAt: '2021-03-01',
     lastLogin: '2024-11-16'
-  },
-  {
-    id: 'U006',
-    email: 'elena.torres@manager.com',
-    password: 'manager123',
-    name: 'Elena Torres',
-    role: 'manager',
-    phone: '+63 922 678 9012',
-    location: 'CARD BDSFI - Regional Office',
-    createdAt: '2021-05-20',
-    lastLogin: '2024-11-16'
-  },
-  
-  // Supplier users
-  {
-    id: 'U007',
-    email: 'supplier@atlasfertilizer.com',
-    password: 'supplier123',
-    name: 'Roberto Santos',
-    role: 'supplier',
-    phone: '+63 2 8888 1234',
-    location: 'Atlas Fertilizer Corporation, Makati City',
-    createdAt: '2020-01-15',
-    lastLogin: '2024-11-17'
   }
 ];
 
@@ -111,9 +70,19 @@ export const findUserByEmail = (email: string): User | undefined => {
   return demoUsers.find(user => user.email.toLowerCase() === email.toLowerCase());
 };
 
-// Helper function to authenticate user
-export const authenticateUser = (email: string, password: string): User | null => {
-  const user = findUserByEmail(email);
+// Helper function to find user by username
+export const findUserByUsername = (username: string): User | undefined => {
+  return demoUsers.find(user => user.username.toLowerCase() === username.toLowerCase());
+};
+
+// Helper function to authenticate user (supports both username and email)
+export const authenticateUser = (usernameOrEmail: string, password: string): User | null => {
+  // Try username first, then email
+  let user = findUserByUsername(usernameOrEmail);
+  if (!user) {
+    user = findUserByEmail(usernameOrEmail);
+  }
+  
   if (user && user.password === password) {
     return { ...user, lastLogin: new Date().toISOString() };
   }

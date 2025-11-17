@@ -2306,3 +2306,82 @@
 - [ ] Test chart interactions (manual testing required)
 - [ ] Create documentation for dashboard
 - [ ] Save checkpoint after implementation
+
+
+## Chart Interactivity - Drill-Down Analysis
+
+### URL-Based Filter State
+- [x] Update Farms page to read filters from URL query parameters
+- [x] Add useSearchParams hook for reading URL params
+- [x] Initialize filter states from URL on page load
+- [x] Update URL when filters change (without page reload)
+- [x] Support municipality, crop, status, search, dateRange params
+
+### MunicipalityBarChart Click Handler
+- [x] Add onClick handler to Chart.js bar elements
+- [x] Extract clicked municipality name from chart data
+- [x] Navigate to /farms with municipality filter in URL
+- [x] Add visual feedback (cursor pointer on hover)
+- [x] Update chart options with onClick callback
+
+### CropDistributionPieChart Click Handler
+- [x] Add onClick handler to Chart.js arc elements
+- [x] Extract clicked crop name from chart data
+- [x] Navigate to /farms with crop filter in URL
+- [x] Add visual feedback (cursor pointer on hover)
+- [x] Update chart options with onClick callback
+
+### YieldTrendsLineChart Click Handler
+- [x] Add onClick handler to Chart.js point elements
+- [x] Extract clicked month from chart data
+- [x] Calculate date range (start/end of month)
+- [x] Navigate to /farms with date range filter in URL
+- [x] Add visual feedback (cursor pointer on hover)
+- [x] Update chart options with onClick callback
+
+### Visual Feedback & UX
+- [x] Add cursor: pointer to chart containers
+- [x] Add hover effects to chart elements
+- [x] Show tooltip hint about clicking to filter
+- [ ] Add breadcrumb or filter chip showing source chart (future enhancement)
+- [x] Add "Clear Filters" button on Farms page (already exists)
+
+### Testing & Documentation
+- [ ] Test municipality bar click → filters farms
+- [ ] Test crop pie slice click → filters farms
+- [ ] Test yield point click → filters by date range
+- [ ] Test URL sharing (copy/paste URL preserves filters)
+- [ ] Test browser back button (returns to analytics)
+- [ ] Update ANALYTICS_DASHBOARD.md with click interactions
+- [ ] Save checkpoint after implementation
+
+
+## Demo Authentication System (Remove OAuth for Testing)
+
+### Demo User Credentials
+- [x] Create demo user data with username/password for each role
+- [x] Farmer role: username "farmer" / password "demo123"
+- [x] Field Officer role: username "officer" / password "demo123"
+- [x] Manager role: username "manager" / password "demo123"
+- [x] Store demo users in client-side data file
+
+### Login Form Replacement
+- [x] Remove OAuth buttons (Google, Microsoft, Apple) from Login page
+- [x] Create simple username/password input form
+- [x] Add role selector dropdown (optional, auto-detect from username)
+- [x] Style login form to match Robinhood theme
+- [x] Add "Demo Credentials" helper text showing available accounts
+
+### Authentication Logic
+- [x] Update auth context to validate against demo users
+- [x] Remove OAuth token handling (kept for production, demo bypasses it)
+- [x] Implement simple session storage for logged-in user
+- [x] Add logout functionality (already exists)
+- [x] Ensure role-based routing still works with demo accounts
+
+### Testing & Documentation
+- [ ] Test login with all three demo accounts
+- [ ] Verify role-based dashboards load correctly
+- [ ] Test chart interactivity after login
+- [ ] Document demo credentials in README
+- [ ] Add note that OAuth can be re-enabled for production

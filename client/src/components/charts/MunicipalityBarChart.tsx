@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLocation } from 'wouter';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -28,6 +29,7 @@ interface MunicipalityBarChartProps {
 }
 
 export function MunicipalityBarChart({ farms }: MunicipalityBarChartProps) {
+  const [, navigate] = useLocation();
   const chartData = useMemo(() => {
     // Aggregate farms by municipality
     const municipalityCounts: Record<string, number> = {};
@@ -70,9 +72,20 @@ export function MunicipalityBarChart({ farms }: MunicipalityBarChartProps) {
         callbacks: {
           label: function(context: any) {
             return `${context.parsed.x} farm${context.parsed.x !== 1 ? 's' : ''}`;
+          },
+          footer: function() {
+            return 'Click to filter farms by municipality';
           }
         }
       },
+    },
+    onClick: (_event: any, elements: any[]) => {
+      if (elements.length > 0) {
+        const index = elements[0].index;
+        const municipality = chartData.labels[index];
+        // Navigate to Farms page with municipality filter
+        navigate(`/farms?barangay=${encodeURIComponent(municipality)}`);
+      }
     },
     scales: {
       x: {
@@ -101,7 +114,7 @@ export function MunicipalityBarChart({ farms }: MunicipalityBarChartProps) {
   }
 
   return (
-    <div className="h-[300px]">
+    <div className="h-[300px] cursor-pointer">
       <Bar data={chartData} options={options} />
     </div>
   );

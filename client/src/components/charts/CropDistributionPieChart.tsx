@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLocation } from 'wouter';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -18,6 +19,7 @@ interface CropDistributionPieChartProps {
 }
 
 export function CropDistributionPieChart({ farms }: CropDistributionPieChartProps) {
+  const [, navigate] = useLocation();
   const chartData = useMemo(() => {
     // Aggregate crop counts
     const cropCounts: Record<string, number> = {};
@@ -93,9 +95,20 @@ export function CropDistributionPieChart({ farms }: CropDistributionPieChartProp
             const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
             return `${label}: ${value} farm${value !== 1 ? 's' : ''} (${percentage}%)`;
+          },
+          footer: function() {
+            return 'Click to filter farms by crop';
           }
         }
       },
+    },
+    onClick: (_event: any, elements: any[]) => {
+      if (elements.length > 0) {
+        const index = elements[0].index;
+        const crop = chartData.labels[index];
+        // Navigate to Farms page with crop filter
+        navigate(`/farms?crop=${encodeURIComponent(crop)}`);
+      }
     },
   };
 
@@ -108,7 +121,7 @@ export function CropDistributionPieChart({ farms }: CropDistributionPieChartProp
   }
 
   return (
-    <div className="h-[300px]">
+    <div className="h-[300px] cursor-pointer">
       <Pie data={chartData} options={options} />
     </div>
   );

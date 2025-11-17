@@ -10,7 +10,7 @@ import { Loader2, LogIn } from 'lucide-react';
 import { APP_LOGO, APP_TITLE } from '@/const';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,26 +27,26 @@ export default function Login() {
     setError('');
     setIsLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(username, password);
     
     if (result.success) {
       setLocation(redirectTo);
     } else {
-      setError(result.error || 'Login failed');
+      setError(result.error || 'Invalid username or password');
     }
     
     setIsLoading(false);
   };
 
   const demoCredentials = [
-    { role: 'Farmer', email: 'maria.santos@farmer.com', password: 'farmer123' },
-    { role: 'Field Officer', email: 'pedro.garcia@fieldofficer.com', password: 'officer123' },
-    { role: 'Manager', email: 'carlos.ramos@manager.com', password: 'manager123' }
+    { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz' },
+    { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos' },
+    { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia' }
   ];
 
-  const fillDemoCredentials = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
+  const fillDemoCredentials = (user: string, pass: string) => {
+    setUsername(user);
+    setPassword(pass);
     setError('');
   };
 
@@ -83,15 +83,16 @@ export default function Login() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="Enter username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="username"
                 />
               </div>
 
@@ -116,12 +117,17 @@ export default function Login() {
                     <button
                       key={cred.role}
                       type="button"
-                      onClick={() => fillDemoCredentials(cred.email, cred.password)}
+                      onClick={() => fillDemoCredentials(cred.username, cred.password)}
                       className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
                       disabled={isLoading}
                     >
-                      <span className="font-medium text-primary">{cred.role}</span>
-                      <span className="text-gray-600 ml-2">({cred.email})</span>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium text-primary">{cred.role}</span>
+                          <span className="text-gray-600 ml-2">- {cred.name}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">@{cred.username}</span>
+                      </div>
                     </button>
                   ))}
                 </div>
