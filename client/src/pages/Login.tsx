@@ -4,10 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, LogIn } from 'lucide-react';
-import { APP_LOGO, APP_TITLE } from '@/const';
+import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -51,27 +50,34 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white p-4">
-      <div className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: 'url(/rice-terraces-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Dark overlay for better text contrast */}
+      <div className="absolute inset-0 bg-black/40"></div>
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          {APP_LOGO && (
-            <img src={APP_LOGO} alt={APP_TITLE} className="h-16 mx-auto mb-4" />
-          )}
-          <h1 className="text-3xl font-bold text-gray-900">{APP_TITLE}</h1>
-          <p className="text-gray-600 mt-2">Agricultural Management System</p>
+          <img 
+            src="/sunray-logo.png" 
+            alt="MAGSASA-CARD Logo" 
+            className="h-24 w-24 mx-auto mb-4"
+          />
+          <h1 className="text-4xl font-bold text-white mb-2">MAGSASA-CARD</h1>
+          <p className="text-white text-lg">Agricultural Management System</p>
         </div>
 
         {/* Login Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LogIn className="h-5 w-5" />
-              Sign In
-            </CardTitle>
-            <CardDescription>
-              Enter your credentials to access your account
-            </CardDescription>
+            <CardTitle>Sign In</CardTitle>
           </CardHeader>
           
           <form onSubmit={handleSubmit}>
@@ -146,10 +152,7 @@ export default function Login() {
                     Signing in...
                   </>
                 ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Sign In
-                  </>
+                  'Sign In'
                 )}
               </Button>
             </CardFooter>
@@ -157,8 +160,8 @@ export default function Login() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-600 mt-6">
-          © 2024 MAGSASA-CARD Enhanced Platform. All rights reserved.
+        <p className="text-center text-sm text-white mt-6">
+          Powered by © 2025 AgSense.ai. All rights reserved.
         </p>
       </div>
     </div>
