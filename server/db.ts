@@ -1050,3 +1050,21 @@ export async function deleteBatchOrder(orderId: string) {
       .where(eq(batchOrders.id, orderId));
   }, "deleteBatchOrder");
 }
+
+/**
+ * Check if a batch order reference code already exists in the database.
+ * Used for ensuring uniqueness when generating new reference codes.
+ * 
+ * @param referenceCode - The reference code to check
+ * @returns true if the code is unique (doesn't exist), false if it already exists
+ */
+export async function isBatchOrderReferenceCodeUnique(referenceCode: string): Promise<boolean> {
+  return withRetry(async (db) => {
+    const [existing] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.referenceCode, referenceCode))
+      .limit(1);
+    
+    return !existing; // Return true if no existing order found (code is unique)
+  }, "isBatchOrderReferenceCodeUnique");
+}

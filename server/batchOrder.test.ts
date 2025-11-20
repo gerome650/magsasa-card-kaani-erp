@@ -10,6 +10,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import * as db from "./db";
 import type { InsertBatchOrder, InsertBatchOrderItem } from "../drizzle/schema";
+import {
+  isValidBatchOrderDeliveryDate,
+  getDeliveryDateValidationError,
+  generateBatchOrderReferenceCode,
+  generateUniqueBatchOrderReferenceCode,
+  isNegativeMargin,
+  MAX_PAST_DAYS_ALLOWED,
+} from "./batchOrderUtils";
 
 // Mock the database module
 vi.mock("./db", () => ({
@@ -18,6 +26,7 @@ vi.mock("./db", () => ({
   updateBatchOrder: vi.fn(),
   listBatchOrders: vi.fn(),
   getFarmById: vi.fn(),
+  isBatchOrderReferenceCodeUnique: vi.fn(),
 }));
 
 describe("Batch Orders - Database Functions", () => {
@@ -322,6 +331,124 @@ describe("Batch Orders - Database Functions", () => {
         const updatedId = await db.updateBatchOrder(orderId, updateData, mockItems);
         expect(updatedId).toBe(orderId);
       }
+    });
+  });
+
+  describe("Date Validation", () => {
+    it("should accept dates in the future", () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 5);
+      futureDate.setHours(0, 0, 0, 0);
+      
+      expect(isValidBatchOrderDeliveryDate(futureDate)).toBe(true);
+      expect(getDeliveryDateValidationError(futureDate)).toBeNull();
+    });
+
+    it("should accept today's date", () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      expect(isValidBatchOrderDeliveryDate(today)).toBe(true);
+      expect(getDeliveryDateValidationError(today)).toBeNull();
+    });
+
+    it("should accept dates 1-2 days in the past", () => {
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      oneDayAgo.setHours(0, 0, 0, 0);
+      
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - MAX_PAST_DAYS_ALLOWED);
+      twoDaysAgo.setHours(0, 0, 0, 0);
+      
+      expect(isValidBatchOrderDeliveryDate(oneDayAgo)).toBe(true);
+      expect(isValidBatchOrderDeliveryDate(twoDaysAgo)).toBe(true);
+      expect(getDeliveryDateValidationError(oneDayAgo)).toBeNull();
+      expect(getDeliveryDateValidationError(twoDaysAgo)).toBeNull();
+    });
+
+    it("should reject dates older than 2 days", () => {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - (MAX_PAST_DAYS_ALLOWED + 1));
+      threeDaysAgo.setHours(0, 0, 0, 0);
+      
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      oneWeekAgo.setHours(0, 0, 0, 0);
+      
+      expect(isValidBatchOrderDeliveryDate(threeDaysAgo)).toBe(false);
+      expect(isValidBatchOrderDeliveryDate(oneWeekAgo)).toBe(false);
+      
+      const error3Days = getDeliveryDateValidationError(threeDaysAgo);
+      const error1Week = getDeliveryDateValidationError(oneWeekAgo);
+      
+      expect(error3Days).toBeTruthy();
+      expect(error1Week).toBeTruthy();
+      expect(error3Days).toContain(`within the past ${MAX_PAST_DAYS_ALLOWED} days`);
+      expect(error1Week).toContain(`within the past ${MAX_PAST_DAYS_ALLOWED} days`);
+    });
+  });
+
+  describe("Reference Code Generation", () => {
+    it("should generate reference code in correct format", () => {
+      const code = generateBatchOrderReferenceCode();
+      
+      expect(code).toMatch(/^BATCH-\d{8}-\d{4}$/);
+      expect(code.startsWith("BATCH-")).toBe(true);
+    });
+
+    it("should generate unique reference codes with retry on collision", async () => {
+      // First call returns false (duplicate), second returns true (unique)
+      vi.mocked(db.isBatchOrderReferenceCodeUnique)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      
+      const code = await generateUniqueBatchOrderReferenceCode(
+        async (c) => await db.isBatchOrderReferenceCodeUnique(c)
+      );
+      
+      expect(code).toMatch(/^BATCH-\d{8}-\d{4}$/);
+      expect(db.isBatchOrderReferenceCodeUnique).toHaveBeenCalledTimes(2);
+    });
+
+    it("should throw error after max retries if all codes are duplicates", async () => {
+      // All attempts return false (duplicate)
+      vi.mocked(db.isBatchOrderReferenceCodeUnique).mockResolvedValue(false);
+      
+      await expect(
+        generateUniqueBatchOrderReferenceCode(
+          async (c) => await db.isBatchOrderReferenceCodeUnique(c)
+        )
+      ).rejects.toThrow("Unable to generate a unique reference code");
+      
+      // Should have tried MAX_REFERENCE_CODE_RETRIES times
+      expect(db.isBatchOrderReferenceCodeUnique).toHaveBeenCalledTimes(3);
+    });
+
+    it("should succeed on first attempt if code is unique", async () => {
+      vi.mocked(db.isBatchOrderReferenceCodeUnique).mockResolvedValue(true);
+      
+      const code = await generateUniqueBatchOrderReferenceCode(
+        async (c) => await db.isBatchOrderReferenceCodeUnique(c)
+      );
+      
+      expect(code).toMatch(/^BATCH-\d{8}-\d{4}$/);
+      expect(db.isBatchOrderReferenceCodeUnique).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Negative Margin Detection", () => {
+    it("should detect negative margins correctly", () => {
+      expect(isNegativeMargin(100, 120)).toBe(true);  // farmerPrice=100 < supplierPrice=120 = negative margin
+      expect(isNegativeMargin(120, 100)).toBe(false); // farmerPrice=120 > supplierPrice=100 = positive margin
+      expect(isNegativeMargin(100, 100)).toBe(false); // equal = zero margin
+      expect(isNegativeMargin(80, 100)).toBe(true);   // farmerPrice=80 < supplierPrice=100 = negative margin
+    });
+
+    it("should handle edge cases", () => {
+      expect(isNegativeMargin(0, 0)).toBe(false);
+      expect(isNegativeMargin(0, 1)).toBe(true);
+      expect(isNegativeMargin(1, 0)).toBe(false);
     });
   });
 });

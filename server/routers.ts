@@ -6,6 +6,12 @@ import { z } from "zod";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  isValidBatchOrderDeliveryDate,
+  getDeliveryDateValidationError,
+  generateUniqueBatchOrderReferenceCode,
+  isNegativeMargin,
+} from "./batchOrderUtils";
 
 const logBatchOrderRouterEvent = (event: string, payload: Record<string, unknown>) => {
   try {
@@ -661,15 +667,11 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
         ).min(1),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Validation: expectedDeliveryDate must be >= today (or within 2 days tolerance)
+        // Validate expected delivery date using centralized helper
         const deliveryDate = new Date(input.expectedDeliveryDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        
-        if (deliveryDate < twoDaysAgo) {
-          throw new Error("Expected delivery date must be today or within the past 2 days");
+        const dateError = getDeliveryDateValidationError(deliveryDate);
+        if (dateError) {
+          throw new Error(dateError);
         }
 
         // Validate all farms exist
@@ -682,15 +684,10 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           }
         }
 
-        // Generate reference code if not provided
-        const referenceCode = input.referenceCode || (() => {
-          const now = new Date();
-          const year = now.getFullYear();
-          const month = String(now.getMonth() + 1).padStart(2, '0');
-          const day = String(now.getDate()).padStart(2, '0');
-          const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-          return `BATCH-${year}${month}${day}-${random}`;
-        })();
+        // Generate unique reference code if not provided (with retry logic for collisions)
+        const referenceCode = input.referenceCode || await generateUniqueBatchOrderReferenceCode(
+          async (code) => await db.isBatchOrderReferenceCodeUnique(code)
+        );
 
         // Compute totals
         let totalQuantity = 0;
@@ -804,16 +801,12 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           throw new Error(`This batch order cannot be edited. Only draft and pending approval orders can be modified. Current status: ${existingOrder.status}`);
         }
 
-        // Validate delivery date if provided
+        // Validate delivery date if provided using centralized helper
         if (input.expectedDeliveryDate) {
           const deliveryDate = new Date(input.expectedDeliveryDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const twoDaysAgo = new Date(today);
-          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-          
-          if (deliveryDate < twoDaysAgo) {
-            throw new Error("Expected delivery date must be today or within the past 2 days");
+          const dateError = getDeliveryDateValidationError(deliveryDate);
+          if (dateError) {
+            throw new Error(dateError);
           }
         }
 
@@ -835,6 +828,19 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
 
         const processedItems = input.items.map(item => {
           const marginPerUnit = item.farmerUnitPrice - item.supplierUnitPrice;
+          
+          // Log negative margins for monitoring (non-blocking)
+          if (isNegativeMargin(item.farmerUnitPrice, item.supplierUnitPrice)) {
+            logBatchOrderRouterEvent("negative_margin.detected", {
+              batchOrderId: input.id,
+              farmId: item.farmId,
+              marginPerUnit,
+              quantityOrdered: item.quantityOrdered,
+              supplierUnitPrice: item.supplierUnitPrice,
+              farmerUnitPrice: item.farmerUnitPrice,
+            });
+          }
+          
           const lineSupplierTotal = item.quantityOrdered * item.supplierUnitPrice;
           const lineFarmerTotal = item.quantityOrdered * item.farmerUnitPrice;
           const lineAgsenseRevenue = item.quantityOrdered * marginPerUnit;

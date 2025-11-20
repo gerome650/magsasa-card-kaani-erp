@@ -23,6 +23,13 @@
 - Supplier references are free-form strings; once suppliers are first-class, add FK validation.
 - No auto-retry for transient DB write errors beyond connection retry logic.
 
+## Reference Code Uniqueness
+
+- Reference code uniqueness is enforced by a DB-level unique constraint on `batch_orders.referenceCode`.
+- The system includes a retry mechanism (`generateUniqueBatchOrderReferenceCode`) that attempts up to 3 times to generate a unique code.
+- If all retry attempts fail (extremely unlikely), the system throws a clear error: "Unable to generate a unique reference code for this batch order. Please try again."
+- This provides defense-in-depth: the retry mechanism handles the rare collision case, while the DB constraint ensures data integrity.
+
 ## Summary
 
 Batch Orders gracefully handles the most likely failure conditions (validation, basic conflicts, DB hiccups) and fails closed when necessary. Remaining risks are acceptable for v1, provided operators follow the runbook if repeated errors surface.

@@ -39,4 +39,5 @@ API procedures under `batchOrder.*` and the `/batch-orders` UI surfaces.
 - Indexes added for hot queries (see `docs/INDEXES-SQL.sql`).
 - Stress-test script (`scripts/generate-stress-test-batch-orders.ts`) can pre-warm caches before measuring SLIs.
 - When observability stack is ready, emit counters for `batch_order_created` and `batch_order_submitted`.
+- **Negative margin monitoring**: The system logs `negative_margin.detected` events when `farmerUnitPrice < supplierUnitPrice`. Unusually large negative margins or spikes in negative-margin orders may indicate pricing errors or require business review. Consider alerting on negative margin patterns if metrics infrastructure is available.
 

@@ -5,10 +5,12 @@
 - `createdAt` / `updatedAt` timestamps on both header and items.
 - `createdByUserId` recorded for every order.
 - `approvedByUserId` reserved for future workflow.
+- `referenceCode` is unique and immutable (enforced by DB constraint + retry mechanism).
 - Structured logs for:
   - `create.success`
   - `update.success`
   - `status.transition`
+  - `negative_margin.detected` (when farmerUnitPrice < supplierUnitPrice)
   (include `batchOrderId`, `referenceCode`, acting user).
 
 ## Gaps / Accepted Risks

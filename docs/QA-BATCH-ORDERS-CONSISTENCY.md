@@ -19,6 +19,7 @@
   `AgsenseRevenue = (farmerUnitPrice - supplierUnitPrice) * quantityOrdered`.
 - List + detail totals show PHP currency with 2 decimals.
 - Negative quantities/prices rejected in both client and server validation layers.
+- **Negative margins (farmerUnitPrice < supplierUnitPrice) are allowed in v1.** This may represent subsidies, loss-leader scenarios, or promotional pricing. The system logs negative margins for monitoring purposes. Future versions may add explicit policy controls or require approval for negative-margin orders.
 
 ## UX Consistency
 
