@@ -619,6 +619,275 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
         return { messageId };
       }),
   }),
+
+  // Batch Orders router for Agri Input procurement
+  batchOrder: router({
+    create: protectedProcedure
+      .input(z.object({
+        referenceCode: z.string().optional(),
+        supplierId: z.string().nullable().optional(),
+        inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+        expectedDeliveryDate: z.string(), // ISO date
+        deliveryWindowStart: z.string().optional().nullable(),
+        deliveryWindowEnd: z.string().optional().nullable(),
+        currency: z.literal("PHP").default("PHP"),
+        pricingMode: z.literal("margin").default("margin"),
+        items: z.array(
+          z.object({
+            farmId: z.number(),
+            farmerId: z.number().nullable().optional(),
+            productId: z.string().nullable().optional(),
+            inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+            quantityOrdered: z.number().positive(),
+            unit: z.string().min(1),
+            supplierUnitPrice: z.number().min(0),
+            farmerUnitPrice: z.number().min(0),
+            notes: z.string().optional().nullable(),
+          })
+        ).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Validation: expectedDeliveryDate must be >= today (or within 2 days tolerance)
+        const deliveryDate = new Date(input.expectedDeliveryDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        
+        if (deliveryDate < twoDaysAgo) {
+          throw new Error("Expected delivery date cannot be more than 2 days in the past");
+        }
+
+        // Validate all farms exist
+        const farmIds = input.items.map(item => item.farmId);
+        const uniqueFarmIds = [...new Set(farmIds)];
+        for (const farmId of uniqueFarmIds) {
+          const farm = await db.getFarmById(farmId);
+          if (!farm) {
+            throw new Error(`Farm with ID ${farmId} does not exist`);
+          }
+        }
+
+        // Generate reference code if not provided
+        const referenceCode = input.referenceCode || (() => {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+          return `BATCH-${year}${month}${day}-${random}`;
+        })();
+
+        // Compute totals
+        let totalQuantity = 0;
+        let totalSupplierTotal = 0;
+        let totalFarmerTotal = 0;
+        let totalAgsenseRevenue = 0;
+
+        const processedItems = input.items.map(item => {
+          const marginPerUnit = item.farmerUnitPrice - item.supplierUnitPrice;
+          const lineSupplierTotal = item.quantityOrdered * item.supplierUnitPrice;
+          const lineFarmerTotal = item.quantityOrdered * item.farmerUnitPrice;
+          const lineAgsenseRevenue = item.quantityOrdered * marginPerUnit;
+
+          totalQuantity += item.quantityOrdered;
+          totalSupplierTotal += lineSupplierTotal;
+          totalFarmerTotal += lineFarmerTotal;
+          totalAgsenseRevenue += lineAgsenseRevenue;
+
+          return {
+            id: crypto.randomUUID(),
+            batchOrderId: '', // Will be set below
+            farmId: item.farmId,
+            farmerId: item.farmerId || null,
+            productId: item.productId || null,
+            inputType: item.inputType || null,
+            quantityOrdered: item.quantityOrdered.toString(),
+            unit: item.unit,
+            supplierUnitPrice: item.supplierUnitPrice.toString(),
+            farmerUnitPrice: item.farmerUnitPrice.toString(),
+            marginPerUnit: marginPerUnit.toString(),
+            lineSupplierTotal: lineSupplierTotal.toString(),
+            lineFarmerTotal: lineFarmerTotal.toString(),
+            lineAgsenseRevenue: lineAgsenseRevenue.toString(),
+            notes: item.notes || null,
+          };
+        });
+
+        const batchOrderId = crypto.randomUUID();
+        
+        // Set batchOrderId for all items
+        processedItems.forEach(item => {
+          item.batchOrderId = batchOrderId;
+        });
+
+        const batchOrder = {
+          id: batchOrderId,
+          referenceCode,
+          status: "draft" as const,
+          supplierId: input.supplierId || null,
+          inputType: input.inputType || null,
+          pricingMode: "margin" as const,
+          currency: "PHP",
+          expectedDeliveryDate: input.expectedDeliveryDate,
+          deliveryWindowStart: input.deliveryWindowStart ? new Date(input.deliveryWindowStart) : null,
+          deliveryWindowEnd: input.deliveryWindowEnd ? new Date(input.deliveryWindowEnd) : null,
+          totalQuantity: totalQuantity.toString(),
+          totalSupplierTotal: totalSupplierTotal.toString(),
+          totalFarmerTotal: totalFarmerTotal.toString(),
+          totalAgsenseRevenue: totalAgsenseRevenue.toString(),
+          createdByUserId: ctx.user.id,
+          approvedByUserId: null,
+        };
+
+        await db.createBatchOrder(batchOrder, processedItems);
+
+        return await db.getBatchOrderById(batchOrderId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        status: z.enum(["draft", "pending_approval"]).optional(),
+        supplierId: z.string().nullable().optional(),
+        inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+        expectedDeliveryDate: z.string().optional(),
+        deliveryWindowStart: z.string().optional().nullable(),
+        deliveryWindowEnd: z.string().optional().nullable(),
+        currency: z.literal("PHP").optional(),
+        items: z.array(
+          z.object({
+            id: z.string().optional(),
+            farmId: z.number(),
+            farmerId: z.number().nullable().optional(),
+            productId: z.string().nullable().optional(),
+            inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+            quantityOrdered: z.number().positive(),
+            unit: z.string().min(1),
+            supplierUnitPrice: z.number().min(0),
+            farmerUnitPrice: z.number().min(0),
+            notes: z.string().optional().nullable(),
+          })
+        ).min(1),
+      }))
+      .mutation(async ({ input }) => {
+        // Get existing order
+        const existingOrder = await db.getBatchOrderById(input.id);
+        if (!existingOrder) {
+          throw new Error("Batch order not found");
+        }
+
+        // Only allow updates if status is draft or pending_approval
+        if (existingOrder.status !== "draft" && existingOrder.status !== "pending_approval") {
+          throw new Error(`Cannot update batch order with status: ${existingOrder.status}`);
+        }
+
+        // Validate delivery date if provided
+        if (input.expectedDeliveryDate) {
+          const deliveryDate = new Date(input.expectedDeliveryDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const twoDaysAgo = new Date(today);
+          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+          
+          if (deliveryDate < twoDaysAgo) {
+            throw new Error("Expected delivery date cannot be more than 2 days in the past");
+          }
+        }
+
+        // Validate all farms exist
+        const farmIds = input.items.map(item => item.farmId);
+        const uniqueFarmIds = [...new Set(farmIds)];
+        for (const farmId of uniqueFarmIds) {
+          const farm = await db.getFarmById(farmId);
+          if (!farm) {
+            throw new Error(`Farm with ID ${farmId} does not exist`);
+          }
+        }
+
+        // Compute totals
+        let totalQuantity = 0;
+        let totalSupplierTotal = 0;
+        let totalFarmerTotal = 0;
+        let totalAgsenseRevenue = 0;
+
+        const processedItems = input.items.map(item => {
+          const marginPerUnit = item.farmerUnitPrice - item.supplierUnitPrice;
+          const lineSupplierTotal = item.quantityOrdered * item.supplierUnitPrice;
+          const lineFarmerTotal = item.quantityOrdered * item.farmerUnitPrice;
+          const lineAgsenseRevenue = item.quantityOrdered * marginPerUnit;
+
+          totalQuantity += item.quantityOrdered;
+          totalSupplierTotal += lineSupplierTotal;
+          totalFarmerTotal += lineFarmerTotal;
+          totalAgsenseRevenue += lineAgsenseRevenue;
+
+          return {
+            id: item.id || crypto.randomUUID(),
+            batchOrderId: input.id,
+            farmId: item.farmId,
+            farmerId: item.farmerId || null,
+            productId: item.productId || null,
+            inputType: item.inputType || null,
+            quantityOrdered: item.quantityOrdered.toString(),
+            unit: item.unit,
+            supplierUnitPrice: item.supplierUnitPrice.toString(),
+            farmerUnitPrice: item.farmerUnitPrice.toString(),
+            marginPerUnit: marginPerUnit.toString(),
+            lineSupplierTotal: lineSupplierTotal.toString(),
+            lineFarmerTotal: lineFarmerTotal.toString(),
+            lineAgsenseRevenue: lineAgsenseRevenue.toString(),
+            notes: item.notes || null,
+          };
+        });
+
+        const updateData: any = {
+          totalQuantity: totalQuantity.toString(),
+          totalSupplierTotal: totalSupplierTotal.toString(),
+          totalFarmerTotal: totalFarmerTotal.toString(),
+          totalAgsenseRevenue: totalAgsenseRevenue.toString(),
+        };
+
+        if (input.status) updateData.status = input.status;
+        if (input.supplierId !== undefined) updateData.supplierId = input.supplierId;
+        if (input.inputType) updateData.inputType = input.inputType;
+        if (input.expectedDeliveryDate) updateData.expectedDeliveryDate = input.expectedDeliveryDate;
+        if (input.deliveryWindowStart !== undefined) {
+          updateData.deliveryWindowStart = input.deliveryWindowStart ? new Date(input.deliveryWindowStart) : null;
+        }
+        if (input.deliveryWindowEnd !== undefined) {
+          updateData.deliveryWindowEnd = input.deliveryWindowEnd ? new Date(input.deliveryWindowEnd) : null;
+        }
+
+        await db.updateBatchOrder(input.id, updateData, processedItems);
+
+        return await db.getBatchOrderById(input.id);
+      }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        const order = await db.getBatchOrderById(input.id);
+        if (!order) {
+          throw new Error("Batch order not found");
+        }
+        return order;
+      }),
+
+    list: protectedProcedure
+      .input(z.object({
+        status: z.array(z.enum(["draft", "pending_approval", "approved", "cancelled", "completed"])).optional(),
+        supplierId: z.string().optional(),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(async ({ input }) => {
+        const orders = await db.listBatchOrders(input);
+        return { items: orders };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

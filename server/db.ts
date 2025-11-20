@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
+import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost, batchOrders, batchOrderItems, InsertBatchOrder, InsertBatchOrderItem } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { and, or, like, gte, lte } from "drizzle-orm";
+import { and, or, like, gte, lte, eq, desc } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -895,4 +894,132 @@ export async function getRegionalComparison(input?: {
   }));
 
   return finalResults;
+}
+
+// Batch Orders management
+
+export async function createBatchOrder(
+  order: InsertBatchOrder,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    // Insert batch order
+    await db.insert(batchOrders).values(order);
+    
+    // Insert batch order items
+    if (items.length > 0) {
+      await db.insert(batchOrderItems).values(items);
+    }
+    
+    return order.id;
+  }, "createBatchOrder");
+}
+
+export async function updateBatchOrder(
+  orderId: string,
+  orderData: Partial<InsertBatchOrder>,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    // Update batch order header
+    await db.update(batchOrders)
+      .set(orderData)
+      .where(eq(batchOrders.id, orderId));
+    
+    // Delete existing items
+    await db.delete(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    // Insert new items
+    if (items.length > 0) {
+      await db.insert(batchOrderItems).values(items);
+    }
+    
+    return orderId;
+  }, "updateBatchOrder");
+}
+
+export async function getBatchOrderById(orderId: string) {
+  return withRetry(async (db) => {
+    const [order] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.id, orderId))
+      .limit(1);
+    
+    if (!order) {
+      return null;
+    }
+    
+    const items = await db.select()
+      .from(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    return {
+      ...order,
+      items,
+    };
+  }, "getBatchOrderById");
+}
+
+export async function listBatchOrders(filters?: {
+  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+  supplierId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  return withRetry(async (db) => {
+    let query = db.select().from(batchOrders);
+    
+    const conditions: any[] = [];
+    
+    if (filters?.status && filters.status.length > 0) {
+      conditions.push(
+        or(...filters.status.map(s => eq(batchOrders.status, s)))
+      );
+    }
+    
+    if (filters?.supplierId) {
+      conditions.push(eq(batchOrders.supplierId, filters.supplierId));
+    }
+    
+    if (filters?.fromDate) {
+      conditions.push(gte(batchOrders.expectedDeliveryDate, filters.fromDate));
+    }
+    
+    if (filters?.toDate) {
+      conditions.push(lte(batchOrders.expectedDeliveryDate, filters.toDate));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    // Order by created date descending
+    query = query.orderBy(desc(batchOrders.createdAt)) as any;
+    
+    // Apply limit and offset
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }, "listBatchOrders");
+}
+
+export async function deleteBatchOrder(orderId: string) {
+  return withRetry(async (db) => {
+    // Delete items first (cascade)
+    await db.delete(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    // Delete order
+    await db.delete(batchOrders)
+      .where(eq(batchOrders.id, orderId));
+  }, "deleteBatchOrder");
 }
