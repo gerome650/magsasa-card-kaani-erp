@@ -2,18 +2,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { farmersData, getDashboardStats } from "@/data/farmersData";
+import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
 import { useAuth } from "@/contexts/AuthContext";
-import { Users, TrendingUp, DollarSign, Award, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Award, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
 import { agScoreData, getAgScoreByFarmerId, getAgScoreDistribution } from "@/data/agScoreData";
 import AgScoreBadge from "@/components/AgScoreBadge";
+import { trpc } from "@/lib/trpc";
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
   
-  // Get system-wide statistics
-  const stats = getDashboardStats();
+  // Get system-wide statistics from database
+  const { data: farmerCount, isLoading: isLoadingFarmerCount } = trpc.farmers.count.useQuery();
+  const { data: allFarmers, isLoading: isLoadingFarmers } = trpc.farmers.list.useQuery();
+  
+  // Calculate stats from database data
+  const stats = {
+    totalFarmers: farmerCount || 0,
+    activeFarms: allFarmers?.reduce((sum, f) => sum + (f.farmCount || 0), 0) || 0,
+    totalHarvest: allFarmers?.reduce((sum, f) => sum + (f.totalHarvest || 0), 0) || 0,
+    totalRevenue: (allFarmers?.reduce((sum, f) => sum + (f.totalHarvest || 0), 0) || 0) * 25000, // Average ₱25,000 per MT
+  };
   
   // Calculate harvest metrics
   const totalHarvest = harvestData.reduce((sum: number, h: any) => sum + h.quantity, 0);
@@ -138,10 +148,16 @@ export default function ManagerDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalFarmers}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeFarms} active farms
-            </p>
+            {isLoadingFarmerCount || isLoadingFarmers ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.totalFarmers}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.activeFarms} active farms
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 

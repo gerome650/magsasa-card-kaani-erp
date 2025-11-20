@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,20 +22,39 @@ export default function Login() {
   const searchParams = new URLSearchParams(location.split('?')[1]);
   const redirectTo = searchParams.get('redirect') || '/';
 
+  const demoLoginMutation = trpc.auth.demoLogin.useMutation();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    const result = await login(username, password);
-    
-    if (result.success) {
-      setLocation(redirectTo);
-    } else {
-      setError(result.error || 'Invalid username or password');
+    try {
+      // First try demo login (creates server session cookie)
+      const demoResult = await demoLoginMutation.mutateAsync({
+        username,
+        password,
+      });
+
+      if (demoResult.success) {
+        // Also update client-side auth state
+        await login(username, password);
+        setLocation(redirectTo);
+        return;
+      }
+    } catch (demoError: any) {
+      // If demo login fails, fall back to client-side auth
+      // (for backwards compatibility or if server is unavailable)
+      const result = await login(username, password);
+      
+      if (result.success) {
+        setLocation(redirectTo);
+      } else {
+        setError(demoError?.message || result.error || 'Invalid username or password');
+      }
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const demoCredentials = [

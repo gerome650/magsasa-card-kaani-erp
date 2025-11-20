@@ -263,6 +263,30 @@ class SDKServer {
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
+      // DEV-ONLY FALLBACK: In development, allow demo users without session cookie
+      // This is a safety net if cookie setting fails for any reason
+      if (process.env.NODE_ENV === "development" || !ENV.isProduction) {
+        const demoOpenId = "demo-manager"; // Default to manager for dev fallback
+        let user = await db.getUserByOpenId(demoOpenId);
+        
+        if (!user) {
+          // Create demo manager user if it doesn't exist
+          await db.upsertUser({
+            openId: demoOpenId,
+            name: "Demo Manager",
+            email: "demo@magsasa.com",
+            loginMethod: "demo",
+            lastSignedIn: new Date(),
+          });
+          user = await db.getUserByOpenId(demoOpenId);
+        }
+        
+        if (user) {
+          console.warn("[Auth] Using dev fallback: authenticated as demo manager (no session cookie)");
+          return user;
+        }
+      }
+      
       throw ForbiddenError("Invalid session cookie");
     }
 

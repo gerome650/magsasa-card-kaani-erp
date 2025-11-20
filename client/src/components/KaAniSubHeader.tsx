@@ -8,33 +8,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Role = "farmer" | "technician";
-type Context = "loan_matching" | "risk_scoring" | null;
+type Profile = 'farmer' | 'technician' | 'loanMatching' | 'riskScoring';
 
 interface KaAniSubHeaderProps {
-  onRoleChange?: (role: Role) => void;
-  onContextChange?: (context: Context) => void;
+  activeProfile: Profile;
+  onProfileChange: (profile: Profile) => void;
   onDialectChange?: (dialect: string) => void;
 }
 
 export function KaAniSubHeader({
-  onRoleChange,
-  onContextChange,
+  activeProfile,
+  onProfileChange,
   onDialectChange,
 }: KaAniSubHeaderProps) {
-  const [selectedRole, setSelectedRole] = useState<Role>("farmer");
-  const [selectedContext, setSelectedContext] = useState<Context>(null);
   const [selectedDialect, setSelectedDialect] = useState("tagalog");
 
-  const handleRoleChange = (role: Role) => {
-    setSelectedRole(role);
-    onRoleChange?.(role);
-  };
-
-  const handleContextToggle = (context: Context) => {
-    const newContext = selectedContext === context ? null : context;
-    setSelectedContext(newContext);
-    onContextChange?.(newContext);
+  const handleProfileChange = (profile: Profile) => {
+    onProfileChange(profile);
   };
 
   const handleDialectChange = (dialect: string) => {
@@ -46,27 +36,27 @@ export function KaAniSubHeader({
     <div className="bg-white px-6 py-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Role Tabs */}
+          {/* Profile Tabs */}
           <Button
-            variant={selectedRole === "farmer" ? "default" : "ghost"}
+            variant={activeProfile === "farmer" ? "default" : "ghost"}
             className={
-              selectedRole === "farmer"
+              activeProfile === "farmer"
                 ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
                 : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
             }
-            onClick={() => handleRoleChange("farmer")}
+            onClick={() => handleProfileChange("farmer")}
           >
             Farmer
           </Button>
 
           <Button
-            variant={selectedRole === "technician" ? "default" : "ghost"}
+            variant={activeProfile === "technician" ? "default" : "ghost"}
             className={
-              selectedRole === "technician"
+              activeProfile === "technician"
                 ? "bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-6"
                 : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
             }
-            onClick={() => handleRoleChange("technician")}
+            onClick={() => handleProfileChange("technician")}
           >
             Technician
           </Button>
@@ -78,11 +68,11 @@ export function KaAniSubHeader({
           <Button
             variant="ghost"
             className={
-              selectedContext === "loan_matching"
+              activeProfile === "loanMatching"
                 ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
                 : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
             }
-            onClick={() => handleContextToggle("loan_matching")}
+            onClick={() => handleProfileChange("loanMatching")}
           >
             Loan Matching
           </Button>
@@ -90,11 +80,11 @@ export function KaAniSubHeader({
           <Button
             variant="ghost"
             className={
-              selectedContext === "risk_scoring"
+              activeProfile === "riskScoring"
                 ? "bg-green-100 text-green-800 hover:bg-green-200 font-medium rounded-lg px-6"
                 : "text-gray-700 hover:bg-gray-100 font-medium rounded-lg px-6"
             }
-            onClick={() => handleContextToggle("risk_scoring")}
+            onClick={() => handleProfileChange("riskScoring")}
           >
             Risk Scoring
           </Button>

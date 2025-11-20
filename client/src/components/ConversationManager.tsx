@@ -48,10 +48,15 @@ export function ConversationManager({
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
+  // Helper function for safe toLowerCase
+  const toLowerSafe = (value?: string | null): string => (value ?? "").toLowerCase();
+
   // Filter conversations based on search query
-  const filteredConversations = conversations.filter((convo) =>
-    convo.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((convo) => {
+    const title = toLowerSafe(convo.title);
+    const query = toLowerSafe(searchQuery);
+    return title.includes(query);
+  });
 
   const handleDeleteClick = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();

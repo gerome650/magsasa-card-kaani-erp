@@ -192,6 +192,8 @@ function isRetryableError(error: any): boolean {
  * Includes exponential backoff retry logic for dropped connections
  * @param message - User's message
  * @param conversationHistory - Optional conversation history for context
+ * @param profile - Active profile: 'farmer' | 'technician' | 'loanMatching' | 'riskScoring'
+ * @param dialect - Selected dialect (e.g., 'tagalog', 'cebuano')
  * @param onChunk - Callback function called for each text chunk as it arrives
  * @param onRetry - Optional callback when retry attempt is made
  * @returns Complete AI response text
@@ -199,6 +201,8 @@ function isRetryableError(error: any): boolean {
 export async function sendMessageToKaAniSSE(
   message: string,
   conversationHistory: KaAniMessage[] | undefined,
+  profile: 'farmer' | 'technician' | 'loanMatching' | 'riskScoring',
+  dialect: string,
   onChunk: (chunk: string) => void,
   onRetry?: (attempt: number, maxRetries: number) => void
 ): Promise<string> {
@@ -215,6 +219,8 @@ export async function sendMessageToKaAniSSE(
         {
           message,
           conversationHistory,
+          profile,
+          dialect,
         },
         {
           onData: (data) => {
