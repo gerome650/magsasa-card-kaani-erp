@@ -1,9 +1,23 @@
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
+import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost, batchOrders, batchOrderItems, InsertBatchOrder, InsertBatchOrderItem } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
+import { and, or, like, gte, lte, sql, count, isNotNull, desc } from "drizzle-orm";
+
+const logBatchOrderDbEvent = (event: string, payload: Record<string, unknown>) => {
+  try {
+    console.info(
+      JSON.stringify({
+        source: "batchOrder.db",
+        event,
+        ...payload,
+      })
+    );
+  } catch {
+    // ignore logging failures
+  }
+};
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -1124,4 +1138,163 @@ export async function getRegionalComparison(input?: {
   }));
 
   return finalResults;
+}
+
+// Batch Orders management
+
+export async function createBatchOrder(
+  order: InsertBatchOrder,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    await db.transaction(async (tx) => {
+      await tx.insert(batchOrders).values(order);
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    logBatchOrderDbEvent("create", {
+      batchOrderId: order.id,
+      referenceCode: order.referenceCode,
+      status: order.status,
+      itemCount: items.length,
+      createdByUserId: order.createdByUserId,
+    });
+
+    return order.id;
+  }, "createBatchOrder");
+}
+
+export async function updateBatchOrder(
+  orderId: string,
+  orderData: Partial<InsertBatchOrder>,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    await db.transaction(async (tx) => {
+      await tx.update(batchOrders)
+        .set(orderData)
+        .where(eq(batchOrders.id, orderId));
+
+      await tx.delete(batchOrderItems)
+        .where(eq(batchOrderItems.batchOrderId, orderId));
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    logBatchOrderDbEvent("update", {
+      batchOrderId: orderId,
+      status: orderData.status,
+      itemCount: items.length,
+    });
+
+    return orderId;
+  }, "updateBatchOrder");
+}
+
+export async function getBatchOrderById(orderId: string) {
+  return withRetry(async (db) => {
+    const [order] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.id, orderId))
+      .limit(1);
+    
+    if (!order) {
+      return null;
+    }
+    
+    const items = await db.select()
+      .from(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    return {
+      ...order,
+      items,
+    };
+  }, "getBatchOrderById");
+}
+
+export async function listBatchOrders(filters?: {
+  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+  supplierId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  return withRetry(async (db) => {
+    let query = db.select().from(batchOrders);
+    
+    const conditions: any[] = [];
+    
+    if (filters?.status && filters.status.length > 0) {
+      conditions.push(
+        or(...filters.status.map(s => eq(batchOrders.status, s)))
+      );
+    }
+    
+    if (filters?.supplierId) {
+      conditions.push(eq(batchOrders.supplierId, filters.supplierId));
+    }
+    
+    if (filters?.fromDate) {
+      conditions.push(gte(batchOrders.expectedDeliveryDate, filters.fromDate));
+    }
+    
+    if (filters?.toDate) {
+      conditions.push(lte(batchOrders.expectedDeliveryDate, filters.toDate));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    // Order by created date descending
+    query = query.orderBy(desc(batchOrders.createdAt)) as any;
+    
+    // Apply limit and offset
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }, "listBatchOrders");
+}
+
+export async function deleteBatchOrder(orderId: string) {
+  return withRetry(async (db) => {
+    // Delete items first (cascade)
+    await db.delete(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    // Delete order
+    await db.delete(batchOrders)
+      .where(eq(batchOrders.id, orderId));
+  }, "deleteBatchOrder");
+}
+
+/**
+ * Check if a batch order reference code already exists in the database.
+ * Used for ensuring uniqueness when generating new reference codes.
+ * 
+ * @param referenceCode - The reference code to check
+ * @returns true if the code is unique (doesn't exist), false if it already exists
+ */
+export async function isBatchOrderReferenceCodeUnique(referenceCode: string): Promise<boolean> {
+  return withRetry(async (db) => {
+    const [existing] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.referenceCode, referenceCode))
+      .limit(1);
+    
+    return !existing; // Return true if no existing order found (code is unique)
+  }, "isBatchOrderReferenceCodeUnique");
 }
