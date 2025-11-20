@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
 import { ENV } from './_core/env';
-import { and, or, like, gte, lte } from "drizzle-orm";
+import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -228,29 +228,208 @@ export async function getUserByOpenId(openId: string) {
   }, "getUserByOpenId");
 }
 
+/**
+ * Get all farmers (users with role='user' who own at least one farm)
+ * 
+ * Definition: A farmer is a user with role='user' who has at least one farm.
+ * This matches the demo data where generate-demo-data.ts creates users with role='user'
+ * and then creates farms for them.
+ * 
+ * Returns users with aggregated farm data (farm count, total area, etc.)
+ */
+export async function getFarmers(filters?: {
+  search?: string;
+  barangay?: string;
+}) {
+  return withRetry(async (db) => {
+    // Query users with role='user' who have at least one farm
+    // Join with farms to get farm count and aggregated data
+    const conditions: any[] = [eq(users.role, 'user')];
+    
+    if (filters?.search) {
+      conditions.push(
+        or(
+          like(users.name, `%${filters.search}%`),
+          like(users.email, `%${filters.search}%`)
+        )!
+      );
+    }
+    
+    if (filters?.barangay && filters.barangay !== 'all') {
+      // For barangay filter, we need to join with farms and filter
+      // This will be applied in the join condition
+    }
+    
+    // Get users who have farms, with farm statistics
+    // First get basic farmer data with farm aggregates
+    const farmerQuery = db
+      .select({
+        id: users.id,
+        openId: users.openId,
+        name: users.name,
+        email: users.email,
+        loginMethod: users.loginMethod,
+        role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        lastSignedIn: users.lastSignedIn,
+        farmCount: sql<number>`COUNT(DISTINCT ${farms.id})`.as('farmCount'),
+        totalArea: sql<number>`COALESCE(SUM(${farms.size}), 0)`.as('totalArea'),
+        barangays: sql<string>`GROUP_CONCAT(DISTINCT ${farms.barangay} SEPARATOR ', ')`.as('barangays'),
+        municipality: sql<string>`MAX(${farms.municipality})`.as('municipality'),
+      })
+      .from(users)
+      .innerJoin(farms, eq(users.id, farms.userId))
+      .where(and(...conditions))
+      .groupBy(users.id)
+      .orderBy(users.name);
+    
+    const farmerResults = await farmerQuery;
+    
+    // Get crops and harvest data for each farmer
+    // Get all farms for these users to extract crops
+    const userIds = farmerResults.map(f => f.id);
+    if (userIds.length === 0) {
+      return [];
+    }
+    
+    // Get crops from farms (aggregate all crops from all farms per user)
+    const farmsData = await db
+      .select({
+        userId: farms.userId,
+        crops: farms.crops,
+      })
+      .from(farms)
+      .where(inArray(farms.userId, userIds));
+    
+    // Get harvest totals from yields (sum quantities, converting tons to kg for consistency)
+    const harvestData = await db
+      .select({
+        userId: farms.userId,
+        totalQuantity: sql<number>`COALESCE(SUM(CASE WHEN ${yields.unit} = 'tons' THEN ${yields.quantity} * 1000 ELSE ${yields.quantity} END), 0)`.as('totalQuantity'),
+      })
+      .from(yields)
+      .innerJoin(farms, eq(yields.farmId, farms.id))
+      .where(inArray(farms.userId, userIds))
+      .groupBy(farms.userId);
+    
+    // Build a map of userId -> crops and harvest
+    const cropsMap = new Map<number, string[]>();
+    const harvestMap = new Map<number, number>();
+    
+    farmsData.forEach(farm => {
+      const existing = cropsMap.get(farm.userId) || [];
+      let farmCrops: string[] = [];
+      try {
+        if (Array.isArray(farm.crops)) {
+          farmCrops = farm.crops;
+        } else if (typeof farm.crops === 'string') {
+          farmCrops = JSON.parse(farm.crops);
+        }
+      } catch (e) {
+        // If JSON parse fails, treat as empty array (defensive)
+        farmCrops = [];
+      }
+      const allCrops = [...existing, ...farmCrops];
+      cropsMap.set(farm.userId, Array.from(new Set(allCrops))); // Remove duplicates
+    });
+    
+    harvestData.forEach(h => {
+      harvestMap.set(h.userId, Number(h.totalQuantity) || 0);
+    });
+    
+    // Convert to proper types and apply barangay filter in JS if needed (for GROUP_CONCAT matching)
+    let farmers = farmerResults.map(f => {
+      const userId = f.id;
+      const allCrops = cropsMap.get(userId) || [];
+      const totalHarvestKg = harvestMap.get(userId) || 0;
+      const totalHarvestMT = totalHarvestKg / 1000; // Convert kg to MT
+      const barangaysStr = String(f.barangays || '');
+      const firstBarangay = barangaysStr ? barangaysStr.split(',')[0].trim() : '';
+      
+      return {
+        id: userId,
+        openId: f.openId || '',
+        name: f.name || 'Unknown',
+        email: f.email || null,
+        loginMethod: f.loginMethod || null,
+        role: f.role || 'user',
+        createdAt: f.createdAt || new Date().toISOString(),
+        updatedAt: f.updatedAt || new Date().toISOString(),
+        lastSignedIn: f.lastSignedIn || new Date().toISOString(),
+        farmCount: Number(f.farmCount) || 0,
+        totalArea: Number(f.totalArea) || 0,
+        barangays: barangaysStr,
+        municipality: String(f.municipality || 'Calauan'),
+        barangay: firstBarangay,
+        crops: Array.isArray(allCrops) ? allCrops : [],
+        totalHarvest: Number.isFinite(totalHarvestMT) ? totalHarvestMT : 0,
+      };
+    });
+    
+    // Apply barangay filter if provided (check in GROUP_CONCAT result)
+    if (filters?.barangay && filters.barangay !== 'all') {
+      farmers = farmers.filter(f => 
+        f.barangays && f.barangays.includes(filters.barangay!)
+      );
+    }
+    
+    return farmers;
+  }, "getFarmers");
+}
+
+/**
+ * Get total count of farmers (users with role='user' who own at least one farm)
+ */
+export async function getFarmerCount() {
+  return withRetry(async (db) => {
+    const result = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${users.id})` })
+      .from(users)
+      .innerJoin(farms, eq(users.id, farms.userId))
+      .where(eq(users.role, 'user'));
+    
+    return Number(result[0]?.count) || 0;
+  }, "getFarmerCount");
+}
+
 // Farm management queries
 
-// Farms
-export async function getFarmsByUserId(
-  userId: number,
-  filters?: {
-    search?: string;
-    startDate?: string;
-    endDate?: string;
-  }
-) {
+/**
+ * Shared base query for all farm data across Dashboard, Analytics, and Map View
+ * Returns: id, latitude, longitude, municipality, barangay, size, crops, status
+ * No PII returned (excludes farmerName, userId, etc.)
+ * 
+ * This ensures consistency across all views that display farm data.
+ */
+export async function getAllFarmsBaseQuery(filters?: {
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  excludeMissingCoordinates?: boolean; // For Map View: exclude farms without lat/lng
+}) {
   return withRetry(async (db) => {
-    let query = db.select().from(farms);
-    
-    // Apply filters if provided
-    // NOTE: userId filter removed for demo purposes to show all 238 farms
     const conditions: any[] = [];
+    
+    // Exclude farms with missing coordinates if requested (for Map View)
+    // Checks: not null, not empty string, not zero (0,0 is not a valid farm location in Philippines)
+    if (filters?.excludeMissingCoordinates) {
+      conditions.push(
+        and(
+          isNotNull(farms.latitude),
+          isNotNull(farms.longitude),
+          sql`CAST(${farms.latitude} AS CHAR) != ''`,
+          sql`CAST(${farms.longitude} AS CHAR) != ''`,
+          sql`CAST(${farms.latitude} AS DECIMAL(10,6)) != 0`,
+          sql`CAST(${farms.longitude} AS DECIMAL(10,6)) != 0`
+        )!
+      );
+    }
     
     if (filters?.search) {
       conditions.push(
         or(
           like(farms.name, `%${filters.search}%`),
-          like(farms.farmerName, `%${filters.search}%`),
           like(farms.barangay, `%${filters.search}%`)
         )!
       );
@@ -264,12 +443,58 @@ export async function getFarmsByUserId(
       conditions.push(lte(farms.createdAt, new Date(filters.endDate)));
     }
     
+    // Select only non-PII fields for consistency
+    // Note: name and farmerName are included for Map View info windows, but not used for filtering/aggregation
+    const query = db
+      .select({
+        id: farms.id,
+        name: farms.name, // Needed for Map View info windows
+        farmerName: farms.farmerName, // Needed for Map View info windows
+        latitude: farms.latitude,
+        longitude: farms.longitude,
+        municipality: farms.municipality,
+        barangay: farms.barangay,
+        size: farms.size,
+        crops: farms.crops,
+        status: farms.status,
+        averageYield: farms.averageYield,
+        registrationDate: farms.registrationDate,
+      })
+      .from(farms);
+    
     if (conditions.length > 0) {
-      query = db.select().from(farms).where(and(...conditions));
+      return await query.where(and(...conditions));
     }
     
     return await query;
-  }, "getFarmsByUserId");
+  }, "getAllFarmsBaseQuery");
+}
+
+// Farms
+/**
+ * Get farms by user ID (legacy function, now uses getAllFarmsBaseQuery for consistency)
+ * DEV-ONLY: userId filter removed for demo purposes to show all farms
+ * In production, you would add: conditions.push(eq(farms.userId, userId));
+ * 
+ * This function now delegates to getAllFarmsBaseQuery to ensure consistency
+ * across Dashboard, Analytics, and Map View.
+ */
+export async function getFarmsByUserId(
+  userId: number,
+  filters?: {
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+) {
+  // Use shared base query for consistency across Dashboard, Analytics, and Map View
+  // Note: This maintains backward compatibility but ensures all views use the same data source
+  return await getAllFarmsBaseQuery({
+    search: filters?.search,
+    startDate: filters?.startDate,
+    endDate: filters?.endDate,
+    excludeMissingCoordinates: false, // Dashboard/Analytics show all farms
+  });
 }
 
 export async function getFarmById(id: number) {
@@ -565,17 +790,21 @@ export async function searchConversations(userId: number, query: string) {
 }
 
 export async function addChatMessage(data: {
+  userId: number;
   conversationId: number;
   role: "user" | "assistant";
   content: string;
+  category?: string;
 }) {
   const db = await getDb();
   const { chatMessages } = await import("../drizzle/schema");
   
   const result = await db.insert(chatMessages).values({
+    userId: data.userId,
     conversationId: data.conversationId,
     role: data.role,
     content: data.content,
+    category: data.category ?? null,
   });
   
   // Update conversation's updatedAt timestamp

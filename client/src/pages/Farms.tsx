@@ -569,7 +569,7 @@ export default function Farms() {
         farms.length === 0 ? (
           // No farms at all - show main empty state
           <EmptyState
-            icon={Tractor}
+            icon={Wheat}
             title="No farms registered yet"
             description="Get started by registering your first farm. Add farm details, draw boundaries on the map, and start tracking your agricultural operations."
             actionLabel="Register First Farm"

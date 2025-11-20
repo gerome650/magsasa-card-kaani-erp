@@ -1,132 +1,110 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, json } from "drizzle-orm/mysql-core";
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, primaryKey, int, text, decimal, timestamp, mysqlEnum, varchar, json, unique } from "drizzle-orm/mysql-core"
+import { sql } from "drizzle-orm"
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
-// Farm management tables
-export const farms = mysqlTable("farms", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(), // Owner of the farm
-  name: varchar("name", { length: 255 }).notNull(),
-  farmerName: varchar("farmerName", { length: 255 }).notNull(),
-  
-  // Location fields (separate for better querying)
-  barangay: varchar("barangay", { length: 255 }).notNull(),
-  municipality: varchar("municipality", { length: 255 }).notNull(),
-  latitude: decimal("latitude", { precision: 10, scale: 6 }).notNull(),
-  longitude: decimal("longitude", { precision: 10, scale: 6 }).notNull(),
-  
-  // Farm characteristics
-  size: decimal("size", { precision: 10, scale: 2 }).notNull(), // Size in hectares
-  crops: json("crops").$type<string[]>().notNull(), // Array of crop names
-  soilType: varchar("soilType", { length: 100 }),
-  irrigationType: mysqlEnum("irrigationType", ["Irrigated", "Rainfed", "Upland"]),
-  photoUrls: json("photoUrls").$type<string[]>(), // Array of S3 photo URLs
-  
-  // Performance metrics
-  averageYield: decimal("averageYield", { precision: 10, scale: 2 }), // MT/ha
-  
-  // Status
-  status: mysqlEnum("status", ["active", "inactive", "fallow"]).default("active").notNull(),
-  registrationDate: timestamp("registrationDate").defaultNow().notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Farm = typeof farms.$inferSelect;
-export type InsertFarm = typeof farms.$inferInsert;
-
-// Farm boundaries (parcels) - stores GeoJSON polygons
 export const boundaries = mysqlTable("boundaries", {
-  id: int("id").autoincrement().primaryKey(),
-  farmId: int("farmId").notNull(),
-  parcelIndex: int("parcelIndex").notNull(), // 0, 1, 2... for multiple parcels
-  geoJson: text("geoJson").notNull(), // Full GeoJSON polygon
-  area: decimal("area", { precision: 10, scale: 2 }).notNull(), // Calculated area in hectares
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+	id: int().autoincrement().notNull(),
+	farmId: int().notNull(),
+	parcelIndex: int().notNull(),
+	geoJson: text().notNull(),
+	area: decimal({ precision: 10, scale: 2 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "boundaries_id"}),
+]);
 
-export type Boundary = typeof boundaries.$inferSelect;
-export type InsertBoundary = typeof boundaries.$inferInsert;
-
-// Yield records
-export const yields = mysqlTable("yields", {
-  id: int("id").autoincrement().primaryKey(),
-  farmId: int("farmId").notNull(),
-  parcelIndex: int("parcelIndex").notNull(),
-  cropType: varchar("cropType", { length: 100 }).notNull(),
-  harvestDate: varchar("harvestDate", { length: 50 }).notNull(), // ISO date string
-  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(), // Numeric value
-  unit: mysqlEnum("unit", ["kg", "tons"]).notNull(),
-  qualityGrade: mysqlEnum("qualityGrade", ["Premium", "Standard", "Below Standard"]).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Yield = typeof yields.$inferSelect;
-export type InsertYield = typeof yields.$inferInsert;
-
-// Cost records
-export const costs = mysqlTable("costs", {
-  id: int("id").autoincrement().primaryKey(),
-  farmId: int("farmId").notNull(),
-  date: varchar("date", { length: 50 }).notNull(), // ISO date string
-  category: mysqlEnum("category", ["Fertilizer", "Pesticides", "Seeds", "Labor", "Equipment", "Other"]).notNull(),
-  description: text("description"),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Numeric value
-  parcelIndex: int("parcelIndex"), // null means applies to all parcels
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Cost = typeof costs.$inferSelect;
-export type InsertCost = typeof costs.$inferInsert;
-
-// Conversations for KaAni AI assistant
-export const conversations = mysqlTable("conversations", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Conversation = typeof conversations.$inferSelect;
-export type InsertConversation = typeof conversations.$inferInsert;
-
-// Chat messages for KaAni AI assistant
 export const chatMessages = mysqlTable("chatMessages", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  conversationId: int("conversationId").notNull(), // Foreign key to conversations table
-  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
-  content: text("content").notNull(),
-  category: varchar("category", { length: 50 }), // rice_farming, loan, agscore, pest_control, market_prices, weather, general
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	role: mysqlEnum(['user','assistant']).notNull(),
+	content: text().notNull(),
+	category: varchar({ length: 50 }),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	conversationId: int().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "chatMessages_id"}),
+]);
 
-export type ChatMessage = typeof chatMessages.$inferSelect;
-export type InsertChatMessage = typeof chatMessages.$inferInsert;
+export const conversations = mysqlTable("conversations", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	title: varchar({ length: 255 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "conversations_id"}),
+]);
+
+export const costs = mysqlTable("costs", {
+	id: int().autoincrement().notNull(),
+	farmId: int().notNull(),
+	date: varchar({ length: 50 }).notNull(),
+	category: mysqlEnum(['Fertilizer','Pesticides','Seeds','Labor','Equipment','Other']).notNull(),
+	description: text(),
+	amount: decimal({ precision: 10, scale: 2 }).notNull(),
+	parcelIndex: int(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "costs_id"}),
+]);
+
+export const farms = mysqlTable("farms", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	farmerName: varchar({ length: 255 }).notNull(),
+	latitude: decimal({ precision: 10, scale: 6 }).notNull(),
+	longitude: decimal({ precision: 10, scale: 6 }).notNull(),
+	size: decimal({ precision: 10, scale: 2 }).notNull(),
+	crops: json().notNull(),
+	status: mysqlEnum(['active','inactive','fallow']).default('active').notNull(),
+	registrationDate: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+	barangay: varchar({ length: 255 }).notNull(),
+	municipality: varchar({ length: 255 }).notNull(),
+	soilType: varchar({ length: 100 }),
+	irrigationType: mysqlEnum(['Irrigated','Rainfed','Upland']),
+	averageYield: decimal({ precision: 10, scale: 2 }),
+	photoUrls: json(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "farms_id"}),
+]);
+
+export const users = mysqlTable("users", {
+	id: int().autoincrement().notNull(),
+	openId: varchar({ length: 64 }).notNull(),
+	name: text(),
+	email: varchar({ length: 320 }),
+	loginMethod: varchar({ length: 64 }),
+	role: mysqlEnum(['user','admin']).default('user').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "users_id"}),
+	unique("users_openId_unique").on(table.openId),
+]);
+
+export const yields = mysqlTable("yields", {
+	id: int().autoincrement().notNull(),
+	farmId: int().notNull(),
+	parcelIndex: int().notNull(),
+	cropType: varchar({ length: 100 }).notNull(),
+	harvestDate: varchar({ length: 50 }).notNull(),
+	quantity: decimal({ precision: 10, scale: 2 }).notNull(),
+	unit: mysqlEnum(['kg','tons']).notNull(),
+	qualityGrade: mysqlEnum(['Premium','Standard','Below Standard']).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "yields_id"}),
+]);

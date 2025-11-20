@@ -41,6 +41,7 @@ import SkeletonDemo from "./pages/SkeletonDemo";
 import Analytics from "./pages/Analytics";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import FarmMap from "./pages/FarmMap";
+import AdminCsvUpload from "./pages/AdminCsvUpload";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -224,6 +225,14 @@ function Router() {
         <ProtectedRoute allowedRoles={['manager', 'admin']}>
           <Layout>
             <PermissionApproval />
+          </Layout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/admin/csv-upload">
+        <ProtectedRoute allowedRoles={['admin']}>
+          <Layout>
+            <AdminCsvUpload />
           </Layout>
         </ProtectedRoute>
       </Route>

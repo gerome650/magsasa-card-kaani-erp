@@ -1,7 +1,7 @@
 import { Link, useRoute } from "wouter";
 import { EmptyStateCompact } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,15 +36,185 @@ import {
   Loader2,
   Undo2,
   Redo2,
+  DollarSign,
 } from "lucide-react";
 
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 import { PhotoGallery } from "@/components/PhotoGallery";
 
+const logDevWarn = (...args: Parameters<typeof console.warn>) => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
+const logDevError = (...args: Parameters<typeof console.error>) => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
+// QA Pass 2: Memoized summary components to prevent unnecessary re-renders
+const YieldSummaryStats = ({ yieldRecords, parcelAreas }: { yieldRecords: any[], parcelAreas: number[] }) => {
+  // QA Pass 5: Defensive calculations with NaN/Infinity protection
+  const totalYield = useMemo(() => {
+    return yieldRecords.reduce((sum, r) => {
+      const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+      // QA Pass 5: Skip invalid values
+      if (!isFinite(tons) || tons < 0) return sum;
+      return sum + tons;
+    }, 0);
+  }, [yieldRecords]);
+  
+  const averageYieldPerHa = useMemo(() => {
+    const totalTons = yieldRecords.reduce((sum, r) => {
+      const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+      // QA Pass 5: Skip invalid values
+      if (!isFinite(tons) || tons < 0) return sum;
+      return sum + tons;
+    }, 0);
+    const totalArea = parcelAreas.reduce((sum, a) => {
+      // QA Pass 5: Skip invalid areas
+      if (!isFinite(a) || a < 0) return sum;
+      return sum + a;
+    }, 0);
+    // QA Pass 5: Prevent division by zero and ensure finite result
+    return totalArea > 0 && isFinite(totalTons) && isFinite(totalArea)
+      ? totalTons / totalArea 
+      : 0;
+  }, [yieldRecords, parcelAreas]);
+  
+  return (
+    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+      <div>
+        <p className="text-sm font-medium">Total Yield</p>
+        <p className="text-2xl font-bold">
+          {totalYield.toFixed(2)} tons
+        </p>
+      </div>
+      <div>
+        <p className="text-sm font-medium">Average Yield per Hectare</p>
+        <p className="text-2xl font-bold">
+          {averageYieldPerHa.toFixed(2)} t/ha
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const CostSummaryStats = ({ costRecords }: { costRecords: any[] }) => {
+  // QA Pass 5: Defensive calculations with NaN/Infinity protection
+  const totalCosts = useMemo(() => {
+    return costRecords.reduce((sum, r) => {
+      // QA Pass 5: Skip invalid amounts
+      if (!isFinite(r.amount) || r.amount < 0) return sum;
+      return sum + r.amount;
+    }, 0);
+  }, [costRecords]);
+  
+  return (
+    <div className="pt-2 border-t">
+      <p className="text-sm font-medium">Total Costs</p>
+      <p className="text-2xl font-bold">
+        ₱{totalCosts.toFixed(2)}
+      </p>
+    </div>
+  );
+};
+
+// QA Pass 2: Memoized profitability analysis component
+const ProfitabilityAnalysis = ({ yieldRecords, costRecords }: { yieldRecords: any[], costRecords: any[] }) => {
+  const cropPrices: Record<string, number> = {
+    'Rice': 20000, // PHP per ton
+    'Corn': 15000,
+    'Vegetables': 30000,
+    'Fruits': 40000,
+  };
+  
+  // QA Pass 5: Defensive calculations - handle NaN, Infinity, negative values
+  const profitability = useMemo(() => {
+    const totalRevenue = yieldRecords.reduce((sum, r) => {
+      const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+      const price = cropPrices[r.cropType] || 25000; // default price
+      const revenue = tons * price;
+      // QA Pass 5: Skip invalid calculations
+      if (!isFinite(revenue) || revenue < 0) return sum;
+      return sum + revenue;
+    }, 0);
+    
+    const totalCosts = costRecords.reduce((sum, r) => {
+      // QA Pass 5: Skip invalid amounts
+      if (!isFinite(r.amount) || r.amount < 0) return sum;
+      return sum + r.amount;
+    }, 0);
+    
+    // QA Pass 5: Ensure all values are finite and valid
+    const grossProfit = isFinite(totalRevenue) && isFinite(totalCosts) 
+      ? totalRevenue - totalCosts 
+      : 0;
+    const profitMargin = totalRevenue > 0 && isFinite(grossProfit) && isFinite(totalRevenue)
+      ? (grossProfit / totalRevenue) * 100 
+      : 0;
+    const roi = totalCosts > 0 && isFinite(grossProfit) && isFinite(totalCosts)
+      ? (grossProfit / totalCosts) * 100 
+      : 0;
+    
+    // QA Pass 5: Clamp values to reasonable ranges
+    return { 
+      totalRevenue: Math.max(0, isFinite(totalRevenue) ? totalRevenue : 0),
+      totalCosts: Math.max(0, isFinite(totalCosts) ? totalCosts : 0),
+      grossProfit: isFinite(grossProfit) ? grossProfit : 0,
+      profitMargin: Math.max(-100, Math.min(100, isFinite(profitMargin) ? profitMargin : 0)),
+      roi: isFinite(roi) ? roi : 0,
+    };
+  }, [yieldRecords, costRecords]);
+  
+  const { totalRevenue, totalCosts, grossProfit, profitMargin, roi } = profitability;
+  
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-sm font-medium text-green-700">Total Revenue</p>
+          <p className="text-xl font-bold text-green-900">₱{totalRevenue.toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-red-700">Total Costs</p>
+          <p className="text-xl font-bold text-red-900">₱{totalCosts.toFixed(2)}</p>
+        </div>
+      </div>
+      <div className="pt-4 border-t border-green-200">
+        <div className="space-y-2">
+          <div>
+            <p className="text-sm font-medium">Gross Profit</p>
+            <p className="text-2xl font-bold" style={{ color: grossProfit >= 0 ? '#16a34a' : '#dc2626' }}>
+              ₱{grossProfit.toFixed(2)}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium">Profit Margin</p>
+              <p className="text-lg font-bold">{profitMargin.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium">ROI</p>
+              <p className="text-lg font-bold">{roi.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-4">
+        * Revenue calculated using average market prices. Actual prices may vary.
+      </p>
+    </div>
+  );
+};
+
 export default function FarmDetail() {
   const [, params] = useRoute("/farms/:id");
-  const farmId = params?.id ? parseInt(params.id) : null;
+  // QA: Validate farmId is a valid number before using it
+  const farmId = params?.id && !isNaN(parseInt(params.id)) ? parseInt(params.id) : null;
   
   // Load farm data from database
   const { data: dbFarm, isLoading: farmLoading, error: farmError, refetch: refetchFarm } = trpc.farms.getById.useQuery(
@@ -53,25 +223,57 @@ export default function FarmDetail() {
   );
   
   // Transform database format to frontend format
-  const farm = dbFarm ? {
-    ...dbFarm,
-    location: {
-      barangay: dbFarm.barangay,
-      municipality: dbFarm.municipality,
-      coordinates: {
-        lat: parseFloat(dbFarm.latitude as unknown as string),
-        lng: parseFloat(dbFarm.longitude as unknown as string),
-      },
-    },
-    size: parseFloat(dbFarm.size as unknown as string),
-    crops: Array.isArray(dbFarm.crops) ? dbFarm.crops : JSON.parse(dbFarm.crops as unknown as string),
-    averageYield: dbFarm.averageYield ? parseFloat(dbFarm.averageYield as unknown as string) : undefined,
-    // Add default values for fields that might be missing
-    soilType: dbFarm.soilType || 'Unknown',
-    irrigationType: dbFarm.irrigationType || 'Rainfed',
-    dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    photoUrls: dbFarm.photoUrls || [],
-  } : undefined;
+  // QA: Safe parsing with error handling to prevent crashes
+  const farm = dbFarm ? (() => {
+    try {
+      // Safe parseFloat with fallback
+      const safeParseFloat = (value: unknown, fallback: number = 0): number => {
+        if (value === null || value === undefined) return fallback;
+        const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+        return isNaN(parsed) ? fallback : parsed;
+      };
+
+      // Safe JSON parse for crops
+      let crops: string[] = [];
+      try {
+        if (Array.isArray(dbFarm.crops)) {
+          crops = dbFarm.crops;
+        } else if (typeof dbFarm.crops === 'string') {
+          crops = JSON.parse(dbFarm.crops);
+        }
+      } catch (e) {
+        logDevWarn('[FarmDetail] Failed to parse crops, using empty array:', e);
+        crops = [];
+      }
+
+      // Safe coordinate parsing
+      const lat = safeParseFloat(dbFarm.latitude);
+      const lng = safeParseFloat(dbFarm.longitude);
+
+      return {
+        ...dbFarm,
+        location: {
+          barangay: dbFarm.barangay || '',
+          municipality: dbFarm.municipality || '',
+          coordinates: {
+            lat,
+            lng,
+          },
+        },
+        size: safeParseFloat(dbFarm.size, 0),
+        crops,
+        averageYield: dbFarm.averageYield ? safeParseFloat(dbFarm.averageYield) : undefined,
+        // Add default values for fields that might be missing
+        soilType: dbFarm.soilType || 'Unknown',
+        irrigationType: dbFarm.irrigationType || 'Rainfed',
+        dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        photoUrls: Array.isArray(dbFarm.photoUrls) ? dbFarm.photoUrls : (dbFarm.photoUrls ? [dbFarm.photoUrls] : []),
+      };
+    } catch (error) {
+      logDevError('[FarmDetail] Error transforming farm data:', error);
+      return undefined;
+    }
+  })() : undefined;
   
   // Load boundaries from database
   const { data: dbBoundaries, error: boundariesError, refetch: refetchBoundaries } = trpc.boundaries.getByFarmId.useQuery(
@@ -269,6 +471,11 @@ export default function FarmDetail() {
       utils.costs.getByFarmId.invalidate({ farmId: farmId! });
     },
   });
+  
+  // QA Pass 2: Memoized delete handler
+  const handleDeleteCost = useCallback((recordId: string) => {
+    deleteCostMutation.mutate({ id: parseInt(recordId) });
+  }, [deleteCostMutation]);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawnBoundaries, setDrawnBoundaries] = useState<google.maps.Polygon[]>([]);
   const [parcelAreas, setParcelAreas] = useState<number[]>([]);
@@ -294,30 +501,208 @@ export default function FarmDetail() {
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
   
-  // Yield tracking
-  type YieldRecord = {
-    id: string;
-    parcelIndex: number;
-    cropType: string;
-    harvestDate: string;
-    quantity: number;
-    unit: 'kg' | 'tons';
-    qualityGrade: 'Premium' | 'Standard' | 'Below Standard';
-  };
-  const [yieldRecords, setYieldRecords] = useState<YieldRecord[]>([]);
+  // QA Pass 2: Memoize expensive transformations to avoid recalculating on every render
+  // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
+  // Transform backend yields to display format
+  const yieldRecords = useMemo(() => {
+    if (!dbYields) return [];
+    const validRecords: typeof yieldRecords = [];
+    
+    dbYields.forEach((yield, index) => {
+      try {
+        // QA Pass 5: Safe numeric parsing with clamping
+        let quantity = parseFloat(yield.quantity?.toString() || '0');
+        if (isNaN(quantity) || !isFinite(quantity) || quantity < 0) {
+          if (import.meta.env.DEV) {
+            logDevWarn(`[FarmDetail] Invalid yield quantity at index ${index} for farm ${farmId}: ${yield.quantity}, defaulting to 0`);
+          }
+          quantity = 0;
+        }
+        
+        // QA Pass 5: Safe date parsing
+        const harvestDate = yield.harvestDate || yield.date || '';
+        if (!harvestDate || harvestDate === 'Invalid Date') {
+          if (import.meta.env.DEV) {
+            logDevWarn(`[FarmDetail] Invalid harvest date at index ${index} for farm ${farmId}: ${harvestDate}, skipping record`);
+          }
+          return; // Skip invalid records
+        }
+        
+        validRecords.push({
+          id: yield.id.toString(),
+          parcelIndex: yield.parcelIndex,
+          cropType: yield.cropType || yield.crop || '',
+          harvestDate,
+          quantity,
+          unit: (yield.unit === 'tons' || yield.unit === 'kg' ? yield.unit : 'kg') as 'kg' | 'tons',
+          qualityGrade: (yield.qualityGrade || 'Standard') as 'Premium' | 'Standard' | 'Below Standard',
+        });
+      } catch (error) {
+        // QA Pass 5: Skip records that fail parsing, log warning in dev
+        if (import.meta.env.DEV) {
+          logDevWarn(`[FarmDetail] Failed to parse yield record at index ${index} for farm ${farmId}:`, error);
+        }
+      }
+    });
+    
+    return validRecords;
+  }, [dbYields, farmId]);
+
+  // Transform backend costs to display format
+  // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
+  const costRecords = useMemo(() => {
+    if (!dbCosts) return [];
+    const validRecords: typeof costRecords = [];
+    
+    dbCosts.forEach((cost, index) => {
+      try {
+        // QA Pass 5: Safe numeric parsing with clamping
+        let amount = parseFloat(cost.amount?.toString() || '0');
+        if (isNaN(amount) || !isFinite(amount) || amount < 0) {
+          if (import.meta.env.DEV) {
+            logDevWarn(`[FarmDetail] Invalid cost amount at index ${index} for farm ${farmId}: ${cost.amount}, defaulting to 0`);
+          }
+          amount = 0;
+        }
+        
+        // QA Pass 5: Safe date parsing
+        const date = cost.date || '';
+        if (!date || date === 'Invalid Date') {
+          if (import.meta.env.DEV) {
+            logDevWarn(`[FarmDetail] Invalid cost date at index ${index} for farm ${farmId}: ${date}, skipping record`);
+          }
+          return; // Skip invalid records
+        }
+        
+        validRecords.push({
+          id: cost.id.toString(),
+          date,
+          category: cost.category as 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other',
+          description: cost.description || '',
+          amount,
+          parcelIndex: cost.parcelIndex ?? null,
+        });
+      } catch (error) {
+        // QA Pass 5: Skip records that fail parsing, log warning in dev
+        if (import.meta.env.DEV) {
+          logDevWarn(`[FarmDetail] Failed to parse cost record at index ${index} for farm ${farmId}:`, error);
+        }
+      }
+    });
+    
+    return validRecords;
+  }, [dbCosts, farmId]);
+
   const [isYieldDialogOpen, setIsYieldDialogOpen] = useState(false);
-  
-  // Cost tracking
-  type CostRecord = {
-    id: string;
-    date: string;
-    category: 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other';
-    description: string;
-    amount: number;
-    parcelIndex: number | null; // null means applies to all parcels
-  };
-  const [costRecords, setCostRecords] = useState<CostRecord[]>([]);
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false);
+  
+  // QA Pass 2: Pagination for large lists (show first 50, then "Show More")
+  const [yieldRecordsLimit, setYieldRecordsLimit] = useState(50);
+  const [costRecordsLimit, setCostRecordsLimit] = useState(50);
+  
+  // QA Pass 2: Memoize paginated lists
+  const displayedYieldRecords = useMemo(() => {
+    return yieldRecords.slice(0, yieldRecordsLimit);
+  }, [yieldRecords, yieldRecordsLimit]);
+  
+  const displayedCostRecords = useMemo(() => {
+    return costRecords.slice(0, costRecordsLimit);
+  }, [costRecords, costRecordsLimit]);
+  
+  const hasMoreYields = yieldRecords.length > yieldRecordsLimit;
+  const hasMoreCosts = costRecords.length > costRecordsLimit;
+  
+  // QA Pass 3: Fetch farm from list endpoint for consistency comparison
+  const { data: farmFromList } = trpc.farms.list.useQuery(
+    {},
+    { enabled: !!farmId && !!farm }
+  );
+  
+  // QA Pass 3: Integrity checks (non-breaking, logs warnings only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!farm || !farmFromList || farmLoading) return;
+    
+    // Find this farm in the list
+    const listFarm = farmFromList.find(f => f.id === farm.id);
+    if (!listFarm) {
+      logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} not found in list query response`);
+      return;
+    }
+    
+    // Check 1: Coordinates consistency with Map View
+    const listLat = typeof listFarm.latitude === 'string' ? parseFloat(listFarm.latitude) : Number(listFarm.latitude);
+    const listLng = typeof listFarm.longitude === 'string' ? parseFloat(listFarm.longitude) : Number(listFarm.longitude);
+    const detailLat = farm.location.coordinates.lat;
+    const detailLng = farm.location.coordinates.lng;
+    
+    if (Math.abs(listLat - detailLat) > 0.0001 || Math.abs(listLng - detailLng) > 0.0001) {
+      logDevWarn(`[FarmDetailIntegrity] Coordinate mismatch detected for farm ${farm.id}`);
+    }
+    
+    // Check 2: Status consistency
+    if (listFarm.status !== farm.status) {
+      logDevWarn(`[FarmDetailIntegrity] Status mismatch detected for farm ${farm.id}`);
+    }
+    
+    // Check 3: Crop types consistency
+    const listCrops = Array.isArray(listFarm.crops) ? listFarm.crops : (typeof listFarm.crops === 'string' ? JSON.parse(listFarm.crops) : []);
+    const detailCrops = Array.isArray(farm.crops) ? farm.crops : [];
+    const listCropsSet = new Set(listCrops);
+    const detailCropsSet = new Set(detailCrops);
+    
+    if (listCropsSet.size !== detailCropsSet.size || 
+        ![...listCropsSet].every(c => detailCropsSet.has(c))) {
+      logDevWarn(`[FarmDetailIntegrity] Crop list mismatch detected for farm ${farm.id}`);
+    }
+    
+    // Check 4: Barangay/Municipality consistency
+    if (listFarm.barangay !== farm.location.barangay || listFarm.municipality !== farm.location.municipality) {
+      logDevWarn(`[FarmDetailIntegrity] Location mismatch detected for farm ${farm.id}`);
+    }
+    
+    // Check 5: Size consistency (allow small floating point differences)
+    const listSize = typeof listFarm.size === 'string' ? parseFloat(listFarm.size) : Number(listFarm.size);
+    if (Math.abs(listSize - farm.size) > 0.01) {
+      logDevWarn(`[FarmDetailIntegrity] Size mismatch detected between list and detail data for farm ${farm.id}`);
+    }
+  }, [farm, farmFromList, farmLoading]);
+  
+  // QA Pass 3: Data completeness checks
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!farm || farmLoading) return;
+    
+    // Check 1: Active farm with no yields
+    if (farm.status === 'active' && yieldRecords.length === 0) {
+      logDevWarn(`[FarmDetailIntegrity] Active farm ${farm.id} has 0 yields recorded`);
+    }
+    
+    // Check 2: Missing coordinates
+    const hasValidCoordinates = farm.location.coordinates.lat !== 0 && 
+                                farm.location.coordinates.lng !== 0 &&
+                                !isNaN(farm.location.coordinates.lat) &&
+                                !isNaN(farm.location.coordinates.lng);
+    if (!hasValidCoordinates) {
+      logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} has invalid or missing coordinates`);
+    }
+    
+    // Check 3: Size vs parcel areas (if boundaries exist)
+    if (parcelAreas.length > 0 && calculatedArea !== null) {
+      const totalParcelArea = parcelAreas.reduce((sum, a) => sum + a, 0);
+      const sizeDiff = Math.abs(totalParcelArea - farm.size);
+      const sizeDiffPercent = (sizeDiff / farm.size) * 100;
+      
+      if (sizeDiffPercent > 20) {
+        logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} has significant size mismatch (${sizeDiffPercent.toFixed(1)}% difference)`);
+      }
+    }
+    
+    // Check 4: Empty crops array
+    if (Array.isArray(farm.crops) && farm.crops.length === 0) {
+      logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} has no crops listed`);
+    }
+  }, [farm, yieldRecords, parcelAreas, calculatedArea, farmLoading]);
 
   // Undo/Redo functions
   const saveToHistory = (boundaries: google.maps.Polygon[], areas: number[]) => {
@@ -680,8 +1065,7 @@ export default function FarmDetail() {
                                 }
                                 return coordinates;
                               });
-                              // TODO: Save to backend
-                              console.log('Saving parcels:', allParcels);
+                              // Backend persistence pending (see docs/PRODUCTION-QA-FARMDETAIL.md)
                               alert(`${drawnBoundaries.length} parcel(s) saved! Total area: ${calculatedArea?.toFixed(2)} hectares`);
                             }
                           }}
@@ -841,17 +1225,17 @@ ${placemarks}
                             pdf.setFontSize(10);
                             pdf.text(`Farm Name: ${farm.name}`, 20, yPos);
                             yPos += 6;
-                            pdf.text(`Farmer: ${farm.farmer}`, 20, yPos);
+                            pdf.text(`Farmer: ${farm.farmerName}`, 20, yPos);
                             yPos += 6;
-                            pdf.text(`Location: ${farm.location}`, 20, yPos);
+                            pdf.text(`Location: ${farm.location.barangay}, ${farm.location.municipality}`, 20, yPos);
                             yPos += 6;
                             pdf.text(`Registered Size: ${farm.size} hectares`, 20, yPos);
                             yPos += 6;
-                            pdf.text(`Crops: ${farm.crops.join(', ')}`, 20, yPos);
+                            pdf.text(`Crops: ${Array.isArray(farm.crops) ? farm.crops.join(', ') : String(farm.crops)}`, 20, yPos);
                             yPos += 6;
                             pdf.text(`Status: ${farm.status}`, 20, yPos);
                             yPos += 6;
-                            pdf.text(`Registration Date: ${new Date(farm.registrationDate).toLocaleDateString()}`, 20, yPos);
+                            pdf.text(`Registration Date: ${farm.dateRegistered}`, 20, yPos);
                             yPos += 12;
 
                             // Parcel Breakdown Table
@@ -1073,7 +1457,7 @@ ${placemarks}
                               className="text-xs"
                               onClick={() => {
                                 if (confirm(`Update farm size from ${farm.size} ha to ${calculatedArea.toFixed(2)} ha?`)) {
-                                  // TODO: Update farm size in backend
+                                  // Backend size update pending (see docs/PRODUCTION-QA-FARMDETAIL.md)
                                   alert('Farm size would be updated to match drawn boundary');
                                 }
                               }}
@@ -1562,16 +1946,16 @@ ${placemarks}
                         onSubmit={(e) => {
                           e.preventDefault();
                           const formData = new FormData(e.currentTarget);
-                          const newRecord: YieldRecord = {
-                            id: Date.now().toString(),
+                          // QA: Use mutation to save to backend instead of local state
+                          createYieldMutation.mutate({
+                            farmId: farmId!,
                             parcelIndex: parseInt(formData.get('parcel') as string),
                             cropType: formData.get('crop') as string,
                             harvestDate: formData.get('harvestDate') as string,
                             quantity: parseFloat(formData.get('quantity') as string),
                             unit: formData.get('unit') as 'kg' | 'tons',
                             qualityGrade: formData.get('qualityGrade') as 'Premium' | 'Standard' | 'Below Standard',
-                          };
-                          setYieldRecords([...yieldRecords, newRecord]);
+                          });
                           setIsYieldDialogOpen(false);
                         }}
                         className="space-y-4"
@@ -1699,10 +2083,10 @@ ${placemarks}
                           </tr>
                         </thead>
                         <tbody>
-                          {yieldRecords.map((record) => {
-                            const parcelArea = parcelAreas[record.parcelIndex];
+                          {displayedYieldRecords.map((record) => {
+                            const parcelArea = parcelAreas[record.parcelIndex] || 1; // QA: Prevent division by zero
                             const quantityInTons = record.unit === 'tons' ? record.quantity : record.quantity / 1000;
-                            const yieldPerHa = quantityInTons / parcelArea;
+                            const yieldPerHa = parcelArea > 0 ? quantityInTons / parcelArea : 0;
                             return (
                               <tr key={record.id} className="border-b">
                                 <td className="py-2">Parcel {record.parcelIndex + 1}</td>
@@ -1727,7 +2111,8 @@ ${placemarks}
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      setYieldRecords(yieldRecords.filter(r => r.id !== record.id));
+                                      // QA: Use mutation to delete from backend
+                                      deleteYieldMutation.mutate({ id: parseInt(record.id) });
                                     }}
                                   >
                                     <Trash2 className="w-4 h-4 text-red-600" />
@@ -1739,30 +2124,41 @@ ${placemarks}
                         </tbody>
                       </table>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                      <div>
-                        <p className="text-sm font-medium">Total Yield</p>
-                        <p className="text-2xl font-bold">
-                          {yieldRecords.reduce((sum, r) => {
-                            const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
-                            return sum + tons;
-                          }, 0).toFixed(2)} tons
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Average Yield per Hectare</p>
-                        <p className="text-2xl font-bold">
-                          {(() => {
-                            const totalTons = yieldRecords.reduce((sum, r) => {
-                              const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
-                              return sum + tons;
-                            }, 0);
-                            const totalArea = parcelAreas.reduce((sum, a) => sum + a, 0);
-                            return (totalTons / totalArea).toFixed(2);
-                          })()} t/ha
-                        </p>
-                      </div>
-                    </div>
+                    {/* QA Pass 2: Memoize expensive calculations */}
+                    {(() => {
+                      const totalYield = useMemo(() => {
+                        return yieldRecords.reduce((sum, r) => {
+                          const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+                          return sum + tons;
+                        }, 0);
+                      }, [yieldRecords]);
+                      
+                      const averageYieldPerHa = useMemo(() => {
+                        const totalTons = yieldRecords.reduce((sum, r) => {
+                          const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
+                          return sum + tons;
+                        }, 0);
+                        const totalArea = parcelAreas.reduce((sum, a) => sum + a, 0);
+                        return totalArea > 0 ? totalTons / totalArea : 0;
+                      }, [yieldRecords, parcelAreas]);
+                      
+                      return (
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                          <div>
+                            <p className="text-sm font-medium">Total Yield</p>
+                            <p className="text-2xl font-bold">
+                              {totalYield.toFixed(2)} tons
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Average Yield per Hectare</p>
+                            <p className="text-2xl font-bold">
+                              {averageYieldPerHa.toFixed(2)} t/ha
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </CardContent>
@@ -1794,15 +2190,15 @@ ${placemarks}
                           e.preventDefault();
                           const formData = new FormData(e.currentTarget);
                           const parcelValue = formData.get('parcel') as string;
-                          const newRecord: CostRecord = {
-                            id: Date.now().toString(),
+                          // QA: Use mutation to save to backend instead of local state
+                          createCostMutation.mutate({
+                            farmId: farmId!,
                             date: formData.get('date') as string,
-                            category: formData.get('category') as CostRecord['category'],
-                            description: formData.get('description') as string,
+                            category: formData.get('category') as 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other',
+                            description: formData.get('description') as string || undefined,
                             amount: parseFloat(formData.get('amount') as string),
                             parcelIndex: parcelValue === 'all' ? null : parseInt(parcelValue),
-                          };
-                          setCostRecords([...costRecords, newRecord]);
+                          });
                           setIsCostDialogOpen(false);
                         }}
                         className="space-y-4"
@@ -1911,7 +2307,7 @@ ${placemarks}
                           </tr>
                         </thead>
                         <tbody>
-                          {costRecords.map((record) => (
+                          {displayedCostRecords.map((record) => (
                             <tr key={record.id} className="border-b">
                               <td className="py-2">{new Date(record.date).toLocaleDateString()}</td>
                               <td className="py-2">
@@ -1927,9 +2323,7 @@ ${placemarks}
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    setCostRecords(costRecords.filter(r => r.id !== record.id));
-                                  }}
+                                  onClick={() => handleDeleteCost(record.id)}
                                 >
                                   <Trash2 className="w-4 h-4 text-red-600" />
                                 </Button>
@@ -1939,12 +2333,7 @@ ${placemarks}
                         </tbody>
                       </table>
                     </div>
-                    <div className="pt-2 border-t">
-                      <p className="text-sm font-medium">Total Costs</p>
-                      <p className="text-2xl font-bold">
-                        ₱{costRecords.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
-                      </p>
-                    </div>
+                    <CostSummaryStats costRecords={costRecords} />
                   </div>
                 )}
               </CardContent>
@@ -1961,66 +2350,7 @@ ${placemarks}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {(() => {
-                    // Calculate total revenue (assuming average prices per crop)
-                    const cropPrices: Record<string, number> = {
-                      'Rice': 20000, // PHP per ton
-                      'Corn': 15000,
-                      'Vegetables': 30000,
-                      'Fruits': 40000,
-                    };
-                    
-                    const totalRevenue = yieldRecords.reduce((sum, r) => {
-                      const tons = r.unit === 'tons' ? r.quantity : r.quantity / 1000;
-                      const price = cropPrices[r.cropType] || 25000; // default price
-                      return sum + (tons * price);
-                    }, 0);
-                    
-                    const totalCosts = costRecords.reduce((sum, r) => sum + r.amount, 0);
-                    const grossProfit = totalRevenue - totalCosts;
-                    const profitMargin = (grossProfit / totalRevenue) * 100;
-                    const roi = (grossProfit / totalCosts) * 100;
-                    
-                    return (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm font-medium text-green-700">Total Revenue</p>
-                            <p className="text-xl font-bold text-green-900">₱{totalRevenue.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-red-700">Total Costs</p>
-                            <p className="text-xl font-bold text-red-900">₱{totalCosts.toFixed(2)}</p>
-                          </div>
-                        </div>
-                        <div className="pt-4 border-t border-green-200">
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-sm font-medium">Gross Profit</p>
-                              <p className="text-2xl font-bold" style={{ color: grossProfit >= 0 ? '#16a34a' : '#dc2626' }}>
-                                ₱{grossProfit.toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-sm font-medium">Profit Margin</p>
-                                <p className="text-lg font-bold">{profitMargin.toFixed(1)}%</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">ROI</p>
-                                <p className="text-lg font-bold">{roi.toFixed(1)}%</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-4">
-                          * Revenue calculated using average market prices. Actual prices may vary.
-                        </p>
-                      </>
-                    );
-                  })()}
-                </div>
+                <ProfitabilityAnalysis yieldRecords={yieldRecords} costRecords={costRecords} />
               </CardContent>
             </Card>
           )}
@@ -2037,7 +2367,7 @@ ${placemarks}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Link href={`/farmers/${farm.farmerId}`}>
+              <Link href={`/farmers/${farm.userId || farm.id}`}>
                 <div className="hover:bg-gray-50 p-3 rounded-lg transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
