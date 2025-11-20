@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
-import { trpc } from "@/_core/trpc";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,16 @@ export default function BatchOrderDetail() {
   const farms = farmsData || [];
 
   const updateMutation = trpc.batchOrder.update.useMutation({
+    onSuccess: () => {
+      toast.success("Batch order updated successfully!");
+      setIsEditing(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update batch order: ${error.message}`);
+    },
+  });
+
   const farmNameMap = useMemo(() => {
     const map = new Map<number, string>();
     farms.forEach((farm) => {
@@ -87,16 +97,6 @@ export default function BatchOrderDetail() {
     const name = farmNameMap.get(farmId);
     return name ? `${name} (#${farmId})` : `Farm #${farmId}`;
   };
-
-    onSuccess: () => {
-      toast.success("Batch order updated successfully!");
-      setIsEditing(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to update batch order: ${error.message}`);
-    },
-  });
 
   useEffect(() => {
     if (order && isEditing) {
