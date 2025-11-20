@@ -130,7 +130,7 @@ export default function BatchOrderCreate() {
     };
   };
 
-  const handleSubmit = (status: "draft" | "pending_approval") => {
+  const handleSubmit = () => {
     if (!expectedDeliveryDate) {
       toast.error("Expected delivery date is required");
       return;
@@ -151,7 +151,7 @@ export default function BatchOrderCreate() {
         toast.error("Quantity must be greater than 0");
         return;
       }
-      if (!item.unit) {
+      if (!item.unit || item.unit.trim() === "") {
         toast.error("Unit is required for all items");
         return;
       }
@@ -183,13 +183,6 @@ export default function BatchOrderCreate() {
     };
 
     createMutation.mutate(payload);
-
-    // If pending approval, we'd need to update status after creation
-    // For now, create always creates as draft
-    if (status === "pending_approval") {
-      // This would require a follow-up mutation after creation
-      toast.info("Note: Submit for approval will be available after creation");
-    }
   };
 
   const totals = calculateTotals();
@@ -499,7 +492,7 @@ export default function BatchOrderCreate() {
               <div className="pt-4 space-y-2">
                 <Button
                   className="w-full"
-                  onClick={() => handleSubmit("draft")}
+                  onClick={handleSubmit}
                   disabled={createMutation.isPending}
                 >
                   {createMutation.isPending && (

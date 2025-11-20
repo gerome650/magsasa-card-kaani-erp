@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
 import { trpc } from "@/_core/trpc";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,19 @@ export default function BatchOrderDetail() {
   const farms = farmsData || [];
 
   const updateMutation = trpc.batchOrder.update.useMutation({
+  const farmNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    farms.forEach((farm) => {
+      map.set(farm.id, farm.name);
+    });
+    return map;
+  }, [farms]);
+
+  const getFarmLabel = (farmId: number) => {
+    const name = farmNameMap.get(farmId);
+    return name ? `${name} (#${farmId})` : `Farm #${farmId}`;
+  };
+
     onSuccess: () => {
       toast.success("Batch order updated successfully!");
       setIsEditing(false);
@@ -229,7 +242,7 @@ export default function BatchOrderDetail() {
         toast.error("Quantity must be greater than 0");
         return;
       }
-      if (!item.unit) {
+      if (!item.unit || item.unit.trim() === "") {
         toast.error("Unit is required for all items");
         return;
       }
@@ -441,7 +454,7 @@ export default function BatchOrderDetail() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="font-semibold">
-                              {item.farmName || `Farm ID: ${item.farmId}`}
+                              {item.farmName || getFarmLabel(item.farmId)}
                             </h4>
                             <Button
                               variant="ghost"
@@ -578,7 +591,7 @@ export default function BatchOrderDetail() {
                       const lineTotals = calculateLineTotals(item);
                       return (
                         <TableRow key={item.id}>
-                          <TableCell>{item.farmId}</TableCell>
+                      <TableCell>{getFarmLabel(item.farmId)}</TableCell>
                           <TableCell>
                             {parseFloat(item.quantityOrdered).toLocaleString()}
                           </TableCell>

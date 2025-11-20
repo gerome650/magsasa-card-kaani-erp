@@ -7,6 +7,20 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const logBatchOrderRouterEvent = (event: string, payload: Record<string, unknown>) => {
+  try {
+    console.info(
+      JSON.stringify({
+        source: "batchOrder.router",
+        event,
+        ...payload,
+      })
+    );
+  } catch {
+    // Swallow logging failures to avoid impacting business logic
+  }
+};
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -655,7 +669,7 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
         twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
         
         if (deliveryDate < twoDaysAgo) {
-          throw new Error("Expected delivery date cannot be more than 2 days in the past");
+          throw new Error("Expected delivery date must be today or within the past 2 days");
         }
 
         // Validate all farms exist
@@ -742,6 +756,14 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
 
         await db.createBatchOrder(batchOrder, processedItems);
 
+        logBatchOrderRouterEvent("create.success", {
+          batchOrderId,
+          referenceCode,
+          itemCount: processedItems.length,
+          status: batchOrder.status,
+          createdByUserId: ctx.user.id,
+        });
+
         return await db.getBatchOrderById(batchOrderId);
       }),
 
@@ -770,7 +792,7 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           })
         ).min(1),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         // Get existing order
         const existingOrder = await db.getBatchOrderById(input.id);
         if (!existingOrder) {
@@ -779,7 +801,7 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
 
         // Only allow updates if status is draft or pending_approval
         if (existingOrder.status !== "draft" && existingOrder.status !== "pending_approval") {
-          throw new Error(`Cannot update batch order with status: ${existingOrder.status}`);
+          throw new Error(`This batch order cannot be edited. Only draft and pending approval orders can be modified. Current status: ${existingOrder.status}`);
         }
 
         // Validate delivery date if provided
@@ -791,7 +813,7 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
           twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
           
           if (deliveryDate < twoDaysAgo) {
-            throw new Error("Expected delivery date cannot be more than 2 days in the past");
+            throw new Error("Expected delivery date must be today or within the past 2 days");
           }
         }
 
@@ -860,6 +882,25 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
         }
 
         await db.updateBatchOrder(input.id, updateData, processedItems);
+
+        const statusBefore = existingOrder.status;
+        const statusAfter = updateData.status ?? statusBefore;
+
+        logBatchOrderRouterEvent("update.success", {
+          batchOrderId: input.id,
+          fromStatus: statusBefore,
+          toStatus: statusAfter,
+          itemCount: processedItems.length,
+          requestedByUserId: ctx.user.id,
+        });
+
+        if (statusBefore !== statusAfter) {
+          logBatchOrderRouterEvent("status.transition", {
+            batchOrderId: input.id,
+            from: statusBefore,
+            to: statusAfter,
+          });
+        }
 
         return await db.getBatchOrderById(input.id);
       }),

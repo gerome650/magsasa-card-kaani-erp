@@ -4,6 +4,20 @@ import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, Insert
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, eq, desc } from "drizzle-orm";
 
+const logBatchOrderDbEvent = (event: string, payload: Record<string, unknown>) => {
+  try {
+    console.info(
+      JSON.stringify({
+        source: "batchOrder.db",
+        event,
+        ...payload,
+      })
+    );
+  } catch {
+    // ignore logging failures
+  }
+};
+
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
 
@@ -903,14 +917,22 @@ export async function createBatchOrder(
   items: InsertBatchOrderItem[]
 ) {
   return withRetry(async (db) => {
-    // Insert batch order
-    await db.insert(batchOrders).values(order);
-    
-    // Insert batch order items
-    if (items.length > 0) {
-      await db.insert(batchOrderItems).values(items);
-    }
-    
+    await db.transaction(async (tx) => {
+      await tx.insert(batchOrders).values(order);
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    logBatchOrderDbEvent("create", {
+      batchOrderId: order.id,
+      referenceCode: order.referenceCode,
+      status: order.status,
+      itemCount: items.length,
+      createdByUserId: order.createdByUserId,
+    });
+
     return order.id;
   }, "createBatchOrder");
 }
@@ -921,20 +943,25 @@ export async function updateBatchOrder(
   items: InsertBatchOrderItem[]
 ) {
   return withRetry(async (db) => {
-    // Update batch order header
-    await db.update(batchOrders)
-      .set(orderData)
-      .where(eq(batchOrders.id, orderId));
-    
-    // Delete existing items
-    await db.delete(batchOrderItems)
-      .where(eq(batchOrderItems.batchOrderId, orderId));
-    
-    // Insert new items
-    if (items.length > 0) {
-      await db.insert(batchOrderItems).values(items);
-    }
-    
+    await db.transaction(async (tx) => {
+      await tx.update(batchOrders)
+        .set(orderData)
+        .where(eq(batchOrders.id, orderId));
+
+      await tx.delete(batchOrderItems)
+        .where(eq(batchOrderItems.batchOrderId, orderId));
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    logBatchOrderDbEvent("update", {
+      batchOrderId: orderId,
+      status: orderData.status,
+      itemCount: items.length,
+    });
+
     return orderId;
   }, "updateBatchOrder");
 }
