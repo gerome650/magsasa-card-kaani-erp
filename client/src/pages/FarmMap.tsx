@@ -1,3 +1,15 @@
+// QA NOTE (2025-01-21): Farm Map View wiring
+// Page: client/src/pages/FarmMap.tsx
+// Map component: client/src/components/Map.tsx
+// Data: trpc.farms.mapList (returns farms with coordinates)
+// Env: VITE_FRONTEND_FORGE_API_KEY (required for Google Maps tiles)
+//
+// QA Instrumentation added:
+// - Dev-only env token guard with console warning + visual banner
+// - Dev-only logging for data loading (farms count, withCoords count)
+// - Dev-only container size detection (warns if height < 50px)
+// - Dev-only "data present but zero features" detection
+
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
@@ -57,6 +69,36 @@ export default function FarmMap() {
   // Fetch all farms for integrity checks (Dashboard/Analytics count)
   // Note: This is a lightweight query for comparison only, not used for rendering
   const { data: allFarms } = trpc.farms.list.useQuery({});
+
+  // QA: Dev-only logging for map data loading
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    if (isLoading) {
+      console.info("[FarmMapView][DEV] Loading map data...");
+      return;
+    }
+
+    if (mapListError) {
+      console.error("[FarmMapView][DEV] Error loading map data:", mapListError);
+      return;
+    }
+
+    if (!farms) {
+      console.warn("[FarmMapView][DEV] No map data returned (farms is null/undefined).");
+      return;
+    }
+
+    const total = farms.length;
+    const withCoords = farms.filter(
+      f => f.latitude != null && f.longitude != null &&
+           f.latitude !== 0 && f.longitude !== 0
+    ).length;
+
+    console.info(
+      `[FarmMapView][DEV] Map data loaded: total=${total}, withCoords=${withCoords}, missingCoords=${total - withCoords}`
+    );
+  }, [farms, isLoading, mapListError]);
   
   // Data Quality metrics (consistency check)
   // Note: In production, this will be surfaced in a dedicated Data Quality widget
@@ -164,7 +206,7 @@ export default function FarmMap() {
   const filteredFarms = useMemo(() => {
     if (!farms) return [];
     
-    return farms.filter((farm) => {
+    const filtered = farms.filter((farm) => {
       if (debouncedSelectedCrop !== "all" && !farm.crops.includes(debouncedSelectedCrop)) {
         return false;
       }
@@ -180,6 +222,18 @@ export default function FarmMap() {
       
       return true;
     });
+
+    // QA: Dev-only logging for filtered farms
+    if (import.meta.env.DEV) {
+      console.info("[FarmMapView][DEV] Filtered farms computed:", {
+        total: farms.length,
+        filtered: filtered.length,
+        cropFilter: debouncedSelectedCrop,
+        regionFilter: debouncedSelectedRegion,
+      });
+    }
+
+    return filtered;
   }, [farms, debouncedSelectedCrop, debouncedSelectedRegion]);
 
   // Get marker color based on color mode (memoized)
@@ -194,6 +248,18 @@ export default function FarmMap() {
       return PERFORMANCE_COLORS[level];
     }
   }, [colorMode, performancePercentiles, calculatePerformanceLevel]);
+
+  // QA: Detect "data present but zero features" condition
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!farms || farms.length === 0) return;
+    if (!filteredFarms || filteredFarms.length === 0) {
+      console.warn(
+        "[FarmMapView][DEV] farms has data but filteredFarms is empty. Check filter logic."
+      );
+      return;
+    }
+  }, [farms, filteredFarms]);
 
   // Create markers when farms or filters change (with performance optimization)
   useEffect(() => {
@@ -243,11 +309,20 @@ export default function FarmMap() {
     // For large datasets (>1000 markers), use simplified rendering
     const useSimplifiedMarkers = filteredFarms.length > 1000;
     
+    // QA: Dev-only logging for marker computation
+    if (import.meta.env.DEV) {
+      console.info("[FarmMapView][DEV] Computing markers from filteredFarms:", {
+        filteredFarmsCount: filteredFarms.length,
+      });
+    }
+    
     for (const farm of filteredFarms) {
       // Skip farms with invalid coordinates (defensive check)
       // QA: Log farm ID only (no coordinates) to keep logs PII-safe
       if (!isValidCoordinate(farm.latitude, farm.longitude)) {
-        console.warn(`[FarmMap] Skipping farm ${farm.id} with invalid coordinates`);
+        if (import.meta.env.DEV) {
+          console.warn(`[FarmMapView][DEV] Skipping farm ${farm.id} with invalid coordinates`);
+        }
         continue;
       }
       
@@ -283,6 +358,24 @@ export default function FarmMap() {
       });
 
       newMarkers.push(marker);
+    }
+
+    // QA: Dev-only logging for computed markers
+    if (import.meta.env.DEV) {
+      console.info("[FarmMapView][DEV] Markers computed:", {
+        count: newMarkers.length,
+        sample: newMarkers.slice(0, 3).map(m => ({
+          position: m.getPosition()?.toJSON(),
+          title: m.getTitle(),
+        })),
+      });
+
+      // Detect "data present but zero markers" condition
+      if (filteredFarms.length > 0 && newMarkers.length === 0) {
+        console.warn(
+          "[FarmMapView][DEV] filteredFarms has data but markers array is empty. Check coordinate validation logic."
+        );
+      }
     }
 
     setMarkers(newMarkers);
@@ -537,16 +630,103 @@ export default function FarmMap() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="h-[600px] relative">
-              <MapView
-                onMapReady={(map) => setMapInstance(map)}
-                initialCenter={{ lat: 14.5995, lng: 120.9842 }}
-                initialZoom={10}
-              />
-            </div>
+            <MapContainerWithQA
+              onMapReady={(map) => setMapInstance(map)}
+              initialCenter={{ lat: 14.5995, lng: 120.9842 }}
+              initialZoom={10}
+            />
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+// QA: Separate component for map container with size detection
+function MapContainerWithQA({
+  onMapReady,
+  initialCenter,
+  initialZoom,
+}: {
+  onMapReady: (map: google.maps.Map) => void;
+  initialCenter: { lat: number; lng: number };
+  initialZoom: number;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState<number | null>(null);
+
+  // QA: Dev-only container size detection
+  useEffect(() => {
+    if (!import.meta.env.DEV || !containerRef.current) return;
+
+    const checkSize = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setContainerHeight(rect.height);
+        console.info("[FarmMapView][DEV] Map container size:", {
+          width: rect.width,
+          height: rect.height,
+        });
+
+        if (rect.height < 50) {
+          console.warn(
+            "[FarmMapView][DEV] Map container height is very small (<50px). Check parent layout / flex / h-full classes."
+          );
+        }
+      }
+    };
+
+    // Check immediately and after a short delay (to catch layout changes)
+    checkSize();
+    const timeout = setTimeout(checkSize, 100);
+    
+    // Also check on window resize
+    window.addEventListener("resize", checkSize);
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("resize", checkSize);
+    };
+  }, []);
+
+  // QA: Dev-only env token guard
+  const mapToken = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+  const hasToken = !!mapToken;
+
+  useEffect(() => {
+    if (import.meta.env.DEV && !hasToken) {
+      console.warn(
+        "[FarmMapView][DEV] Map token missing (VITE_FRONTEND_FORGE_API_KEY). Metrics will render but the map canvas will stay blank."
+      );
+    }
+  }, [hasToken]);
+
+  return (
+    <div className="h-[600px] relative" ref={containerRef}>
+      {/* QA: Dev-only token missing banner */}
+      {import.meta.env.DEV && !hasToken && (
+        <div className="absolute top-2 left-2 right-2 z-10 rounded-md bg-yellow-50 px-3 py-2 text-xs text-yellow-800 border border-yellow-200">
+          [DEV] Map token missing (VITE_FRONTEND_FORGE_API_KEY). Map tiles are disabled; metrics are still accurate.
+        </div>
+      )}
+
+      {/* QA: Dev-only container height warning overlay */}
+      {import.meta.env.DEV && containerHeight !== null && containerHeight < 50 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-50/80 text-xs text-red-700 z-10">
+          [DEV] Map container height is too small ({containerHeight}px); check CSS layout.
+        </div>
+      )}
+
+      <MapView
+        onMapReady={onMapReady}
+        initialCenter={initialCenter}
+        initialZoom={initialZoom}
+        onError={(reason) => {
+          if (import.meta.env.DEV) {
+            console.warn(`[FarmMapView][DEV] Map component reported error: ${reason}`);
+          }
+        }}
+      />
     </div>
   );
 }

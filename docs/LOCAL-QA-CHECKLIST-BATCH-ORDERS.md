@@ -141,6 +141,53 @@ Quick checklist to verify Batch Orders works correctly in your local environment
 4. Verify status changed
 5. View in list - verify it appears correctly
 
+## Farm Map View Smoke Test (Optional)
+
+**Prerequisites:** Set `VITE_FRONTEND_FORGE_API_KEY` in `.env.local` (not committed to git). See `docs/MAP-SETUP.md` for Google Cloud configuration.
+
+1. **Verify token is loaded:**
+   - Start dev server: `pnpm dev`
+   - Navigate to `/map`
+   - **Expected:** No yellow banner (token present) OR yellow banner shows if token missing
+   - Check browser console for `[FarmMapView][DEV]` logs
+
+2. **Verify map renders (valid key):**
+   - **If token present and properly configured:**
+     - Map shows "Loading map..." skeleton briefly
+     - Map tiles load (not blank)
+     - Farm markers appear on map
+     - Console shows: `[MapView][DEV] Starting Google Maps script load...`
+     - Console shows: `[MapView][DEV] Google Maps script loaded successfully`
+     - Console shows: `[MapView][DEV] Google Maps instance created successfully`
+     - No error banners or warnings
+   - **If token missing:**
+     - Yellow banner appears: "[DEV] Map token missing..."
+     - Metrics panel still shows correct data
+     - Map shows "Loading map..." then error state
+
+3. **Verify error handling (invalid/misconfigured key):**
+   - **In dev mode with invalid key:**
+     - Map shows yellow error box: "[DEV] Google Maps failed to load"
+     - Error box includes diagnostic message
+     - Console shows `[MapView][DEV]` error logs
+     - Console may show diagnostic hints (e.g., "ApiNotActivatedMapError", "RefererNotAllowedMapError")
+     - Console shows: `[FarmMapView][DEV] Map component reported error: <reason>`
+   - **In production build with invalid key:**
+     - Map shows generic message: "Map temporarily unavailable. Please try again later."
+     - No internal error details exposed
+
+4. **Verify no token leakage:**
+   - Check console logs - token value should NEVER appear in any log
+   - All `[FarmMapView][DEV]` and `[MapView][DEV]` logs show counts/metrics/errors only, no sensitive data
+   - Error messages never include the API key
+
+5. **Common error scenarios to test:**
+   - Missing API key → Shows token missing banner
+   - Invalid API key → Shows error box with diagnostic hint
+   - API not enabled → Shows "ApiNotActivatedMapError" hint
+   - Referrer not allowed → Shows "RefererNotAllowedMapError" hint
+   - Network timeout → Shows timeout error after 20s
+
 ## If Something Fails
 
 1. Check browser console for errors

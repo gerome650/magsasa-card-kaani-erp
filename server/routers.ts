@@ -201,30 +201,6 @@ function recordMapViewMetric(
   console.log(JSON.stringify(metricPayload));
 }
 
-// Helper to create safe error summaries for logging (no PII, no stack traces, no connection strings)
-function toSafeErrorSummary(error: unknown): { code?: string; message: string } {
-  const err = error as { code?: string; message?: string; sqlMessage?: string };
-  
-  // Extract safe error message
-  let message = err?.message || err?.sqlMessage || "Unknown error";
-  
-  // Remove potential PII or sensitive info from error messages
-  // Remove connection strings, file paths, etc.
-  message = message.replace(/mysql:\/\/[^\s]+/gi, "mysql://***");
-  message = message.replace(/\/[^\s]+\/[^\s]+/g, "/***/***");
-  message = message.replace(/password[=:][^\s]+/gi, "password=***");
-  
-  // Truncate very long messages
-  if (message.length > 200) {
-    message = message.substring(0, 200) + "...";
-  }
-  
-  return {
-    code: err?.code,
-    message,
-  };
-}
-
 // Helper to categorize errors for logging
 function categorizeErrors(errors: Array<{ rowIndex: number; message: string }>): string[] {
   const categories: Record<string, number> = {
@@ -254,7 +230,6 @@ function categorizeErrors(errors: Array<{ rowIndex: number; message: string }>):
     .filter(([_, count]) => count > 0)
     .map(([type, count]) => `${count} ${type}`);
 }
->>>>>>> main
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -1413,7 +1388,6 @@ Respond in the specified dialect using practical, concrete advice.`;
       }),
   }),
 
-<<<<<<< HEAD
   // Batch Orders router for Agri Input procurement
   batchOrder: router({
     create: protectedProcedure
@@ -2202,7 +2176,6 @@ Respond in the specified dialect using practical, concrete advice.`;
           // Re-throw with user-friendly message
           throw new Error("Database connection error. Please try again later or contact support.");
         }
->>>>>>> main
       }),
   }),
 });

@@ -1,3 +1,4 @@
+pnpm dev
 # Bulk Operations Guide
 
 ## Overview
