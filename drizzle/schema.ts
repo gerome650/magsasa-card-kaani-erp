@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, primaryKey, int, text, decimal, timestamp, mysqlEnum, varchar, json, unique } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, primaryKey, int, text, decimal, timestamp, mysqlEnum, varchar, json, unique, char, index, foreignKey } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const boundaries = mysqlTable("boundaries", {
@@ -31,11 +31,13 @@ export const conversations = mysqlTable("conversations", {
 	id: int().autoincrement().notNull(),
 	userId: int().notNull(),
 	title: varchar({ length: 255 }).notNull(),
+	farmerProfileId: char("farmer_profile_id", { length: 36 }),
 	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
 	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "conversations_id"}),
+	index("conversations_farmer_profile_id_idx").on(table.farmerProfileId),
 ]);
 
 export const costs = mysqlTable("costs", {
@@ -107,4 +109,72 @@ export const yields = mysqlTable("yields", {
 },
 (table) => [
 	primaryKey({ columns: [table.id], name: "yields_id"}),
+]);
+
+export const farmerProfiles = mysqlTable("farmer_profiles", {
+	farmerProfileId: char("farmer_profile_id", { length: 36 }).notNull(),
+	createdByUserId: int("created_by_user_id"),
+	province: varchar({ length: 255 }),
+	municipality: varchar({ length: 255 }),
+	barangay: varchar({ length: 255 }),
+	cropPrimary: varchar({ length: 100 }),
+	averageYield: decimal({ precision: 10, scale: 2 }),
+	soilType: varchar({ length: 100 }),
+	irrigationType: mysqlEnum(['Irrigated','Rainfed','Upland']),
+	farmSize: decimal({ precision: 10, scale: 2 }),
+	inputs: json(),
+	prices: json(),
+	additionalContext: json(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.farmerProfileId], name: "farmer_profiles_farmer_profile_id"}),
+	index("farmer_profiles_created_by_user_id_idx").on(table.createdByUserId),
+	index("farmer_profiles_location_idx").on(table.province, table.municipality, table.barangay),
+	index("farmer_profiles_crop_primary_idx").on(table.cropPrimary),
+]);
+
+export const kaaniRecommendations = mysqlTable("kaani_recommendations", {
+	id: int().autoincrement().notNull(),
+	farmerProfileId: char("farmer_profile_id", { length: 36 }).notNull(),
+	recommendationText: text().notNull(),
+	recommendationType: varchar({ length: 100 }),
+	status: varchar({ length: 50 }),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "kaani_recommendations_id"}),
+	index("kaani_recommendations_farmer_profile_id_idx").on(table.farmerProfileId),
+	foreignKey({
+		columns: [table.farmerProfileId],
+		foreignColumns: [farmerProfiles.farmerProfileId],
+		name: "kaani_recommendations_farmer_profile_id_fk"
+	}).onDelete("restrict"),
+]);
+
+export const identityLinks = mysqlTable("identity_links", {
+	id: int().autoincrement().notNull(),
+	farmerProfileId: char("farmer_profile_id", { length: 36 }).notNull(),
+	partner: mysqlEnum("partner", ['card_mri', 'marketplace', 'other']).notNull(),
+	partnerFarmerRef: varchar("partner_farmer_ref", { length: 255 }).notNull(),
+	linkMethod: mysqlEnum("link_method", ['Manual', 'API', 'Import', 'Bulk']).notNull(),
+	consentObtained: int("consent_obtained").default(0).notNull(),
+	consentTextVersion: varchar("consent_text_version", { length: 50 }),
+	consentTimestamp: timestamp("consent_timestamp", { mode: 'string' }),
+	consentActorUserId: int("consent_actor_user_id"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "identity_links_id"}),
+	index("identity_links_farmer_profile_id_idx").on(table.farmerProfileId),
+	index("identity_links_partner_farmer_ref_idx").on(table.partner, table.partnerFarmerRef),
+	unique("identity_links_farmer_profile_id_partner_partner_farmer_ref_unique").on(table.farmerProfileId, table.partner, table.partnerFarmerRef),
+	foreignKey({
+		columns: [table.farmerProfileId],
+		foreignColumns: [farmerProfiles.farmerProfileId],
+		name: "identity_links_farmer_profile_id_fk"
+	}).onDelete("restrict"),
 ]);
