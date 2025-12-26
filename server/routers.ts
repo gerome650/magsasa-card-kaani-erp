@@ -1271,6 +1271,31 @@ Respond in the specified dialect using practical, concrete advice.`;
           };
         });
       }),
+
+    saveRecommendation: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        recommendationText: z.string(),
+        recommendationType: z.string().optional(),
+        status: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Ensure conversation has a farmer_profile_id
+        const farmerProfileId = await db.ensureFarmerProfileForConversation(
+          input.conversationId,
+          ctx.user.id
+        );
+        
+        // Save recommendation
+        const recommendationId = await db.saveRecommendation({
+          farmerProfileId,
+          recommendationText: input.recommendationText,
+          recommendationType: input.recommendationType,
+          status: input.status,
+        });
+        
+        return { recommendationId, farmerProfileId };
+      }),
   }),
 
   // Analytics router for visual dashboard
@@ -1389,6 +1414,18 @@ Respond in the specified dialect using practical, concrete advice.`;
           category: input.profile, // Store profile in category field
         });
         return { messageId };
+      }),
+
+    ensureFarmerProfile: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const farmerProfileId = await db.ensureFarmerProfileForConversation(
+          input.conversationId,
+          ctx.user.id
+        );
+        return { farmerProfileId };
       }),
   }),
 

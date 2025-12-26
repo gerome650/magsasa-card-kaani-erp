@@ -4,6 +4,7 @@ import mysql from "mysql2/promise";
 import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -658,13 +659,40 @@ export async function deleteChatMessagesByUserId(userId: number) {
 export async function createConversation(data: {
   userId: number;
   title: string;
+  farmerProfileId?: string;
 }) {
   const db = await getDb();
-  const { conversations } = await import("../drizzle/schema");
+  const { conversations, farmerProfiles } = await import("../drizzle/schema");
+  
+  // If farmerProfileId provided, ensure it exists
+  let finalFarmerProfileId = data.farmerProfileId;
+  if (finalFarmerProfileId) {
+    const [existing] = await db
+      .select()
+      .from(farmerProfiles)
+      .where(eq(farmerProfiles.farmerProfileId, finalFarmerProfileId))
+      .limit(1);
+    
+    if (!existing) {
+      // Profile doesn't exist, create it
+      await db.insert(farmerProfiles).values({
+        farmerProfileId: finalFarmerProfileId,
+        createdByUserId: data.userId,
+      });
+    }
+  } else {
+    // Create new farmer profile
+    finalFarmerProfileId = randomUUID();
+    await db.insert(farmerProfiles).values({
+      farmerProfileId: finalFarmerProfileId,
+      createdByUserId: data.userId,
+    });
+  }
   
   const result = await db.insert(conversations).values({
     userId: data.userId,
     title: data.title,
+    farmerProfileId: finalFarmerProfileId,
   });
   
   return Number(result[0].insertId);
@@ -716,6 +744,110 @@ export async function touchConversation(id: number) {
     .update(conversations)
     .set({ updatedAt: new Date() })
     .where(eq(conversations.id, id));
+}
+
+// ==================== Farmer Profiles ====================
+
+/**
+ * Ensure a conversation has a farmer_profile_id, creating one if needed.
+ * Returns the farmer_profile_id (UUIDv4).
+ */
+export async function ensureFarmerProfileForConversation(
+  conversationId: number,
+  createdByUserId?: number
+): Promise<string> {
+  const db = await getDb();
+  const { conversations, farmerProfiles } = await import("../drizzle/schema");
+  
+  // Check if conversation already has a farmer_profile_id
+  const [conversation] = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+  
+  if (conversation?.farmerProfileId) {
+    return conversation.farmerProfileId;
+  }
+  
+  // Create new farmer profile with UUIDv4
+  const farmerProfileId = randomUUID();
+  
+  await db.insert(farmerProfiles).values({
+    farmerProfileId,
+    createdByUserId: createdByUserId || null,
+  });
+  
+  // Update conversation with farmer_profile_id
+  await db
+    .update(conversations)
+    .set({ farmerProfileId })
+    .where(eq(conversations.id, conversationId));
+  
+  return farmerProfileId;
+}
+
+/**
+ * Update farmer profile with agronomic/economic context.
+ * Only updates provided fields; does not overwrite existing data with null.
+ */
+export async function updateFarmerProfile(
+  farmerProfileId: string,
+  updates: {
+    province?: string;
+    municipality?: string;
+    barangay?: string;
+    cropPrimary?: string;
+    averageYield?: number;
+    soilType?: string;
+    irrigationType?: 'Irrigated' | 'Rainfed' | 'Upland';
+    farmSize?: number;
+    inputs?: any;
+    prices?: any;
+    additionalContext?: any;
+  }
+): Promise<void> {
+  const db = await getDb();
+  const { farmerProfiles } = await import("../drizzle/schema");
+  
+  // Filter out undefined values
+  const cleanUpdates: any = {};
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined) {
+      cleanUpdates[key] = value;
+    }
+  });
+  
+  if (Object.keys(cleanUpdates).length === 0) {
+    return; // Nothing to update
+  }
+  
+  await db
+    .update(farmerProfiles)
+    .set({ ...cleanUpdates, updatedAt: new Date() })
+    .where(eq(farmerProfiles.farmerProfileId, farmerProfileId));
+}
+
+/**
+ * Save a KaAni recommendation to the database.
+ */
+export async function saveRecommendation(data: {
+  farmerProfileId: string;
+  recommendationText: string;
+  recommendationType?: string;
+  status?: string;
+}): Promise<number> {
+  const db = await getDb();
+  const { kaaniRecommendations } = await import("../drizzle/schema");
+  
+  const result = await db.insert(kaaniRecommendations).values({
+    farmerProfileId: data.farmerProfileId,
+    recommendationText: data.recommendationText,
+    recommendationType: data.recommendationType || null,
+    status: data.status || null,
+  });
+  
+  return Number(result[0].insertId);
 }
 
 export async function searchConversations(userId: number, query: string) {
