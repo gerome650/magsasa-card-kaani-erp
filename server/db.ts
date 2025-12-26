@@ -4,6 +4,7 @@ import mysql from "mysql2/promise";
 import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -657,17 +658,47 @@ export async function deleteChatMessagesByUserId(userId: number) {
 
 export async function createConversation(data: {
   userId: number;
-  title: string;
-}) {
+  title?: string;
+  farmerProfileId?: string;
+}): Promise<{ conversationId: number; farmerProfileId: string }> {
   const db = await getDb();
-  const { conversations } = await import("../drizzle/schema");
+  const { conversations, farmerProfiles } = await import("../drizzle/schema");
+  
+  // If farmerProfileId provided, ensure it exists
+  let finalFarmerProfileId = data.farmerProfileId;
+  if (finalFarmerProfileId) {
+    const [existing] = await db
+      .select()
+      .from(farmerProfiles)
+      .where(eq(farmerProfiles.farmerProfileId, finalFarmerProfileId))
+      .limit(1);
+    
+    if (!existing) {
+      // Profile doesn't exist, create it
+      await db.insert(farmerProfiles).values({
+        farmerProfileId: finalFarmerProfileId,
+        createdByUserId: data.userId,
+      });
+    }
+  } else {
+    // Create new farmer profile
+    finalFarmerProfileId = randomUUID();
+    await db.insert(farmerProfiles).values({
+      farmerProfileId: finalFarmerProfileId,
+      createdByUserId: data.userId,
+    });
+  }
   
   const result = await db.insert(conversations).values({
     userId: data.userId,
-    title: data.title,
+    title: data.title || 'New Conversation',
+    farmerProfileId: finalFarmerProfileId,
   });
   
-  return Number(result[0].insertId);
+  return {
+    conversationId: Number(result[0].insertId),
+    farmerProfileId: finalFarmerProfileId,
+  };
 }
 
 export async function getConversationsByUserId(userId: number) {
@@ -716,6 +747,184 @@ export async function touchConversation(id: number) {
     .update(conversations)
     .set({ updatedAt: new Date() })
     .where(eq(conversations.id, id));
+}
+
+// ==================== Farmer Profiles ====================
+
+/**
+ * Ensure a conversation has a farmer_profile_id, creating one if needed.
+ * Returns the farmer_profile_id (UUIDv4).
+ */
+export async function ensureFarmerProfileForConversation(
+  conversationId: number,
+  createdByUserId?: number
+): Promise<string> {
+  const db = await getDb();
+  const { conversations, farmerProfiles } = await import("../drizzle/schema");
+  
+  // Check if conversation already has a farmer_profile_id
+  const [conversation] = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+  
+  if (conversation?.farmerProfileId) {
+    return conversation.farmerProfileId;
+  }
+  
+  // Create new farmer profile with UUIDv4
+  const farmerProfileId = randomUUID();
+  
+  await db.insert(farmerProfiles).values({
+    farmerProfileId,
+    createdByUserId: createdByUserId || null,
+  });
+  
+  // Update conversation with farmer_profile_id
+  await db
+    .update(conversations)
+    .set({ farmerProfileId })
+    .where(eq(conversations.id, conversationId));
+  
+  return farmerProfileId;
+}
+
+/**
+ * Update farmer profile with agronomic/economic context.
+ * Only updates provided fields; does not overwrite existing data with null.
+ */
+export async function updateFarmerProfile(
+  farmerProfileId: string,
+  updates: {
+    province?: string;
+    municipality?: string;
+    barangay?: string;
+    cropPrimary?: string;
+    averageYield?: number;
+    soilType?: string;
+    irrigationType?: 'Irrigated' | 'Rainfed' | 'Upland';
+    farmSize?: number;
+    inputs?: any;
+    prices?: any;
+    additionalContext?: any;
+  }
+): Promise<void> {
+  const db = await getDb();
+  const { farmerProfiles } = await import("../drizzle/schema");
+  
+  // Filter out undefined values
+  const cleanUpdates: any = {};
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined) {
+      cleanUpdates[key] = value;
+    }
+  });
+  
+  if (Object.keys(cleanUpdates).length === 0) {
+    return; // Nothing to update
+  }
+  
+  await db
+    .update(farmerProfiles)
+    .set({ ...cleanUpdates, updatedAt: new Date() })
+    .where(eq(farmerProfiles.farmerProfileId, farmerProfileId));
+}
+
+/**
+ * Save a KaAni recommendation to the database.
+ */
+export async function saveRecommendation(data: {
+  conversationId: number;
+  farmerProfileId: string;
+  recommendationText: string;
+  recommendationType: string;
+  status: string;
+}): Promise<number> {
+  const db = await getDb();
+  const { kaaniRecommendations } = await import("../drizzle/schema");
+  
+  const result = await db.insert(kaaniRecommendations).values({
+    farmerProfileId: data.farmerProfileId,
+    recommendationText: data.recommendationText,
+    recommendationType: data.recommendationType || null,
+    status: data.status || null,
+  });
+  
+  return Number(result[0].insertId);
+}
+
+/**
+ * Append a message to a conversation.
+ */
+export async function appendConversationMessage(data: {
+  conversationId: number;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const db = await getDb();
+  const { conversationMessages } = await import("../drizzle/schema");
+  
+  await db.insert(conversationMessages).values({
+    conversationId: data.conversationId,
+    role: data.role,
+    content: data.content,
+    metadata: data.metadata || null,
+  });
+}
+
+/**
+ * Get all messages for a conversation, ordered by createdAt ASC.
+ */
+export async function getConversationMessages(conversationId: number): Promise<Array<{
+  role: string;
+  content: string;
+  metadata?: unknown;
+  createdAt: string;
+}>> {
+  const db = await getDb();
+  const { conversationMessages } = await import("../drizzle/schema");
+  const { asc, eq } = await import("drizzle-orm");
+  
+  const messages = await db
+    .select({
+      role: conversationMessages.role,
+      content: conversationMessages.content,
+      metadata: conversationMessages.metadata,
+      createdAt: conversationMessages.createdAt,
+    })
+    .from(conversationMessages)
+    .where(eq(conversationMessages.conversationId, conversationId))
+    .orderBy(asc(conversationMessages.createdAt));
+  
+  return messages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+    metadata: msg.metadata || undefined,
+    createdAt: msg.createdAt,
+  }));
+}
+
+/**
+ * Get conversation context for AI agent, returning last N messages.
+ * Maps roles to Gemini-compatible format: 'user' | 'assistant' | 'system'
+ * (ignores 'tool' rows or maps them to 'system').
+ */
+export async function getConversationContextForAgent(
+  conversationId: number,
+  limit: number = 20
+): Promise<Array<{ role: 'user' | 'assistant' | 'system'; content: string }>> {
+  const allMessages = await getConversationMessages(conversationId);
+  
+  // Take last N messages
+  const recentMessages = allMessages.slice(-limit);
+  
+  // Map roles: 'tool' -> 'system', others stay as-is
+  return recentMessages.map(msg => ({
+    role: (msg.role === 'tool' ? 'system' : msg.role) as 'user' | 'assistant' | 'system',
+    content: msg.content,
+  }));
 }
 
 export async function searchConversations(userId: number, query: string) {
