@@ -178,3 +178,16 @@ export const identityLinks = mysqlTable("identity_links", {
 		name: "identity_links_farmer_profile_id_fk"
 	}).onDelete("restrict"),
 ]);
+
+export const conversationMessages = mysqlTable("conversation_messages", {
+	id: int().autoincrement().notNull(),
+	conversationId: int("conversation_id").notNull(),
+	role: mysqlEnum("role", ['user', 'assistant', 'system', 'tool']).notNull(),
+	content: text().notNull(),
+	metadata: json("metadata"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "conversation_messages_id"}),
+	index("idx_cm_conversation_created").on(table.conversationId, table.createdAt),
+]);

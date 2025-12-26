@@ -10,6 +10,7 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { farms, yields } from "../drizzle/schema";
+import { runKaAniAgent } from "./ai/kaaniAgent";
 
 // Default Gemini model for KaAni. Override via GOOGLE_AI_STUDIO_MODEL if needed.
 // This is evaluated at module load time, after dotenv/config is imported in index.ts
@@ -179,30 +180,6 @@ function recordMapViewMetric(
   // Emit as structured JSON for log aggregation systems
   // No PII: Only counts and percentages, no farmer names, emails, or raw barangay names
   console.log(JSON.stringify(metricPayload));
-}
-
-// Helper to create safe error summaries for logging (no PII, no stack traces, no connection strings)
-function toSafeErrorSummary(error: unknown): { code?: string; message: string } {
-  const err = error as { code?: string; message?: string; sqlMessage?: string };
-  
-  // Extract safe error message
-  let message = err?.message || err?.sqlMessage || "Unknown error";
-  
-  // Remove potential PII or sensitive info from error messages
-  // Remove connection strings, file paths, etc.
-  message = message.replace(/mysql:\/\/[^\s]+/gi, "mysql://***");
-  message = message.replace(/\/[^\s]+\/[^\s]+/g, "/***/***");
-  message = message.replace(/password[=:][^\s]+/gi, "password=***");
-  
-  // Truncate very long messages
-  if (message.length > 200) {
-    message = message.substring(0, 200) + "...";
-  }
-  
-  return {
-    code: err?.code,
-    message,
-  };
 }
 
 // Helper to categorize errors for logging
@@ -1276,8 +1253,8 @@ Respond in the specified dialect using practical, concrete advice.`;
       .input(z.object({
         conversationId: z.number(),
         recommendationText: z.string(),
-        recommendationType: z.string().optional(),
-        status: z.string().optional(),
+        recommendationType: z.string(),
+        status: z.string(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Ensure conversation has a farmer_profile_id
@@ -1288,6 +1265,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         
         // Save recommendation
         const recommendationId = await db.saveRecommendation({
+          conversationId: input.conversationId,
           farmerProfileId,
           recommendationText: input.recommendationText,
           recommendationType: input.recommendationType,
@@ -1295,6 +1273,104 @@ Respond in the specified dialect using practical, concrete advice.`;
         });
         
         return { recommendationId, farmerProfileId };
+      }),
+
+    sendConversationMessage: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        message: z.string(),
+        audience: z.enum(['farmer', 'technician', 'loan_officer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fallbackReply = "Pasensya na — pansamantalang hindi available ang KaAni. Pakisubukang muli mamaya.";
+        
+        try {
+          // Step 1: Ensure conversation has farmer_profile_id
+          const farmerProfileId = await db.ensureFarmerProfileForConversation(
+            input.conversationId,
+            ctx.user.id
+          );
+
+          // Step 2: Persist user message
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'user',
+            content: input.message,
+          });
+
+          // Step 3: Load conversation context
+          const context = await db.getConversationContextForAgent(input.conversationId, 20);
+
+          // Step 4: Call Gemini agent
+          let replyText: string;
+          try {
+            const result = await runKaAniAgent({
+              audience: input.audience,
+              dialect: input.dialect,
+              farmerProfileId,
+              messages: context,
+            });
+            replyText = result.replyText;
+          } catch (geminiError) {
+            // Log Gemini error safely
+            const safeError = toSafeErrorSummary(geminiError);
+            console.error("[KaAni] Gemini call failed in sendConversationMessage:", {
+              conversationId: input.conversationId,
+              errorCode: safeError.code,
+              errorMessage: safeError.message,
+            });
+            // Use fallback reply
+            replyText = fallbackReply;
+          }
+
+          // Step 5: Persist assistant reply (even if it's a fallback)
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'assistant',
+            content: replyText,
+          });
+
+          // Step 6: Return response
+          return {
+            reply: replyText,
+            farmerProfileId,
+          };
+        } catch (error) {
+          // Catch any other errors (e.g., DB errors)
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in sendConversationMessage:", {
+            conversationId: input.conversationId,
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+
+          // Still try to persist fallback message if possible
+          try {
+            await db.appendConversationMessage({
+              conversationId: input.conversationId,
+              role: 'assistant',
+              content: fallbackReply,
+            });
+          } catch (dbError) {
+            // If we can't persist, log but don't fail the request
+            const dbSafeError = toSafeErrorSummary(dbError);
+            console.error("[KaAni] Failed to persist fallback message:", {
+              conversationId: input.conversationId,
+              errorCode: dbSafeError.code,
+              errorMessage: dbSafeError.message,
+            });
+          }
+
+          // Return HTTP 200 with fallback reply
+          return {
+            reply: fallbackReply,
+            farmerProfileId: await db.ensureFarmerProfileForConversation(
+              input.conversationId,
+              ctx.user.id
+            ).catch(() => ""), // If this fails too, return empty string
+          };
+        }
       }),
   }),
 
@@ -1353,14 +1429,14 @@ Respond in the specified dialect using practical, concrete advice.`;
 
     create: protectedProcedure
       .input(z.object({
-        title: z.string(),
+        title: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const conversationId = await db.createConversation({
+        const result = await db.createConversation({
           userId: ctx.user.id,
           title: input.title,
         });
-        return { conversationId };
+        return { conversationId: result.conversationId, farmerProfileId: result.farmerProfileId };
       }),
 
     updateTitle: protectedProcedure
@@ -1387,7 +1463,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         conversationId: z.number(),
       }))
       .query(async ({ input }) => {
-        return await db.getChatMessagesByConversationId(input.conversationId);
+        return await db.getConversationMessages(input.conversationId);
       }),
 
     search: protectedProcedure

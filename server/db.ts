@@ -658,9 +658,9 @@ export async function deleteChatMessagesByUserId(userId: number) {
 
 export async function createConversation(data: {
   userId: number;
-  title: string;
+  title?: string;
   farmerProfileId?: string;
-}) {
+}): Promise<{ conversationId: number; farmerProfileId: string }> {
   const db = await getDb();
   const { conversations, farmerProfiles } = await import("../drizzle/schema");
   
@@ -691,11 +691,14 @@ export async function createConversation(data: {
   
   const result = await db.insert(conversations).values({
     userId: data.userId,
-    title: data.title,
+    title: data.title || 'New Conversation',
     farmerProfileId: finalFarmerProfileId,
   });
   
-  return Number(result[0].insertId);
+  return {
+    conversationId: Number(result[0].insertId),
+    farmerProfileId: finalFarmerProfileId,
+  };
 }
 
 export async function getConversationsByUserId(userId: number) {
@@ -832,10 +835,11 @@ export async function updateFarmerProfile(
  * Save a KaAni recommendation to the database.
  */
 export async function saveRecommendation(data: {
+  conversationId: number;
   farmerProfileId: string;
   recommendationText: string;
-  recommendationType?: string;
-  status?: string;
+  recommendationType: string;
+  status: string;
 }): Promise<number> {
   const db = await getDb();
   const { kaaniRecommendations } = await import("../drizzle/schema");
@@ -848,6 +852,79 @@ export async function saveRecommendation(data: {
   });
   
   return Number(result[0].insertId);
+}
+
+/**
+ * Append a message to a conversation.
+ */
+export async function appendConversationMessage(data: {
+  conversationId: number;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const db = await getDb();
+  const { conversationMessages } = await import("../drizzle/schema");
+  
+  await db.insert(conversationMessages).values({
+    conversationId: data.conversationId,
+    role: data.role,
+    content: data.content,
+    metadata: data.metadata || null,
+  });
+}
+
+/**
+ * Get all messages for a conversation, ordered by createdAt ASC.
+ */
+export async function getConversationMessages(conversationId: number): Promise<Array<{
+  role: string;
+  content: string;
+  metadata?: unknown;
+  createdAt: string;
+}>> {
+  const db = await getDb();
+  const { conversationMessages } = await import("../drizzle/schema");
+  const { asc, eq } = await import("drizzle-orm");
+  
+  const messages = await db
+    .select({
+      role: conversationMessages.role,
+      content: conversationMessages.content,
+      metadata: conversationMessages.metadata,
+      createdAt: conversationMessages.createdAt,
+    })
+    .from(conversationMessages)
+    .where(eq(conversationMessages.conversationId, conversationId))
+    .orderBy(asc(conversationMessages.createdAt));
+  
+  return messages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+    metadata: msg.metadata || undefined,
+    createdAt: msg.createdAt,
+  }));
+}
+
+/**
+ * Get conversation context for AI agent, returning last N messages.
+ * Maps roles to Gemini-compatible format: 'user' | 'assistant' | 'system'
+ * (ignores 'tool' rows or maps them to 'system').
+ */
+export async function getConversationContextForAgent(
+  conversationId: number,
+  limit: number = 20
+): Promise<Array<{ role: 'user' | 'assistant' | 'system'; content: string }>> {
+  const allMessages = await getConversationMessages(conversationId);
+  
+  // Take last N messages
+  const recentMessages = allMessages.slice(-limit);
+  
+  // Map roles: 'tool' -> 'system', others stay as-is
+  return recentMessages.map(msg => ({
+    role: (msg.role === 'tool' ? 'system' : msg.role) as 'user' | 'assistant' | 'system',
+    content: msg.content,
+  }));
 }
 
 export async function searchConversations(userId: number, query: string) {
