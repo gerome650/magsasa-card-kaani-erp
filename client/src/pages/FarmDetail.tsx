@@ -508,19 +508,19 @@ export default function FarmDetail() {
     if (!dbYields) return [];
     const validRecords: typeof yieldRecords = [];
     
-    dbYields.forEach((yield, index) => {
+    dbYields.forEach((yieldRow, index) => {
       try {
         // QA Pass 5: Safe numeric parsing with clamping
-        let quantity = parseFloat(yield.quantity?.toString() || '0');
+        let quantity = parseFloat(yieldRow.quantity?.toString() || '0');
         if (isNaN(quantity) || !isFinite(quantity) || quantity < 0) {
           if (import.meta.env.DEV) {
-            logDevWarn(`[FarmDetail] Invalid yield quantity at index ${index} for farm ${farmId}: ${yield.quantity}, defaulting to 0`);
+            logDevWarn(`[FarmDetail] Invalid yield quantity at index ${index} for farm ${farmId}: ${yieldRow.quantity}, defaulting to 0`);
           }
           quantity = 0;
         }
         
         // QA Pass 5: Safe date parsing
-        const harvestDate = yield.harvestDate || yield.date || '';
+        const harvestDate = yieldRow.harvestDate || yieldRow.date || '';
         if (!harvestDate || harvestDate === 'Invalid Date') {
           if (import.meta.env.DEV) {
             logDevWarn(`[FarmDetail] Invalid harvest date at index ${index} for farm ${farmId}: ${harvestDate}, skipping record`);
@@ -529,13 +529,13 @@ export default function FarmDetail() {
         }
         
         validRecords.push({
-          id: yield.id.toString(),
-          parcelIndex: yield.parcelIndex,
-          cropType: yield.cropType || yield.crop || '',
+          id: yieldRow.id.toString(),
+          parcelIndex: yieldRow.parcelIndex,
+          cropType: yieldRow.cropType || yieldRow.crop || '',
           harvestDate,
           quantity,
-          unit: (yield.unit === 'tons' || yield.unit === 'kg' ? yield.unit : 'kg') as 'kg' | 'tons',
-          qualityGrade: (yield.qualityGrade || 'Standard') as 'Premium' | 'Standard' | 'Below Standard',
+          unit: (yieldRow.unit === 'tons' || yieldRow.unit === 'kg' ? yieldRow.unit : 'kg') as 'kg' | 'tons',
+          qualityGrade: (yieldRow.qualityGrade || 'Standard') as 'Premium' | 'Standard' | 'Below Standard',
         });
       } catch (error) {
         // QA Pass 5: Skip records that fail parsing, log warning in dev
