@@ -15,6 +15,8 @@ import TypingIndicator from "@/components/TypingIndicator";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
+import { KaAniLoanPacket } from "./KaAniLoanPacket";
+import type { KaAniArtifactBundle } from "../types";
 
 interface Conversation {
   id: number;
@@ -41,6 +43,7 @@ export function KaAniChat() {
     whatWeKnow: Array<{ label: string; value: string }>;
     loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
   } | null>(null);
+  const [artifactBundle, setArtifactBundle] = useState<KaAniArtifactBundle | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -228,6 +231,24 @@ export function KaAniChat() {
 
       // Refetch messages to ensure sync with backend
       await loadMessages(conversationId!);
+
+      // Refresh artifacts after successful message send
+      if (conversationId) {
+        try {
+          // Use trpcClient directly since we need to pass dynamic conversationId
+          const artifactsRes = await (trpcClient.kaani as any).getArtifacts.query({
+            conversationId,
+            audience,
+            dialect,
+          });
+          if (artifactsRes?.bundle) {
+            setArtifactBundle(artifactsRes.bundle);
+          }
+        } catch (artifactError) {
+          // Log but don't fail the message send if artifacts fail
+          console.warn("Failed to fetch artifacts:", artifactError);
+        }
+      }
     } catch (error: any) {
       console.error("Error sending message:", error);
       
@@ -334,6 +355,11 @@ export function KaAniChat() {
             {/* Loan Officer Summary */}
             {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
               <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
+            )}
+
+            {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
+            {artifactBundle && artifactBundle.readiness !== "draft" && (
+              <KaAniLoanPacket bundle={artifactBundle} audience={audience} />
             )}
 
             {/* Prompt Chips Area */}

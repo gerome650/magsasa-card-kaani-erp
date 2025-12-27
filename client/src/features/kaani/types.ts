@@ -21,3 +21,15 @@ export interface StarterPrompt {
   message: string;
 }
 
+export type KaAniArtifactBundle = {
+  readiness: "draft" | "needs_info" | "ready";
+  missing: string[];
+  artifacts: Array<{
+    id: string;
+    type: "loan_summary" | "cost_breakdown" | "risk_flags" | "next_questions";
+    title: string;
+    version: string;
+    data: any;
+  }>;
+};
+
