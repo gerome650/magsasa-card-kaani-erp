@@ -5,6 +5,7 @@ import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, Insert
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { randomBytes } from "crypto";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: mysql.Pool | null = null;
@@ -925,6 +926,74 @@ export async function getConversationContextForAgent(
     role: (msg.role === 'tool' ? 'system' : msg.role) as 'user' | 'assistant' | 'system',
     content: msg.content,
   }));
+}
+
+/**
+ * Get latest flow state from conversation messages metadata
+ */
+export async function getLatestFlowState(
+  conversationId: number
+): Promise<{ flowId?: string; slots: Record<string, any> } | null> {
+  const db = await getDb();
+  const { conversationMessages } = await import("../drizzle/schema");
+  const { desc, eq, isNotNull } = await import("drizzle-orm");
+
+  const messages = await db
+    .select({
+      metadata: conversationMessages.metadata,
+    })
+    .from(conversationMessages)
+    .where(eq(conversationMessages.conversationId, conversationId))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(50); // Check last 50 messages
+
+  for (const msg of messages) {
+    if (!msg.metadata || typeof msg.metadata !== 'object') continue;
+    
+    const metadata = msg.metadata as any;
+    if (metadata.type === 'flow_state' && metadata.flowState) {
+      const flowState = metadata.flowState;
+      return {
+        flowId: flowState.flowId,
+        slots: flowState.slots || {},
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Append a flow state message to conversation
+ */
+export async function appendFlowStateMessage(params: {
+  conversationId: number;
+  flowId: string;
+  slots: Record<string, any>;
+  progress: { requiredTotal: number; requiredFilled: number; percent: number; missingRequired: string[] };
+  nextStepId?: string | null;
+  whatWeKnow?: Array<{ label: string; value: string }>;
+  loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
+}): Promise<void> {
+  const metadata = {
+    type: 'flow_state',
+    flowState: {
+      flowId: params.flowId,
+      slots: params.slots,
+      progress: params.progress,
+      nextStepId: params.nextStepId || null,
+      whatWeKnow: params.whatWeKnow || [],
+      loanOfficerSummary: params.loanOfficerSummary || null,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+
+  await appendConversationMessage({
+    conversationId: params.conversationId,
+    role: 'tool',
+    content: 'FLOW_STATE',
+    metadata,
+  });
 }
 
 export async function searchConversations(userId: number, query: string) {

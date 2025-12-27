@@ -1,0 +1,63 @@
+{
+  "id": "loan_officer.default",
+  "version": "1.0",
+  "audience": "loan_officer",
+  "dialectsSupported": ["tagalog", "cebuano", "english"],
+  "intro": {
+    "title": "Loan Officer Assistant",
+    "description": "I can help you assess farmer profiles and loan applications. Let's start by gathering some information."
+  },
+  "slots": [
+    {
+      "key": "location.province",
+      "label": "Province",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "province"
+    },
+    {
+      "key": "location.municipality",
+      "label": "Municipality",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "municipality"
+    },
+    {
+      "key": "farmer.cropPrimary",
+      "label": "Primary Crop",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "cropPrimary"
+    },
+    {
+      "key": "farmer.farmSize",
+      "label": "Farm Size (hectares)",
+      "type": "number",
+      "required": false,
+      "validation": {
+        "min": 0
+      },
+      "saveToProfile": true,
+      "profileField": "farmSize"
+    }
+  ],
+  "steps": [
+    {
+      "id": "start",
+      "title": "Welcome",
+      "prompt": "Hello! I'm KaAni, your loan officer assistant. I can help you analyze farmer profiles and assess loan applications. What would you like to start with?",
+      "slotKeys": [],
+      "suggestions": [
+        "Analyze a farmer profile",
+        "Review loan application criteria",
+        "Interpret an AgScore"
+      ]
+    }
+  ]
+}
+
+
+
