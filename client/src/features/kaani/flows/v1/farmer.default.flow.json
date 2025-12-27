@@ -2,36 +2,16 @@
   "id": "farmer.default",
   "version": "1.0",
   "audience": "farmer",
-  "dialectsSupported": ["tagalog", "cebuano", "english"],
+  "dialectsSupported": [
+    "tagalog",
+    "cebuano",
+    "english"
+  ],
   "intro": {
     "title": "Farmer Assistant",
     "description": "Ako si KaAni, ang iyong assistant para sa pagsasaka. Paano kita matutulungan ngayon?"
   },
   "slots": [
-    {
-      "key": "location.province",
-      "label": "Province",
-      "type": "text",
-      "required": false,
-      "saveToProfile": true,
-      "profileField": "province"
-    },
-    {
-      "key": "location.municipality",
-      "label": "Municipality",
-      "type": "text",
-      "required": false,
-      "saveToProfile": true,
-      "profileField": "municipality"
-    },
-    {
-      "key": "location.barangay",
-      "label": "Barangay",
-      "type": "text",
-      "required": false,
-      "saveToProfile": true,
-      "profileField": "barangay"
-    },
     {
       "key": "farmer.cropPrimary",
       "label": "Primary Crop",
@@ -45,17 +25,38 @@
       "label": "Farm Size (hectares)",
       "type": "number",
       "required": false,
-      "validation": {
-        "min": 0
-      },
       "saveToProfile": true,
       "profileField": "farmSize"
+    },
+    {
+      "key": "location.barangay",
+      "label": "Barangay",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "barangay"
+    },
+    {
+      "key": "location.municipality",
+      "label": "Municipality",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "municipality"
+    },
+    {
+      "key": "location.province",
+      "label": "Province",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "province"
     }
   ],
   "steps": [
     {
       "id": "start",
-      "title": "Welcome",
+      "title": "start",
       "prompt": "Kumusta! Ako si KaAni. Paano kita matutulungan sa iyong pagsasaka ngayon?",
       "slotKeys": [],
       "suggestions": [
@@ -66,6 +67,3 @@
     }
   ]
 }
-
-
-
