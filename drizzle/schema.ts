@@ -191,3 +191,33 @@ export const conversationMessages = mysqlTable("conversation_messages", {
 	primaryKey({ columns: [table.id], name: "conversation_messages_id"}),
 	index("idx_cm_conversation_created").on(table.conversationId, table.createdAt),
 ]);
+
+export const kaaniLeads = mysqlTable("kaani_leads", {
+	id: int().autoincrement().notNull(),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+	source: mysqlEnum("source", ['public', 'erp']).default('public').notNull(),
+	audience: mysqlEnum("audience", ['loan_officer', 'farmer']).notNull(),
+	dialect: varchar("dialect", { length: 20 }),
+	conversationId: int("conversation_id"),
+	farmerProfileId: char("farmer_profile_id", { length: 36 }),
+	sessionToken: char("session_token", { length: 64 }).notNull(),
+	landingPath: varchar("landing_path", { length: 255 }),
+	utmSource: varchar("utm_source", { length: 100 }),
+	utmMedium: varchar("utm_medium", { length: 100 }),
+	utmCampaign: varchar("utm_campaign", { length: 100 }),
+	consentObtained: int("consent_obtained").default(0).notNull(),
+	consentTextVersion: varchar("consent_text_version", { length: 50 }),
+	consentTimestamp: timestamp("consent_timestamp", { mode: 'string' }),
+	capturedName: varchar("captured_name", { length: 255 }),
+	capturedEmail: varchar("captured_email", { length: 255 }),
+	capturedPhone: varchar("captured_phone", { length: 50 }),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "kaani_leads_id"}),
+	index("idx_leads_session_token").on(table.sessionToken),
+	index("idx_leads_conversation_id").on(table.conversationId),
+	index("idx_leads_farmer_profile_id").on(table.farmerProfileId),
+	index("idx_leads_createdAt").on(table.createdAt),
+	unique("kaani_leads_session_token_unique").on(table.sessionToken),
+]);

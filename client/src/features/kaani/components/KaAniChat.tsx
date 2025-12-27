@@ -12,6 +12,9 @@ import { KaAniAudience, KaAniDialect, KaAniUiMessage } from "../types";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
+import { KaAniProgressBar } from "./KaAniProgressBar";
+import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
+import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
 
 interface Conversation {
   id: number;
@@ -30,6 +33,14 @@ export function KaAniChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [audience, setAudience] = useState<KaAniAudience>("loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
+  const [flowState, setFlowState] = useState<{
+    flowId: string;
+    nextStepId: string | null;
+    suggestedChips: string[];
+    progress: { requiredTotal: number; requiredFilled: number; percent: number; missingRequired: string[] };
+    whatWeKnow: Array<{ label: string; value: string }>;
+    loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -194,8 +205,8 @@ export function KaAniChat() {
     setIsLoading(true);
 
     try {
-      // Call backend endpoint
-      const result = await trpcClient.kaani.sendConversationMessage.mutate({
+      // Call guided message endpoint
+      const result = await (trpcClient.kaani as any).sendGuidedMessage.mutate({
         conversationId: conversationId!,
         message: textToSend,
         audience,
@@ -209,6 +220,11 @@ export function KaAniChat() {
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Update flow state if present
+      if (result.flow) {
+        setFlowState(result.flow);
+      }
 
       // Refetch messages to ensure sync with backend
       await loadMessages(conversationId!);
@@ -266,6 +282,11 @@ export function KaAniChat() {
               />
             </div>
 
+            {/* Progress Bar */}
+            {flowState && (
+              <KaAniProgressBar progress={flowState.progress} />
+            )}
+
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {isLoadingMessages ? (
@@ -305,10 +326,30 @@ export function KaAniChat() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* What We Know Panel */}
+            {flowState && flowState.whatWeKnow.length > 0 && (
+              <KaAniWhatWeKnowPanel whatWeKnow={flowState.whatWeKnow} />
+            )}
+
+            {/* Loan Officer Summary */}
+            {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
+              <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
+            )}
+
             {/* Prompt Chips Area */}
             {messages.length === 0 && (
               <div className="border-t border-gray-200">
                 <KaAniPromptChips prompts={starterPrompts} onPromptClick={handlePromptClick} />
+              </div>
+            )}
+
+            {/* Suggested Chips from Flow */}
+            {flowState && flowState.suggestedChips.length > 0 && (
+              <div className="border-t border-gray-200 p-4">
+                <KaAniPromptChips
+                  prompts={flowState.suggestedChips.map(chip => ({ label: chip, message: chip }))}
+                  onPromptClick={handlePromptClick}
+                />
               </div>
             )}
 
