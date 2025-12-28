@@ -26,9 +26,10 @@ export type KaAniArtifactBundle = {
   missing: string[];
   artifacts: Array<{
     id: string;
-    type: "loan_summary" | "cost_breakdown" | "risk_flags" | "next_questions";
+    type: "loan_summary" | "cost_breakdown" | "risk_flags" | "next_questions" | "loan_suggestion";
     title: string;
     version: string;
+    visibility?: "off" | "internal" | "ui";
     data: any;
   }>;
 };

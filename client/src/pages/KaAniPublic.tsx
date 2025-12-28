@@ -17,6 +17,7 @@ import { KaAniProgressBar } from "@/features/kaani/components/KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "@/features/kaani/components/KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "@/features/kaani/components/KaAniLoanOfficerSummary";
 import { KaAniLoanPacket } from "@/features/kaani/components/KaAniLoanPacket";
+import { KaAniLoanSuggestion } from "@/features/kaani/components/KaAniLoanSuggestion";
 import type { KaAniArtifactBundle } from "@/features/kaani/types";
 
 const SESSION_TOKEN_KEY = 'kaani_session_token_v1';
@@ -353,6 +354,17 @@ export default function KaAniPublic() {
               {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
                 <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
               )}
+
+              {/* Loan Suggestion: Only render when visibility === "ui" */}
+              {artifactBundle && (() => {
+                const loanSuggestion = artifactBundle.artifacts.find(a => a.type === "loan_suggestion");
+                // Feature gate: only show if visibility is "ui"
+                return loanSuggestion && loanSuggestion.visibility === "ui" ? (
+                  <div className="border-t border-gray-200 bg-gray-50 p-4">
+                    <KaAniLoanSuggestion data={loanSuggestion.data} />
+                  </div>
+                ) : null;
+              })()}
 
               {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
               {artifactBundle && artifactBundle.readiness !== "draft" && (

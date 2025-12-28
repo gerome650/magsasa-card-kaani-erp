@@ -16,6 +16,7 @@ import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
 import { KaAniLoanPacket } from "./KaAniLoanPacket";
+import { KaAniLoanSuggestion } from "./KaAniLoanSuggestion";
 import type { KaAniArtifactBundle } from "../types";
 
 interface Conversation {
@@ -356,6 +357,17 @@ export function KaAniChat() {
             {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
               <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
             )}
+
+            {/* Loan Suggestion: Only render when visibility === "ui" */}
+            {artifactBundle && (() => {
+              const loanSuggestion = artifactBundle.artifacts.find(a => a.type === "loan_suggestion");
+              // Feature gate: only show if visibility is "ui"
+              return loanSuggestion && loanSuggestion.visibility === "ui" ? (
+                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                  <KaAniLoanSuggestion data={loanSuggestion.data} />
+                </div>
+              ) : null;
+            })()}
 
             {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
             {artifactBundle && artifactBundle.readiness !== "draft" && (

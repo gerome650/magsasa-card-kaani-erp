@@ -2,7 +2,7 @@ export type ArtifactReadiness = "draft" | "needs_info" | "ready";
 
 export type KaAniArtifactBase = {
   id: string;
-  type: "loan_summary" | "cost_breakdown" | "risk_flags" | "next_questions";
+  type: "loan_summary" | "cost_breakdown" | "risk_flags" | "next_questions" | "loan_suggestion";
   title: string;
   version: "v1";
 };
@@ -47,11 +47,30 @@ export type NextQuestionsArtifact = KaAniArtifactBase & {
   };
 };
 
+export type LoanSuggestionArtifact = KaAniArtifactBase & {
+  type: "loan_suggestion";
+  visibility: "off" | "internal" | "ui";
+  data: {
+    suggestedAmount: number;
+    currency: "PHP";
+    baseAmount: number;
+    adjustments: Array<{
+      reason: string;
+      multiplier?: number;
+      penalty?: number;
+      impact: number;
+    }>;
+    disclaimers: string[];
+    confidence: "low" | "medium" | "high";
+  };
+};
+
 export type KaAniArtifact =
   | LoanSummaryArtifact
   | CostBreakdownArtifact
   | RiskFlagsArtifact
-  | NextQuestionsArtifact;
+  | NextQuestionsArtifact
+  | LoanSuggestionArtifact;
 
 export type KaAniArtifactBundle = {
   readiness: ArtifactReadiness;
