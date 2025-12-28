@@ -94,6 +94,7 @@ export function mergeSlots(
 
 /**
  * Compute progress: required slots filled vs total required
+ * Guard: If no required slots but known slots exist, calculate based on all slots
  */
 export function computeProgress(
   flow: FlowPackage,
@@ -120,10 +121,27 @@ export function computeProgress(
     }
   }
 
-  const requiredTotal = requiredKeys.length;
-  const percent = requiredTotal > 0
-    ? Math.round((requiredFilled / requiredTotal) * 100)
-    : 100;
+  let requiredTotal = requiredKeys.length;
+  let percent: number;
+
+  // Guard: If no required slots but we have known slots, calculate based on all slots
+  if (requiredTotal === 0) {
+    const allSlots = flow.slots;
+    const allKnownSlots = allSlots.filter(slot => {
+      const value = slots[slot.key];
+      return value !== undefined && value !== null && value !== '';
+    });
+    requiredTotal = allSlots.length;
+    requiredFilled = allKnownSlots.length;
+    percent = requiredTotal > 0
+      ? Math.round((requiredFilled / requiredTotal) * 100)
+      : 0; // Guard: Never show undefined progress, default to 0 if no slots at all
+  } else {
+    percent = Math.round((requiredFilled / requiredTotal) * 100);
+  }
+
+  // Guard: Clamp percent between 0-100
+  percent = Math.max(0, Math.min(100, percent));
 
   return {
     requiredTotal,

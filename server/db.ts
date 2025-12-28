@@ -996,6 +996,101 @@ export async function appendFlowStateMessage(params: {
   });
 }
 
+/**
+ * Append an artifacts message to conversation
+ */
+export async function appendArtifactsMessage(params: {
+  conversationId: number;
+  bundle: {
+    readiness: "draft" | "needs_info" | "ready";
+    missing: string[];
+    artifacts: any[];
+  };
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database connection not available");
+  }
+
+  const { conversationMessages } = await import("../drizzle/schema");
+  
+  const result = await db
+    .insert(conversationMessages)
+    .values({
+      conversationId: params.conversationId,
+      role: "tool",
+      content: "[kaani_artifacts_v1]",
+      metadata: {
+        type: "kaani_artifacts_v1",
+        bundle: params.bundle,
+      },
+      createdAt: new Date(),
+    });
+
+  return Number(result[0].insertId);
+}
+
+/**
+ * Get latest artifacts bundle from conversation
+ */
+export async function getLatestArtifacts(conversationId: number): Promise<{
+  readiness: "draft" | "needs_info" | "ready";
+  missing: string[];
+  artifacts: any[];
+} | null> {
+  const db = await getDb();
+  if (!db) {
+    return null;
+  }
+
+  const { conversationMessages } = await import("../drizzle/schema");
+  const { desc, eq } = await import("drizzle-orm");
+
+  const messages = await db
+    .select({
+      metadata: conversationMessages.metadata,
+    })
+    .from(conversationMessages)
+    .where(eq(conversationMessages.conversationId, conversationId))
+    .where(eq(conversationMessages.role, "tool"))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(50);
+
+  for (const msg of messages) {
+    if (!msg.metadata || typeof msg.metadata !== 'object') continue;
+    
+    const metadata = msg.metadata as any;
+    if (metadata.type === 'kaani_artifacts_v1' && metadata.bundle) {
+      return metadata.bundle;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get conversation with farmer profile ID
+ */
+export async function getConversationWithFarmerProfile(conversationId: number): Promise<{ farmerProfileId: string | null } | null> {
+  const db = await getDb();
+  if (!db) {
+    return null;
+  }
+
+  const { conversations } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+
+  const [conv] = await db
+    .select({
+      farmerProfileId: conversations.farmerProfileId,
+    })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  return conv ? { farmerProfileId: conv.farmerProfileId } : null;
+}
+
 export async function searchConversations(userId: number, query: string) {
   const db = await getDb();
   const { conversations, chatMessages } = await import("../drizzle/schema");

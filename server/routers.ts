@@ -23,6 +23,8 @@ import {
   buildWhatWeKnow,
 } from "./ai/flows/runtime/flowRuntime";
 import { buildLoanOfficerMvpSummary } from "./ai/flows/runtime/loanOfficerSummary";
+import { buildArtifacts } from "./ai/artifacts/buildArtifacts";
+import type { FlowState } from "./ai/artifacts/types";
 
 // Default Gemini model for KaAni. Override via GOOGLE_AI_STUDIO_MODEL if needed.
 // This is evaluated at module load time, after dotenv/config is imported in index.ts
@@ -1511,7 +1513,20 @@ Respond in the specified dialect using practical, concrete advice.`;
               errorCode: safeError.code,
               errorMessage: safeError.message,
             });
-            replyText = fallbackReply;
+            // Guard: If we have flow context (slots/progress computed), suppress generic fallback
+            // Only show fallback on true Gemini/network failure when no flow context exists
+            const hasFlowContext = flow && (Object.keys(mergedSlots).length > 0 || whatWeKnow.length > 0);
+            if (hasFlowContext) {
+              // Generate contextual reply instead of generic fallback
+              const replyDialect = input.dialect || 'tagalog';
+              replyText = replyDialect === 'english' 
+                ? "I understand. Could you provide a bit more information?"
+                : replyDialect === 'cebuano'
+                ? "Nakasabot ko. Pwede ka mopuno og dugang impormasyon?"
+                : "Naintindihan ko. Pwede po bang magbigay pa kayo ng kaunting impormasyon?";
+            } else {
+              replyText = fallbackReply;
+            }
           }
 
           // Step 13: Persist assistant reply
@@ -1800,7 +1815,20 @@ Respond in the specified dialect using practical, concrete advice.`;
               errorCode: safeError.code,
               errorMessage: safeError.message,
             });
-            replyText = fallbackReply;
+            // Guard: If we have flow context (slots/progress computed), suppress generic fallback
+            // Only show fallback on true Gemini/network failure when no flow context exists
+            const hasFlowContext = flow && (Object.keys(mergedSlots).length > 0 || whatWeKnow.length > 0);
+            if (hasFlowContext) {
+              // Generate contextual reply instead of generic fallback
+              const dialect = input.dialect || 'tagalog';
+              replyText = dialect === 'english' 
+                ? "I understand. Could you provide a bit more information?"
+                : dialect === 'cebuano'
+                ? "Nakasabot ko. Pwede ka mopuno og dugang impormasyon?"
+                : "Naintindihan ko. Pwede po bang magbigay pa kayo ng kaunting impormasyon?";
+            } else {
+              replyText = fallbackReply;
+            }
           }
 
           // Persist assistant reply
@@ -1891,6 +1919,136 @@ Respond in the specified dialect using practical, concrete advice.`;
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Failed to capture lead information",
+          });
+        }
+      }),
+
+    getArtifacts: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        try {
+          // Get farmer profile ID
+          const farmerProfileId = await db.ensureFarmerProfileForConversation(
+            input.conversationId,
+            ctx.user.id
+          );
+
+          // Get latest flow state
+          const latestState = await db.getLatestFlowState(input.conversationId);
+          const flowState: FlowState | null = latestState ? {
+            flowId: latestState.flowId,
+            slots: latestState.slots,
+          } : null;
+
+          // Get conversation messages
+          const allMessages = await db.getConversationMessages(input.conversationId);
+          const messages = allMessages.slice(-50); // Take last 50
+
+          // Build artifacts
+          const bundle = buildArtifacts({
+            conversationId: input.conversationId,
+            audience: input.audience,
+            dialect: input.dialect,
+            farmerProfileId,
+            flowState,
+            messages: messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              metadata: m.metadata,
+            })),
+          });
+
+          // Persist artifacts
+          await db.appendArtifactsMessage({
+            conversationId: input.conversationId,
+            bundle,
+          });
+
+          return {
+            bundle,
+            farmerProfileId,
+          };
+        } catch (error) {
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in getArtifacts:", {
+            conversationId: input.conversationId,
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate artifacts",
+          });
+        }
+      }),
+
+    getLeadArtifacts: publicProcedure
+      .input(z.object({
+        sessionToken: z.string().max(64),
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        try {
+          // Get lead by session token
+          const lead = await dbLeadGen.getLeadBySessionToken(input.sessionToken);
+          if (!lead || !lead.conversationId) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Invalid session token",
+            });
+          }
+
+          // Get latest flow state
+          const latestState = await db.getLatestFlowState(lead.conversationId);
+          const flowState: FlowState | null = latestState ? {
+            flowId: latestState.flowId,
+            slots: latestState.slots,
+          } : null;
+
+          // Get conversation messages
+          const allMessages = await db.getConversationMessages(lead.conversationId);
+          const messages = allMessages.slice(-50); // Take last 50
+
+          // Build artifacts
+          const bundle = buildArtifacts({
+            conversationId: lead.conversationId,
+            audience: input.audience || lead.audience,
+            dialect: input.dialect,
+            farmerProfileId: lead.farmerProfileId || null,
+            flowState,
+            messages: messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              metadata: m.metadata,
+            })),
+          });
+
+          // Persist artifacts
+          await db.appendArtifactsMessage({
+            conversationId: lead.conversationId,
+            bundle,
+          });
+
+          return {
+            bundle,
+          };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in getLeadArtifacts:", {
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate artifacts",
           });
         }
       }),

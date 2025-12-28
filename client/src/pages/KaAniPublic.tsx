@@ -16,6 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { KaAniProgressBar } from "@/features/kaani/components/KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "@/features/kaani/components/KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "@/features/kaani/components/KaAniLoanOfficerSummary";
+import { KaAniLoanPacket } from "@/features/kaani/components/KaAniLoanPacket";
+import type { KaAniArtifactBundle } from "@/features/kaani/types";
 
 const SESSION_TOKEN_KEY = 'kaani_session_token_v1';
 
@@ -41,6 +43,7 @@ export default function KaAniPublic() {
     whatWeKnow: Array<{ label: string; value: string }>;
     loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
   } | null>(null);
+  const [artifactBundle, setArtifactBundle] = useState<KaAniArtifactBundle | null>(null);
   const [showCaptureForm, setShowCaptureForm] = useState(false);
   const [captureData, setCaptureData] = useState({
     name: "",
@@ -95,9 +98,7 @@ export default function KaAniPublic() {
           }]);
         }
 
-        // Set suggestions from flow
-        const prompts = getStarterPrompts(audience);
-        setNextSuggestions(prompts.map(p => p.message));
+        // Note: Suggestions handled via flow state
       } catch (error: any) {
         console.error("Error creating session:", error);
         toast.error(error?.message || "Failed to initialize chat. Please refresh the page.");
@@ -159,6 +160,24 @@ export default function KaAniPublic() {
       // Update flow state if present
       if (result.flow) {
         setFlowState(result.flow);
+      }
+
+      // Refresh artifacts after successful message send
+      if (sessionToken) {
+        try {
+          // Use trpcClient directly for dynamic sessionToken
+          const artifactsRes = await (trpcClient.kaani as any).getLeadArtifacts.query({
+            sessionToken,
+            audience,
+            dialect,
+          });
+          if (artifactsRes?.bundle) {
+            setArtifactBundle(artifactsRes.bundle);
+          }
+        } catch (artifactError) {
+          // Log but don't fail the message send if artifacts fail
+          console.warn("Failed to fetch artifacts:", artifactError);
+        }
       }
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -333,6 +352,11 @@ export default function KaAniPublic() {
               {/* Loan Officer Summary (only for loan_officer audience) */}
               {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
                 <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
+              )}
+
+              {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
+              {artifactBundle && artifactBundle.readiness !== "draft" && (
+                <KaAniLoanPacket bundle={artifactBundle} audience={audience} />
               )}
 
               {/* Suggested Chips from Flow */}
