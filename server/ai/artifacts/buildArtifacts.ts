@@ -2,6 +2,7 @@ import { KaAniArtifactBundle, ArtifactBuildInput, NextQuestionsArtifact } from "
 import { buildLoanSummaryArtifact } from "./loanPacket";
 import { buildCostBreakdownArtifact } from "./costBreakdown";
 import { buildRiskFlagsArtifact } from "./riskFlags";
+import { computeLoanSuggestion } from "../loanSuggestion/computeLoanSuggestion";
 
 /**
  * Generate friendly questions based on missing fields and audience
@@ -116,11 +117,17 @@ export function buildArtifacts(input: ArtifactBuildInput): KaAniArtifactBundle {
   const costBreakdown = buildCostBreakdownArtifact(flowState, loanSummary.data);
   const riskFlags = buildRiskFlagsArtifact(flowState, loanSummary.data);
   const nextQuestions = buildNextQuestionsArtifact(missing, audience, dialect);
+  
+  // Build loan suggestion artifact (partner-gated)
+  const loanSuggestion = computeLoanSuggestion(loanSummary, costBreakdown, riskFlags, missing);
+
+  // Collect all artifacts, filtering out null values
+  const allArtifacts = [loanSummary, costBreakdown, riskFlags, nextQuestions, loanSuggestion].filter(Boolean);
 
   return {
     readiness,
     missing: [...missing],
-    artifacts: [loanSummary, costBreakdown, riskFlags, nextQuestions],
+    artifacts: allArtifacts as any[],
   };
 }
 
