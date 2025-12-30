@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { logLoanSuggestionRendered } from "../utils/auditLog";
 
 interface LoanSuggestionData {
   suggestedAmount: number;
@@ -17,9 +19,26 @@ interface LoanSuggestionData {
 
 interface KaAniLoanSuggestionProps {
   data: LoanSuggestionData;
+  visibility?: "off" | "internal" | "ui";
 }
 
-export function KaAniLoanSuggestion({ data }: KaAniLoanSuggestionProps) {
+export function KaAniLoanSuggestion({ data, visibility = "ui" }: KaAniLoanSuggestionProps) {
+  // Guard: Handle missing data gracefully
+  if (!data || typeof data.suggestedAmount !== 'number') {
+    return null;
+  }
+
+  // Log render event when visibility is "ui" (client-side audit)
+  useEffect(() => {
+    if (visibility === "ui" && data) {
+      logLoanSuggestionRendered({
+        suggestedAmount: data.suggestedAmount,
+        baseAmount: data.baseAmount || 0,
+        confidence: data.confidence || "medium",
+      });
+    }
+  }, [visibility, data]);
+
   const confidenceColors = {
     high: "bg-green-100 text-green-800 border-green-300",
     medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -48,7 +67,7 @@ export function KaAniLoanSuggestion({ data }: KaAniLoanSuggestionProps) {
         </div>
 
         {/* Calculation breakdown */}
-        {data.adjustments.length > 0 && (
+        {data.adjustments && Array.isArray(data.adjustments) && data.adjustments.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-semibold text-gray-700">How we calculated this:</div>
             <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
@@ -82,7 +101,7 @@ export function KaAniLoanSuggestion({ data }: KaAniLoanSuggestionProps) {
         )}
 
         {/* Disclaimers */}
-        {data.disclaimers.length > 0 && (
+        {data.disclaimers && Array.isArray(data.disclaimers) && data.disclaimers.length > 0 && (
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
             <div className="text-xs font-semibold text-gray-700 mb-2">Important Notes:</div>
             <ul className="text-xs text-gray-600 space-y-1">

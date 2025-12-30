@@ -43,6 +43,7 @@ import Analytics from "./pages/Analytics";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import FarmMap from "./pages/FarmMap";
 import AdminCsvUpload from "./pages/AdminCsvUpload";
+import { Farmacy } from "./pages/Farmacy";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -130,6 +131,14 @@ function Router() {
       
       <Route path="/kaani">
         <KaAniPublic />
+      </Route>
+      
+      <Route path="/farmacy">
+        <ProtectedRoute>
+          <Layout>
+            <Farmacy />
+          </Layout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/marketplace">

@@ -355,13 +355,13 @@ export default function KaAniPublic() {
                 <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
               )}
 
-              {/* Loan Suggestion: Only render when visibility === "ui" */}
-              {artifactBundle && (() => {
-                const loanSuggestion = artifactBundle.artifacts.find(a => a.type === "loan_suggestion");
+              {/* Loan Suggestion: Only render when visibility === "ui" (guard: handle missing artifact gracefully) */}
+              {artifactBundle && artifactBundle.artifacts && (() => {
+                const loanSuggestion = artifactBundle.artifacts.find(a => a && a.type === "loan_suggestion");
                 // Feature gate: only show if visibility is "ui"
-                return loanSuggestion && loanSuggestion.visibility === "ui" ? (
+                return loanSuggestion && loanSuggestion.visibility === "ui" && loanSuggestion.data ? (
                   <div className="border-t border-gray-200 bg-gray-50 p-4">
-                    <KaAniLoanSuggestion data={loanSuggestion.data} />
+                    <KaAniLoanSuggestion data={loanSuggestion.data} visibility={loanSuggestion.visibility} />
                   </div>
                 ) : null;
               })()}

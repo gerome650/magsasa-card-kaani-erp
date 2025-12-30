@@ -54,8 +54,11 @@ export function computeLoanSuggestion(
   const disclaimers: string[] = [];
   let confidence: "low" | "medium" | "high" = "medium";
 
-  // Step 1: Determine base amount
+  // Step 1: Determine base amount (with defensive guards for edge cases)
   let baseAmount = 0;
+  
+  // Guard: Handle hectares edge case (missing/0/negative)
+  const safeHectares = input.hectares && input.hectares > 0 ? input.hectares : 0;
   
   if (input.costBreakdown && input.costBreakdown.total.min > 0) {
     // Use average of cost breakdown range as base
@@ -64,29 +67,29 @@ export function computeLoanSuggestion(
       reason: "Base calculated from cost breakdown",
       impact: baseAmount,
     });
-  } else if (input.hectares && input.crop) {
-    // Fallback to benchmark calculation
+  } else if (safeHectares > 0 && input.crop) {
+    // Fallback to benchmark calculation (guard: requires valid hectares and crop)
     const benchmark = getCropBenchmark(input.crop);
     if (benchmark) {
       const avgCostPerHa = (benchmark.costPerHa.min + benchmark.costPerHa.max) / 2;
-      baseAmount = input.hectares * avgCostPerHa;
+      baseAmount = safeHectares * avgCostPerHa;
       adjustments.push({
-        reason: `Base calculated from ${input.crop} benchmark (${input.hectares} ha)`,
+        reason: `Base calculated from ${input.crop} benchmark (${safeHectares} ha)`,
         impact: baseAmount,
       });
       disclaimers.push("Loan amount based on industry benchmarks for your crop and farm size.");
     } else {
-      // Unknown crop, use conservative default
-      baseAmount = input.hectares * 40000; // Conservative mid-range estimate
+      // Guard: Unknown crop benchmark - use conservative default
+      baseAmount = safeHectares * 40000; // Conservative mid-range estimate
       adjustments.push({
-        reason: `Base estimated for ${input.hectares} ha (crop benchmark unavailable)`,
+        reason: `Base estimated for ${safeHectares} ha (crop benchmark unavailable)`,
         impact: baseAmount,
       });
       disclaimers.push("Loan amount is an estimate. Crop-specific data not available.");
       confidence = "low";
     }
   } else {
-    // Insufficient data for base calculation
+    // Guard: Insufficient data - use minimum
     baseAmount = policy.minLoanAmount;
     adjustments.push({
       reason: "Minimum loan amount (insufficient data for calculation)",
@@ -98,10 +101,10 @@ export function computeLoanSuggestion(
 
   let currentAmount = baseAmount;
 
-  // Step 2: Apply risk multipliers
-  if (input.riskFlags && input.riskFlags.length > 0) {
-    const highRiskCount = input.riskFlags.filter(f => f.severity === "high").length;
-    const mediumRiskCount = input.riskFlags.filter(f => f.severity === "medium").length;
+  // Step 2: Apply risk multipliers (guard: handle empty/null risk flags)
+  if (input.riskFlags && Array.isArray(input.riskFlags) && input.riskFlags.length > 0) {
+    const highRiskCount = input.riskFlags.filter(f => f && f.severity === "high").length;
+    const mediumRiskCount = input.riskFlags.filter(f => f && f.severity === "medium").length;
 
     if (highRiskCount > 0) {
       // High risk: reduce by 15% per flag (max 30% reduction)
@@ -168,11 +171,11 @@ export function computeLoanSuggestion(
     disclaimers.push(`Loan amount capped at policy maximum of PHP ${policy.maxLoanAmount.toLocaleString()}.`);
   }
 
-  // Step 5: Round to nearest increment
+  // Step 5: Round to nearest increment (order: clamp first, then round - ensures result stays within policy bounds)
   const suggestedAmount = Math.round(currentAmount / policy.roundingIncrement) * policy.roundingIncrement;
 
-  // Add standard disclaimers
-  disclaimers.push("This is a suggested loan amount. Final approval is subject to review and verification.");
+  // Add standard disclaimers (suggested amount only, no approve/reject language)
+  disclaimers.push("This is a suggested loan amount based on the information provided.");
 
   return {
     suggestedAmount,

@@ -25,6 +25,11 @@ import {
 import { buildLoanOfficerMvpSummary } from "./ai/flows/runtime/loanOfficerSummary";
 import { buildArtifacts } from "./ai/artifacts/buildArtifacts";
 import type { FlowState } from "./ai/artifacts/types";
+import * as dbFarmacy from "./db_farmacy";
+import { getSoilEstimate } from "./farmacy/soilEstimate";
+import { computeFarmacyRecommendations } from "./farmacy/recommendations";
+import * as marketplaceProducts from "./marketplace/products";
+import * as marketplacePricing from "./marketplace/pricing";
 
 // Default Gemini model for KaAni. Override via GOOGLE_AI_STUDIO_MODEL if needed.
 // This is evaluated at module load time, after dotenv/config is imported in index.ts
@@ -810,6 +815,279 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteCost(input.id);
         return { success: true };
+      }),
+  }),
+
+  // Farmacy router
+  farmacy: router({
+    createCase: protectedProcedure
+      .input(
+        z.object({
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+          province: z.string().optional(),
+          municipality: z.string().optional(),
+          crop: z.string().min(1),
+          season: z.string().optional(),
+          year: z.number().optional(),
+          tenantId: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Feature flag check
+        if (process.env.FARMACY_ENABLED !== "true") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Farmacy feature is not enabled",
+          });
+        }
+
+        // Get deployment profile (if available)
+        const deploymentProfile = process.env.DEPLOYMENT_PROFILE || "DEV";
+
+        // Get soil estimate from geo location
+        const geo = {
+          latitude: input.latitude,
+          longitude: input.longitude,
+          province: input.province,
+          municipality: input.municipality,
+        };
+
+        const soilEstimate = getSoilEstimate(geo);
+        if (!soilEstimate) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Incomplete location data. Provide either (latitude, longitude) or (province, municipality)",
+          });
+        }
+
+        // Compute recommendations
+        const recommendations = computeFarmacyRecommendations(soilEstimate, input.crop);
+
+        // Create case in database
+        // Convert lat/lng to string for decimal field (Drizzle pattern)
+        const caseId = await dbFarmacy.createFarmacyCase({
+          tenantId: input.tenantId || null,
+          deploymentProfile: deploymentProfile,
+          latitude: input.latitude !== undefined ? String(input.latitude) : null,
+          longitude: input.longitude !== undefined ? String(input.longitude) : null,
+          province: input.province || null,
+          municipality: input.municipality || null,
+          crop: input.crop,
+          season: input.season || null,
+          year: input.year || null,
+          soilEstimate: soilEstimate as any,
+          soilSource: soilEstimate.source,
+          soilConfidence: soilEstimate.confidence,
+          evidenceLevel: soilEstimate.evidenceLevel,
+          recommendations: recommendations as any,
+        });
+
+        // Fetch created case
+        const caseData = await dbFarmacy.getFarmacyCase(caseId);
+        if (!caseData) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to retrieve created case",
+          });
+        }
+
+        return {
+          id: caseData.id,
+          caseId: caseData.caseId,
+          crop: caseData.crop,
+          soilEstimate: caseData.soilEstimate as any,
+          soilSource: caseData.soilSource,
+          soilConfidence: caseData.soilConfidence,
+          evidenceLevel: caseData.evidenceLevel,
+          recommendations: caseData.recommendations as any,
+        };
+      }),
+
+    getCase: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        // Feature flag check
+        if (process.env.FARMACY_ENABLED !== "true") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Farmacy feature is not enabled",
+          });
+        }
+
+        const caseData = await dbFarmacy.getFarmacyCase(input.id);
+        if (!caseData) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Case not found",
+          });
+        }
+
+        return {
+          id: caseData.id,
+          caseId: caseData.caseId,
+          crop: caseData.crop,
+          season: caseData.season,
+          year: caseData.year,
+          soilEstimate: caseData.soilEstimate as any,
+          soilSource: caseData.soilSource,
+          soilConfidence: caseData.soilConfidence,
+          evidenceLevel: caseData.evidenceLevel,
+          recommendations: caseData.recommendations as any,
+          actionsTaken: caseData.actionsTaken as any,
+          yieldEstimate: caseData.yieldEstimate as any,
+          issues: caseData.issues as any,
+          feedback: caseData.feedback as any,
+          createdAt: caseData.createdAt,
+          updatedAt: caseData.updatedAt,
+        };
+      }),
+  }),
+
+  // Marketplace router
+  marketplace: router({
+    listProducts: protectedProcedure
+      .input(
+        z
+          .object({
+            q: z.string().optional(),
+            category: z.string().optional(),
+            active: z.boolean().optional(),
+          })
+          .optional()
+      )
+      .query(async ({ input, ctx }) => {
+        // Feature flag check
+        if (process.env.MARKETPLACE_ENABLED !== "true") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Marketplace feature is not enabled",
+          });
+        }
+
+        const products = await marketplaceProducts.listProducts(input || {});
+        return products;
+      }),
+
+    getProduct: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        // Feature flag check
+        if (process.env.MARKETPLACE_ENABLED !== "true") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Marketplace feature is not enabled",
+          });
+        }
+
+        const product = await marketplaceProducts.getProduct(input.id);
+        if (!product) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Product not found",
+          });
+        }
+
+        return product;
+      }),
+
+    getActivePriceList: protectedProcedure.query(async ({ ctx }) => {
+      // Feature flag check
+      if (process.env.MARKETPLACE_ENABLED !== "true") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Marketplace feature is not enabled",
+        });
+      }
+
+      // Get deployment profile for tenant scoping
+      const deploymentProfile = process.env.DEPLOYMENT_PROFILE || "DEV";
+      const context = {
+        deploymentProfile,
+        // TODO: Add tenantId from user context when available
+      };
+
+      const priceList = await marketplacePricing.getActivePriceList(context);
+      if (!priceList) {
+        // Return safe empty response instead of error
+        return {
+          priceList: null,
+          items: [],
+        };
+      }
+
+      const items = await marketplacePricing.getPriceListItems(priceList.id);
+      return {
+        priceList,
+        items,
+      };
+    }),
+
+    listActivePricedProducts: protectedProcedure
+      .input(
+        z
+          .object({
+            q: z.string().optional(),
+            category: z.string().optional(),
+          })
+          .optional()
+      )
+      .query(async ({ input, ctx }) => {
+        // Feature flag check
+        if (process.env.MARKETPLACE_ENABLED !== "true") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Marketplace feature is not enabled",
+          });
+        }
+
+        // Get products
+        const products = await marketplaceProducts.listProducts(input || {});
+
+        // Get active price list
+        const deploymentProfile = process.env.DEPLOYMENT_PROFILE || "DEV";
+        const context = {
+          deploymentProfile,
+        };
+
+        const priceList = await marketplacePricing.getActivePriceList(context);
+        if (!priceList) {
+          // Return products without prices (safe fallback)
+          return {
+            products: products.map((p) => ({
+              ...p,
+              price: null,
+              currency: null,
+            })),
+            priceList: null,
+          };
+        }
+
+        // Get price list items
+        const priceItems = await marketplacePricing.getPriceListItems(priceList.id);
+        const priceMap = new Map(
+          priceItems.map((item) => [item.productId, item])
+        );
+
+        // Combine products with prices
+        const pricedProducts = products.map((product) => {
+          const priceItem = priceMap.get(product.id);
+          return {
+            ...product,
+            price: priceItem?.price || null,
+            currency: priceItem?.currency || null,
+            priceUnit: priceItem?.unit || product.unit,
+          };
+        });
+
+        return {
+          products: pricedProducts,
+          priceList: {
+            id: priceList.id,
+            priceListCode: priceList.priceListCode,
+            name: priceList.name,
+          },
+        };
       }),
   }),
 
@@ -1960,6 +2238,7 @@ Respond in the specified dialect using practical, concrete advice.`;
               content: m.content,
               metadata: m.metadata,
             })),
+            req: ctx.req as any,
           });
 
           // Persist artifacts
@@ -2026,6 +2305,7 @@ Respond in the specified dialect using practical, concrete advice.`;
               content: m.content,
               metadata: m.metadata,
             })),
+            req: ctx.req as any,
           });
 
           // Persist artifacts

@@ -1,38 +1,24 @@
 #!/bin/bash
-echo "=== PR-10 Implementation Verification ==="
-echo ""
-echo "1. Checking created files..."
-files=(
-  "server/ai/config/policyProfiles.ts"
-  "server/ai/loanSuggestion/loanSuggestionFormula.ts"
-  "server/ai/loanSuggestion/computeLoanSuggestion.ts"
-  "client/src/features/kaani/components/KaAniLoanSuggestion.tsx"
-)
-for file in "${files[@]}"; do
-  if [ -f "$file" ]; then
-    echo "✓ $file"
-  else
-    echo "✗ $file (MISSING)"
-  fi
-done
+set -e
 
-echo ""
-echo "2. Checking modified files..."
-echo "   - Checking artifact types..."
-grep -q "loan_suggestion" server/ai/artifacts/types.ts && echo "✓ server/ai/artifacts/types.ts updated" || echo "✗ types.ts not updated"
-grep -q "loan_suggestion" client/src/features/kaani/types.ts && echo "✓ client types.ts updated" || echo "✗ client types.ts not updated"
+echo "Verifying PR-10 loan suggestion..."
 
-echo "   - Checking buildArtifacts integration..."
-grep -q "computeLoanSuggestion" server/ai/artifacts/buildArtifacts.ts && echo "✓ buildArtifacts.ts integrated" || echo "✗ buildArtifacts.ts not integrated"
+# Check TypeScript compilation
+echo "✓ Type checking..."
+pnpm -r build > /dev/null 2>&1 || (echo "✗ Build failed" && exit 1)
 
-echo "   - Checking UI integration..."
-grep -q "KaAniLoanSuggestion" client/src/features/kaani/components/KaAniChat.tsx && echo "✓ KaAniChat.tsx integrated" || echo "✗ KaAniChat.tsx not integrated"
-grep -q "KaAniLoanSuggestion" client/src/pages/KaAniPublic.tsx && echo "✓ KaAniPublic.tsx integrated" || echo "✗ KaAniPublic.tsx not integrated"
+# Check visibility property access (should be top-level)
+echo "✓ Checking visibility property access..."
+if grep -r "loanSuggestion\.data\.visibility" client/src/features/kaani client/src/pages/KaAniPublic.tsx 2>/dev/null; then
+  echo "✗ ERROR: visibility should be top-level, not in data"
+  exit 1
+fi
 
-echo ""
-echo "3. Checking visibility gating..."
-grep -q 'visibility === "ui"' client/src/features/kaani/components/KaAniChat.tsx && echo "✓ Visibility gating in KaAniChat" || echo "✗ No visibility gating in KaAniChat"
-grep -q 'visibility === "ui"' client/src/pages/KaAniPublic.tsx && echo "✓ Visibility gating in KaAniPublic" || echo "✗ No visibility gating in KaAniPublic"
+# Check suggestedAmount field name
+echo "✓ Checking suggestedAmount field..."
+if grep -r "suggestedAmountPhp\|suggested_amount" client/src/features/kaani/components/KaAniLoanSuggestion.tsx 2>/dev/null; then
+  echo "✗ ERROR: Field should be suggestedAmount, not suggestedAmountPhp"
+  exit 1
+fi
 
-echo ""
-echo "=== Verification Complete ==="
+echo "✓ All checks passed!"

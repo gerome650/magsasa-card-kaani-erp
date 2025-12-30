@@ -119,7 +119,17 @@ export function buildArtifacts(input: ArtifactBuildInput): KaAniArtifactBundle {
   const nextQuestions = buildNextQuestionsArtifact(missing, audience, dialect);
   
   // Build loan suggestion artifact (partner-gated)
-  const loanSuggestion = computeLoanSuggestion(loanSummary, costBreakdown, riskFlags, missing);
+  // Pass logging context for audit trail
+  const loanSuggestion = computeLoanSuggestion(
+    loanSummary,
+    costBreakdown,
+    riskFlags,
+    missing,
+    {
+      farmerProfileId: input.farmerProfileId,
+      req: (input as any).req,
+    }
+  );
 
   // Collect all artifacts, filtering out null values
   const allArtifacts = [loanSummary, costBreakdown, riskFlags, nextQuestions, loanSuggestion].filter(Boolean);

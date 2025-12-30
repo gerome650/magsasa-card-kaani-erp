@@ -64,6 +64,20 @@
       "when": 1766803494527,
       "tag": "0009_kaani_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1767011229246,
+      "tag": "0009_tan_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1767016296904,
+      "tag": "0010_small_anthem",
+      "breakpoints": true
     }
   ]
 }

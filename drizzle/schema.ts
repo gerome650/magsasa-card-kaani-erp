@@ -221,3 +221,106 @@ export const kaaniLeads = mysqlTable("kaani_leads", {
 	index("idx_leads_createdAt").on(table.createdAt),
 	unique("kaani_leads_session_token_unique").on(table.sessionToken),
 ]);
+
+export const farmacyCases = mysqlTable("farmacy_cases", {
+	id: int().autoincrement().notNull(),
+	caseId: varchar("case_id", { length: 64 }).notNull(),
+	tenantId: varchar("tenant_id", { length: 64 }),
+	deploymentProfile: varchar("deployment_profile", { length: 50 }),
+	latitude: decimal("latitude", { precision: 10, scale: 6 }),
+	longitude: decimal("longitude", { precision: 10, scale: 6 }),
+	province: varchar("province", { length: 255 }),
+	municipality: varchar("municipality", { length: 255 }),
+	crop: varchar("crop", { length: 100 }).notNull(),
+	season: varchar("season", { length: 50 }),
+	year: int("year"),
+	soilEstimate: json("soil_estimate"),
+	soilSource: mysqlEnum("soil_source", ['gis', 'farmer_reported', 'lab']).notNull(),
+	soilConfidence: mysqlEnum("soil_confidence", ['low', 'medium', 'high']).notNull(),
+	evidenceLevel: int("evidence_level").default(0).notNull(),
+	recommendations: json("recommendations").notNull(),
+	actionsTaken: json("actions_taken"),
+	yieldEstimate: json("yield_estimate"),
+	issues: json("issues"),
+	feedback: json("feedback"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "farmacy_cases_id"}),
+	unique("farmacy_cases_case_id_unique").on(table.caseId),
+	index("idx_farmacy_cases_case_id").on(table.caseId),
+	index("idx_farmacy_cases_tenant_id").on(table.tenantId),
+	index("idx_farmacy_cases_crop").on(table.crop),
+	index("idx_farmacy_cases_createdAt").on(table.createdAt),
+]);
+
+export const products = mysqlTable("products", {
+	id: int().autoincrement().notNull(),
+	productCode: varchar("product_code", { length: 64 }).notNull(),
+	name: varchar("name", { length: 255 }).notNull(),
+	description: text("description"),
+	category: varchar("category", { length: 100 }),
+	unit: varchar("unit", { length: 50 }).notNull(),
+	active: int("active").default(1).notNull(),
+	metadata: json("metadata"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "products_id"}),
+	unique("products_product_code_unique").on(table.productCode),
+	index("idx_products_product_code").on(table.productCode),
+	index("idx_products_category").on(table.category),
+	index("idx_products_active").on(table.active),
+]);
+
+export const priceLists = mysqlTable("price_lists", {
+	id: int().autoincrement().notNull(),
+	priceListCode: varchar("price_list_code", { length: 64 }).notNull(),
+	name: varchar("name", { length: 255 }).notNull(),
+	tenantId: varchar("tenant_id", { length: 64 }),
+	deploymentProfile: varchar("deployment_profile", { length: 50 }),
+	active: int("active").default(1).notNull(),
+	validFrom: timestamp("valid_from", { mode: 'string' }),
+	validUntil: timestamp("valid_until", { mode: 'string' }),
+	metadata: json("metadata"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "price_lists_id"}),
+	unique("price_lists_price_list_code_unique").on(table.priceListCode),
+	index("idx_price_lists_price_list_code").on(table.priceListCode),
+	index("idx_price_lists_tenant_id").on(table.tenantId),
+	index("idx_price_lists_deployment_profile").on(table.deploymentProfile),
+	index("idx_price_lists_active").on(table.active),
+]);
+
+export const priceListItems = mysqlTable("price_list_items", {
+	id: int().autoincrement().notNull(),
+	priceListId: int("price_list_id").notNull(),
+	productId: int("product_id").notNull(),
+	price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+	currency: varchar("currency", { length: 3 }).default("PHP").notNull(),
+	unit: varchar("unit", { length: 50 }),
+	notes: text("notes"),
+	createdAt: timestamp({ mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp({ mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id], name: "price_list_items_id"}),
+	index("idx_price_list_items_price_list_id").on(table.priceListId),
+	index("idx_price_list_items_product_id").on(table.productId),
+	unique("price_list_items_price_list_id_product_id_unique").on(table.priceListId, table.productId),
+	foreignKey({
+		columns: [table.priceListId],
+		foreignColumns: [priceLists.id],
+		name: "price_list_items_price_list_id_fk"
+	}).onDelete("restrict"),
+	foreignKey({
+		columns: [table.productId],
+		foreignColumns: [products.id],
+		name: "price_list_items_product_id_fk"
+	}).onDelete("restrict"),
+]);
