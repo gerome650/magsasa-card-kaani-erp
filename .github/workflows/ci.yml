@@ -15,28 +15,64 @@ permissions:
   pull-requests: read
 
 jobs:
-  lint:
-    name: lint
+  # Detect if PR is docs-only to skip expensive CI jobs while still reporting success
+  changes:
+    name: changes
     runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.filter.outputs.code == 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check for code changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'client/**'
+              - 'server/**'
+              - 'drizzle/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig*.json'
+          list-files: shell
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - name: Skip if docs-only
+        if: needs.changes.outputs.docs_only == true
+        run: |
+          echo "⏭️ Skipping lint (docs-only PR)"
+          exit 0
+
+      - name: Checkout code
+        if: needs.changes.outputs.docs_only != true
+        uses: actions/checkout@v4
+
       - name: Setup pnpm
+        if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 8
 
       - name: Setup Node.js
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: needs.changes.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Run lint
+        if: needs.changes.outputs.docs_only != 'true'
         env:
           CI: true
         run: pnpm run lint --if-present || pnpm run check --if-present || echo "No lint/check script found, skipping"
@@ -44,25 +80,37 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
+    needs: changes
     steps:
+      - name: Skip if docs-only
+        if: needs.changes.outputs.docs_only == true
+        run: |
+          echo "⏭️ Skipping tests (docs-only PR)"
+          exit 0
+
       - name: Checkout code
+        if: needs.changes.outputs.docs_only != true
         uses: actions/checkout@v4
 
       - name: Setup pnpm
+        if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 8
 
       - name: Setup Node.js
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: needs.changes.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
+        if: needs.changes.outputs.docs_only != 'true'
         env:
           CI: true
           NODE_ENV: test
@@ -71,25 +119,37 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    needs: changes
     steps:
+      - name: Skip if docs-only
+        if: needs.changes.outputs.docs_only == true
+        run: |
+          echo "⏭️ Skipping build (docs-only PR)"
+          exit 0
+
       - name: Checkout code
+        if: needs.changes.outputs.docs_only != true
         uses: actions/checkout@v4
 
       - name: Setup pnpm
+        if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 8
 
       - name: Setup Node.js
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: needs.changes.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: needs.changes.outputs.docs_only != 'true'
         env:
           CI: true
         run: pnpm build
