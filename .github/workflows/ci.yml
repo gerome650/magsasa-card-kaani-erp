@@ -45,20 +45,18 @@ jobs:
     needs: changes
     steps:
       - name: Skip if docs-only
-        if: needs.changes.outputs.docs_only == true
+        if: needs.changes.outputs.docs_only == 'true'
         run: |
           echo "⏭️ Skipping lint (docs-only PR)"
           exit 0
 
       - name: Checkout code
-        if: needs.changes.outputs.docs_only != true
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/checkout@v4
 
       - name: Setup pnpm
         if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
-        with:
-          version: 8
 
       - name: Setup Node.js
         if: needs.changes.outputs.docs_only != 'true'
@@ -83,20 +81,18 @@ jobs:
     needs: changes
     steps:
       - name: Skip if docs-only
-        if: needs.changes.outputs.docs_only == true
+        if: needs.changes.outputs.docs_only == 'true'
         run: |
           echo "⏭️ Skipping tests (docs-only PR)"
           exit 0
 
       - name: Checkout code
-        if: needs.changes.outputs.docs_only != true
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/checkout@v4
 
       - name: Setup pnpm
         if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
-        with:
-          version: 8
 
       - name: Setup Node.js
         if: needs.changes.outputs.docs_only != 'true'
@@ -122,20 +118,18 @@ jobs:
     needs: changes
     steps:
       - name: Skip if docs-only
-        if: needs.changes.outputs.docs_only == true
+        if: needs.changes.outputs.docs_only == 'true'
         run: |
           echo "⏭️ Skipping build (docs-only PR)"
           exit 0
 
       - name: Checkout code
-        if: needs.changes.outputs.docs_only != true
+        if: needs.changes.outputs.docs_only != 'true'
         uses: actions/checkout@v4
 
       - name: Setup pnpm
         if: needs.changes.outputs.docs_only != 'true'
         uses: pnpm/action-setup@v4
-        with:
-          version: 8
 
       - name: Setup Node.js
         if: needs.changes.outputs.docs_only != 'true'
