@@ -268,7 +268,9 @@ export default function FarmDetail() {
         irrigationType: dbFarm.irrigationType || 'Rainfed',
         dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         photoUrls: Array.isArray(dbFarm.photoUrls) ? dbFarm.photoUrls : (dbFarm.photoUrls ? [dbFarm.photoUrls] : []),
-      };
+        lastHarvest: (dbFarm as any).lastHarvest,
+        boundary: (dbFarm as any).boundary,
+      } as Farm;
     } catch (error) {
       logDevError('[FarmDetail] Error transforming farm data:', error);
       return undefined;
@@ -306,10 +308,12 @@ export default function FarmDetail() {
       const previousBoundaries = utils.boundaries.getByFarmId.getData({ farmId: farmId! });
       
       // Optimistically update cache
-      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, newBoundaries.boundaries.map(b => ({
-        ...b,
-        area: typeof b.area === 'number' ? b.area.toString() : b.area,
-      })));
+      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, (old) => {
+        return newBoundaries.boundaries.map(b => ({
+          ...b,
+          area: typeof b.area === 'number' ? b.area.toString() : b.area,
+        }));
+      });
       
       toast.success("Saving boundaries...", { duration: 1000 });
       
@@ -675,7 +679,7 @@ export default function FarmDetail() {
     const detailCropsSet = new Set(detailCrops);
     
     if (listCropsSet.size !== detailCropsSet.size || 
-        !Array.from(listCropsSet).every(c => detailCropsSet.has(c))) {
+        !Array.from(listCropsSet as Set<string>).every((c: string) => detailCropsSet.has(c))) {
       logDevWarn(`[FarmDetailIntegrity] Crop list mismatch detected for farm ${farm.id}`);
     }
     
@@ -1607,7 +1611,9 @@ ${placemarks}
                     </div>
                   )}
                   <MapView
-                    onMapReady={(map, google) => {
+                    onMapReady={(map: google.maps.Map) => {
+                      const google = (window as any).google;
+                      if (!google) return;
                       // Hide loading overlay
                       setIsMapLoading(false);
                       
