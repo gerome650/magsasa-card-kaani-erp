@@ -675,7 +675,7 @@ export default function FarmDetail() {
     const detailCropsSet = new Set(detailCrops);
     
     if (listCropsSet.size !== detailCropsSet.size || 
-        ![...listCropsSet].every(c => detailCropsSet.has(c))) {
+        !Array.from(listCropsSet).every(c => detailCropsSet.has(c))) {
       logDevWarn(`[FarmDetailIntegrity] Crop list mismatch detected for farm ${farm.id}`);
     }
     
