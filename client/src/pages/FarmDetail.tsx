@@ -306,7 +306,10 @@ export default function FarmDetail() {
       const previousBoundaries = utils.boundaries.getByFarmId.getData({ farmId: farmId! });
       
       // Optimistically update cache
-      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, newBoundaries.boundaries);
+      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, newBoundaries.boundaries.map(b => ({
+        ...b,
+        area: typeof b.area === 'number' ? b.area.toString() : b.area,
+      })));
       
       toast.success("Saving boundaries...", { duration: 1000 });
       
@@ -338,14 +341,14 @@ export default function FarmDetail() {
       const optimisticYield = {
         id: Date.now(),
         farmId: farmId!,
-        parcelId: newYield.parcelId,
-        crop: newYield.crop,
+        parcelIndex: newYield.parcelIndex,
+        cropType: newYield.cropType,
         harvestDate: newYield.harvestDate,
         quantity: newYield.quantity.toString(),
         unit: newYield.unit,
         qualityGrade: newYield.qualityGrade || null,
-        notes: newYield.notes || null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       utils.yields.getByFarmId.setData({ farmId: farmId! }, (old) => {
@@ -411,12 +414,13 @@ export default function FarmDetail() {
       const optimisticCost = {
         id: Date.now(),
         farmId: farmId!,
-        parcelId: newCost.parcelId,
+        parcelIndex: newCost.parcelIndex ?? null,
         category: newCost.category,
         amount: newCost.amount.toString(),
         date: newCost.date,
         description: newCost.description || null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       utils.costs.getByFarmId.setData({ farmId: farmId! }, (old) => {
@@ -504,9 +508,19 @@ export default function FarmDetail() {
   // QA Pass 2: Memoize expensive transformations to avoid recalculating on every render
   // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
   // Transform backend yields to display format
-  const yieldRecords = useMemo(() => {
+  type YieldRecord = {
+    id: string;
+    parcelIndex: number;
+    cropType: string;
+    harvestDate: string;
+    quantity: number;
+    unit: 'kg' | 'tons';
+    qualityGrade: 'Premium' | 'Standard' | 'Below Standard';
+  };
+  
+  const yieldRecords = useMemo((): YieldRecord[] => {
     if (!dbYields) return [];
-    const validRecords: typeof yieldRecords = [];
+    const validRecords: YieldRecord[] = [];
     
     dbYields.forEach((yieldRow, index) => {
       try {
@@ -520,7 +534,7 @@ export default function FarmDetail() {
         }
         
         // QA Pass 5: Safe date parsing
-        const harvestDate = yieldRow.harvestDate || yieldRow.date || '';
+        const harvestDate = yieldRow.harvestDate || '';
         if (!harvestDate || harvestDate === 'Invalid Date') {
           if (import.meta.env.DEV) {
             logDevWarn(`[FarmDetail] Invalid harvest date at index ${index} for farm ${farmId}: ${harvestDate}, skipping record`);
@@ -531,7 +545,7 @@ export default function FarmDetail() {
         validRecords.push({
           id: yieldRow.id.toString(),
           parcelIndex: yieldRow.parcelIndex,
-          cropType: yieldRow.cropType || yieldRow.crop || '',
+          cropType: yieldRow.cropType || '',
           harvestDate,
           quantity,
           unit: (yieldRow.unit === 'tons' || yieldRow.unit === 'kg' ? yieldRow.unit : 'kg') as 'kg' | 'tons',
@@ -550,9 +564,18 @@ export default function FarmDetail() {
 
   // Transform backend costs to display format
   // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
-  const costRecords = useMemo(() => {
+  type CostRecord = {
+    id: string;
+    date: string;
+    category: 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other';
+    description: string;
+    amount: number;
+    parcelIndex: number | null;
+  };
+  
+  const costRecords = useMemo((): CostRecord[] => {
     if (!dbCosts) return [];
-    const validRecords: typeof costRecords = [];
+    const validRecords: CostRecord[] = [];
     
     dbCosts.forEach((cost, index) => {
       try {
