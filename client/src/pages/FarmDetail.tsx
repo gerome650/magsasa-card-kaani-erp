@@ -42,6 +42,7 @@ import {
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { Farm } from "@/data/farmsData";
 
 const logDevWarn = (...args: Parameters<typeof console.warn>) => {
   if (import.meta.env.DEV) {
@@ -1936,7 +1937,7 @@ ${placemarks}
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {farm.crops.map((crop) => (
+                {farm.crops.map((crop: string) => (
                   <Badge key={crop} variant="outline" className="text-sm">
                     {crop}
                   </Badge>
@@ -2015,7 +2016,7 @@ ${placemarks}
                               <SelectValue placeholder="Select crop" />
                             </SelectTrigger>
                             <SelectContent>
-                              {farm.crops.map((crop) => (
+                              {farm.crops.map((crop: string) => (
                                 <SelectItem key={crop} value={crop}>
                                   {crop}
                                 </SelectItem>
@@ -2407,7 +2408,7 @@ ${placemarks}
                       <span className="text-lg font-bold text-green-600">
                         {farm.farmerName
                           .split(" ")
-                          .map((n) => n[0])
+                          .map((n: string) => n[0])
                           .join("")}
                       </span>
                     </div>
