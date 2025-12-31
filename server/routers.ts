@@ -2208,6 +2208,16 @@ Respond in the specified dialect using practical, concrete advice.`;
   // Batch Orders router for Agri Input procurement
   batchOrder: router({
     create: protectedProcedure
+      .use(async ({ ctx, next }) => {
+        // Feature flag: BATCH_ORDERS_ENABLED
+        if (!process.env.BATCH_ORDERS_ENABLED || process.env.BATCH_ORDERS_ENABLED !== 'true') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Batch Orders feature is disabled',
+          });
+        }
+        return next({ ctx });
+      })
       .input(z.object({
         referenceCode: z.string().optional(),
         supplierId: z.string().nullable().optional(),

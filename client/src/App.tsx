@@ -167,29 +167,34 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/batch-orders">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <BatchOrdersList />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/batch-orders/new">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <BatchOrderCreate />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/batch-orders/:id">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <BatchOrderDetail />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
+      {/* Batch Orders routes - gated by feature flag */}
+      {import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' && (
+        <>
+          <Route path="/batch-orders">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrdersList />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/batch-orders/new">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrderCreate />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/batch-orders/:id">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrderDetail />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+        </>
+      )}
       
       <Route path="/supplier">
         <ProtectedRoute allowedRoles={['supplier']}>
