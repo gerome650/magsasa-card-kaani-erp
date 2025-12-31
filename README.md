@@ -338,6 +338,8 @@ This is an MVP project for CARD MRI. For development workflow:
 3. Test thoroughly
 4. Submit pull request
 
+Engineering rails and QA enforcement are documented in the [Halo Foundry Playbook](docs/ai-studio-playbook.md).
+
 ---
 
 ## 📄 License

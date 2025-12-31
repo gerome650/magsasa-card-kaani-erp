@@ -16,6 +16,21 @@ import {
   isNegativeMargin,
 } from "./batchOrderUtils";
 import { farms, yields } from "../drizzle/schema";
+import { runKaAniAgent } from "./ai/kaaniAgent";
+import { loadFlowPackage } from "./ai/flows/flowLoader";
+import * as dbLeadGen from "./db_leadgen";
+import { checkRateLimit, getClientIP } from "./_core/rateLimiter";
+import {
+  extractSlotsFromMessage,
+  mergeSlots,
+  computeProgress,
+  getNextStep,
+  getSuggestedChipsForStep,
+  buildWhatWeKnow,
+} from "./ai/flows/runtime/flowRuntime";
+import { buildLoanOfficerMvpSummary } from "./ai/flows/runtime/loanOfficerSummary";
+import { buildArtifacts } from "./ai/artifacts/buildArtifacts";
+import type { FlowState } from "./ai/artifacts/types";
 
 const logBatchOrderRouterEvent = (event: string, payload: Record<string, unknown>) => {
   try {
@@ -1267,6 +1282,796 @@ Respond in the specified dialect using practical, concrete advice.`;
           };
         });
       }),
+
+    saveRecommendation: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        recommendationText: z.string(),
+        recommendationType: z.string(),
+        status: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Ensure conversation has a farmer_profile_id
+        const farmerProfileId = await db.ensureFarmerProfileForConversation(
+          input.conversationId,
+          ctx.user.id
+        );
+        
+        // Save recommendation
+        const recommendationId = await db.saveRecommendation({
+          conversationId: input.conversationId,
+          farmerProfileId,
+          recommendationText: input.recommendationText,
+          recommendationType: input.recommendationType,
+          status: input.status,
+        });
+        
+        return { recommendationId, farmerProfileId };
+      }),
+
+    sendConversationMessage: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        message: z.string(),
+        audience: z.enum(['farmer', 'technician', 'loan_officer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fallbackReply = "Pasensya na — pansamantalang hindi available ang KaAni. Pakisubukang muli mamaya.";
+        
+        try {
+          // Step 1: Ensure conversation has farmer_profile_id
+          const farmerProfileId = await db.ensureFarmerProfileForConversation(
+            input.conversationId,
+            ctx.user.id
+          );
+
+          // Step 2: Persist user message
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'user',
+            content: input.message,
+          });
+
+          // Step 3: Load conversation context
+          const context = await db.getConversationContextForAgent(input.conversationId, 20);
+
+          // Step 4: Call Gemini agent
+          let replyText: string;
+          try {
+            const result = await runKaAniAgent({
+              audience: input.audience,
+              dialect: input.dialect,
+              farmerProfileId,
+              messages: context,
+            });
+            replyText = result.replyText;
+          } catch (geminiError) {
+            // Log Gemini error safely
+            const safeError = toSafeErrorSummary(geminiError);
+            console.error("[KaAni] Gemini call failed in sendConversationMessage:", {
+              conversationId: input.conversationId,
+              errorCode: safeError.code,
+              errorMessage: safeError.message,
+            });
+            // Use fallback reply
+            replyText = fallbackReply;
+          }
+
+          // Step 5: Persist assistant reply (even if it's a fallback)
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'assistant',
+            content: replyText,
+          });
+
+          // Step 6: Return response
+          return {
+            reply: replyText,
+            farmerProfileId,
+          };
+        } catch (error) {
+          // Catch any other errors (e.g., DB errors)
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in sendConversationMessage:", {
+            conversationId: input.conversationId,
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+
+          // Still try to persist fallback message if possible
+          try {
+            await db.appendConversationMessage({
+              conversationId: input.conversationId,
+              role: 'assistant',
+              content: fallbackReply,
+            });
+          } catch (dbError) {
+            // If we can't persist, log but don't fail the request
+            const dbSafeError = toSafeErrorSummary(dbError);
+            console.error("[KaAni] Failed to persist fallback message:", {
+              conversationId: input.conversationId,
+              errorCode: dbSafeError.code,
+              errorMessage: dbSafeError.message,
+            });
+          }
+
+          // Return HTTP 200 with fallback reply
+          return {
+            reply: fallbackReply,
+            farmerProfileId: await db.ensureFarmerProfileForConversation(
+              input.conversationId,
+              ctx.user.id
+            ).catch(() => ""), // If this fails too, return empty string
+          };
+        }
+      }),
+
+    sendGuidedMessage: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        message: z.string(),
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+        flowId: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fallbackReply = "Pasensya na — pansamantalang hindi available ang KaAni. Pakisubukang muli mamaya.";
+
+        try {
+          // Step 1: Ensure conversation has farmer_profile_id
+          const farmerProfileId = await db.ensureFarmerProfileForConversation(
+            input.conversationId,
+            ctx.user.id
+          );
+
+          // Step 2: Persist user message
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'user',
+            content: input.message,
+          });
+
+          // Step 3: Load flow package
+          const flow = loadFlowPackage(input.audience, input.flowId || 'default');
+          if (!flow) {
+            // Fallback to non-guided flow if package not found
+            const context = await db.getConversationContextForAgent(input.conversationId, 20);
+            let replyText: string;
+            try {
+              const result = await runKaAniAgent({
+                audience: input.audience,
+                dialect: input.dialect,
+                farmerProfileId,
+                messages: context,
+              });
+              replyText = result.replyText;
+            } catch (geminiError) {
+              replyText = fallbackReply;
+            }
+            await db.appendConversationMessage({
+              conversationId: input.conversationId,
+              role: 'assistant',
+              content: replyText,
+            });
+            return {
+              reply: replyText,
+              farmerProfileId,
+              flow: null,
+            };
+          }
+
+          // Step 4: Get latest flow state
+          const latestState = await db.getLatestFlowState(input.conversationId);
+          const existingSlots = latestState?.slots || {};
+
+          // Step 5: Extract slots from message
+          const extractedSlots = extractSlotsFromMessage(flow, input.message);
+          const mergedSlots = mergeSlots(existingSlots, extractedSlots);
+
+          // Step 6: Compute progress
+          const progress = computeProgress(flow, mergedSlots);
+
+          // Step 7: Determine next step
+          const nextStep = getNextStep(flow, mergedSlots);
+          const nextStepId = nextStep?.id || null;
+
+          // Step 8: Get suggested chips
+          const suggestedChips = getSuggestedChipsForStep(nextStep);
+
+          // Step 9: Build what we know
+          const whatWeKnow = buildWhatWeKnow(flow, mergedSlots);
+
+          // Step 10: Build loan officer summary if needed
+          let loanOfficerSummary: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] } | undefined;
+          if (input.audience === 'loan_officer' && (progress.percent >= 60 || progress.missingRequired.length === 0)) {
+            loanOfficerSummary = buildLoanOfficerMvpSummary({
+              slots: mergedSlots,
+              farmerProfileId,
+              mode: 'erp',
+            });
+          }
+
+          // Step 11: Build enhanced context for Gemini
+          const context = await db.getConversationContextForAgent(input.conversationId, 20);
+          let enhancedContext = context;
+
+          // Add flow context as system message
+          const flowContextParts: string[] = [];
+          if (nextStep && nextStep.prompt) {
+            flowContextParts.push(`Next question: ${nextStep.prompt}`);
+          }
+          if (whatWeKnow.length > 0) {
+            const knownSummary = whatWeKnow.map(item => `${item.label}: ${item.value}`).join(', ');
+            flowContextParts.push(`What we know so far: ${knownSummary}`);
+          }
+          flowContextParts.push('Ask ONE question at a time based on the next question prompt.');
+
+          if (flowContextParts.length > 0) {
+            enhancedContext = [
+              {
+                role: 'system' as const,
+                content: flowContextParts.join('\n'),
+              },
+              ...context,
+            ];
+          }
+
+          // Step 12: Call Gemini agent
+          let replyText: string;
+          try {
+            const result = await runKaAniAgent({
+              audience: input.audience,
+              dialect: input.dialect,
+              farmerProfileId,
+              messages: enhancedContext,
+            });
+            replyText = result.replyText;
+          } catch (geminiError) {
+            const safeError = toSafeErrorSummary(geminiError);
+            console.error("[KaAni] Gemini call failed in sendGuidedMessage:", {
+              errorCode: safeError.code,
+              errorMessage: safeError.message,
+            });
+            // Guard: If we have flow context (slots/progress computed), suppress generic fallback
+            // Only show fallback on true Gemini/network failure when no flow context exists
+            const hasFlowContext = flow && (Object.keys(mergedSlots).length > 0 || whatWeKnow.length > 0);
+            if (hasFlowContext) {
+              // Generate contextual reply instead of generic fallback
+              const replyDialect = input.dialect || 'tagalog';
+              replyText = replyDialect === 'english' 
+                ? "I understand. Could you provide a bit more information?"
+                : replyDialect === 'cebuano'
+                ? "Nakasabot ko. Pwede ka mopuno og dugang impormasyon?"
+                : "Naintindihan ko. Pwede po bang magbigay pa kayo ng kaunting impormasyon?";
+            } else {
+              replyText = fallbackReply;
+            }
+          }
+
+          // Step 13: Persist assistant reply
+          await db.appendConversationMessage({
+            conversationId: input.conversationId,
+            role: 'assistant',
+            content: replyText,
+          });
+
+          // Step 14: Persist flow state
+          await db.appendFlowStateMessage({
+            conversationId: input.conversationId,
+            flowId: flow.id,
+            slots: mergedSlots,
+            progress,
+            nextStepId,
+            whatWeKnow,
+            loanOfficerSummary,
+          });
+
+          // Step 15: Update farmer profile from slots if needed
+          if (Object.keys(mergedSlots).length > 0) {
+            try {
+              await dbLeadGen.upsertFarmerProfileFromSlots({
+                farmerProfileId,
+                slots: mergedSlots,
+                flow,
+              });
+            } catch (slotError) {
+              // Log but don't fail
+              console.warn("[KaAni] Failed to update profile from slots:", slotError);
+            }
+          }
+
+          // Step 16: Return response
+          return {
+            reply: replyText,
+            farmerProfileId,
+            flow: {
+              flowId: flow.id,
+              nextStepId,
+              suggestedChips,
+              progress,
+              whatWeKnow,
+              loanOfficerSummary,
+            },
+          };
+        } catch (error) {
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in sendGuidedMessage:", {
+            conversationId: input.conversationId,
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+
+          // Try to persist fallback
+          try {
+            await db.appendConversationMessage({
+              conversationId: input.conversationId,
+              role: 'assistant',
+              content: fallbackReply,
+            });
+          } catch (dbError) {
+            // Ignore
+          }
+
+          return {
+            reply: fallbackReply,
+            farmerProfileId: await db.ensureFarmerProfileForConversation(
+              input.conversationId,
+              ctx.user.id
+            ).catch(() => ""),
+            flow: null,
+          };
+        }
+      }),
+
+    // Public lead-gen endpoints
+    startLeadSession: publicProcedure
+      .input(z.object({
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+        landingPath: z.string().optional(),
+        utm: z.object({
+          source: z.string().optional(),
+          medium: z.string().optional(),
+          campaign: z.string().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Rate limiting: max 5 sessions per 10 minutes per IP
+        const clientIP = getClientIP(ctx.req);
+        if (!checkRateLimit(`lead_session:${clientIP}`, 5, 10 * 60 * 1000)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Too many session creation attempts. Please try again later.",
+          });
+        }
+
+        try {
+          const result = await dbLeadGen.createLeadSession({
+            audience: input.audience,
+            dialect: input.dialect,
+            landingPath: input.landingPath,
+            utm: input.utm,
+          });
+
+          // Load flow package for intro
+          const flow = loadFlowPackage(input.audience, 'default');
+
+          return {
+            sessionToken: result.sessionToken,
+            conversationId: result.conversationId,
+            farmerProfileId: result.farmerProfileId,
+            flow: flow ? { id: flow.id, version: flow.version } : undefined,
+            intro: flow?.intro,
+          };
+        } catch (error) {
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in startLeadSession:", {
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create lead session",
+          });
+        }
+      }),
+
+    sendLeadMessage: publicProcedure
+      .input(z.object({
+        sessionToken: z.string().max(64),
+        message: z.string().min(1).max(2000), // Input length guard
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+        flowId: z.string().optional(),
+        slots: z.record(z.unknown()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Rate limiting: max 20 requests per 5 minutes per IP
+        const clientIP = getClientIP(ctx.req);
+        if (!checkRateLimit(`lead_message:${clientIP}`, 20, 5 * 60 * 1000)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Too many requests. Please try again later.",
+          });
+        }
+
+        const fallbackReply = "Pasensya na — pansamantalang hindi available ang KaAni. Pakisubukang muli mamaya.";
+
+        try {
+          // Resolve lead by session token
+          const lead = await dbLeadGen.getLeadBySessionToken(input.sessionToken);
+          if (!lead || !lead.conversationId || !lead.farmerProfileId) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Invalid session token",
+            });
+          }
+
+          // Append user message
+          await db.appendConversationMessage({
+            conversationId: lead.conversationId,
+            role: 'user',
+            content: input.message,
+          });
+
+          // Load flow package
+          const flow = loadFlowPackage(lead.audience, input.flowId || 'default');
+
+          // Get latest flow state
+          const latestState = await db.getLatestFlowState(lead.conversationId);
+          const existingSlots = latestState?.slots || {};
+
+          // Extract and merge slots
+          let mergedSlots = existingSlots;
+          if (flow) {
+            const extractedSlots = extractSlotsFromMessage(flow, input.message);
+            mergedSlots = mergeSlots(existingSlots, extractedSlots);
+            
+            // Also merge any explicitly provided slots
+            if (input.slots && Object.keys(input.slots).length > 0) {
+              mergedSlots = mergeSlots(mergedSlots, input.slots);
+            }
+          }
+
+          // Update farmer profile from slots if provided
+          if (flow && Object.keys(mergedSlots).length > 0) {
+            try {
+              await dbLeadGen.upsertFarmerProfileFromSlots({
+                farmerProfileId: lead.farmerProfileId,
+                slots: mergedSlots,
+                flow,
+              });
+            } catch (slotError) {
+              // Log but don't fail - slots update is non-critical
+              const safeError = toSafeErrorSummary(slotError);
+              console.warn("[KaAni] Failed to update profile from slots:", {
+                errorCode: safeError.code,
+                errorMessage: safeError.message,
+              });
+            }
+          }
+
+          // Compute flow state (if flow exists)
+          let progress: { requiredTotal: number; requiredFilled: number; percent: number; missingRequired: string[] } = {
+            requiredTotal: 0,
+            requiredFilled: 0,
+            percent: 0,
+            missingRequired: []
+          };
+          let nextStepId: string | null = null;
+          let suggestedChips: string[] = [];
+          let whatWeKnow: Array<{ label: string; value: string }> = [];
+          let loanOfficerSummary: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] } | undefined;
+
+          if (flow) {
+            progress = computeProgress(flow, mergedSlots);
+            const nextStep = getNextStep(flow, mergedSlots);
+            nextStepId = nextStep?.id || null;
+            suggestedChips = getSuggestedChipsForStep(nextStep);
+            whatWeKnow = buildWhatWeKnow(flow, mergedSlots);
+
+            // Build loan officer summary if needed (only for loan_officer audience)
+            if (lead.audience === 'loan_officer' && (progress.percent >= 60 || progress.missingRequired.length === 0)) {
+              loanOfficerSummary = buildLoanOfficerMvpSummary({
+                slots: mergedSlots,
+                farmerProfileId: lead.farmerProfileId,
+                mode: 'leadgen',
+              });
+            }
+          }
+
+          // Load conversation context
+          const context = await db.getConversationContextForAgent(lead.conversationId, 20);
+
+          // Build enhanced context with flow info if available
+          let enhancedContext = context;
+          if (flow) {
+            const flowContextParts: string[] = [];
+            
+            if (flow.intro && context.length === 0) {
+              flowContextParts.push(`${flow.intro.title}: ${flow.intro.description}`);
+            }
+
+            // Add next step prompt if available
+            if (nextStepId) {
+              const nextStep = flow.steps.find(s => s.id === nextStepId);
+              if (nextStep && nextStep.prompt) {
+                flowContextParts.push(`Next question: ${nextStep.prompt}`);
+              }
+            }
+
+            // Add what we know
+            if (whatWeKnow.length > 0) {
+              const knownSummary = whatWeKnow.map(item => `${item.label}: ${item.value}`).join(', ');
+              flowContextParts.push(`What we know so far: ${knownSummary}`);
+            }
+
+            flowContextParts.push('Ask ONE question at a time based on the next question prompt.');
+
+            if (flowContextParts.length > 0) {
+              enhancedContext = [
+                {
+                  role: 'system' as const,
+                  content: flowContextParts.join('\n'),
+                },
+                ...context,
+              ];
+            }
+          }
+
+          // Call Gemini agent
+          let replyText: string;
+          try {
+            const result = await runKaAniAgent({
+              audience: lead.audience,
+              dialect: input.dialect || undefined,
+              farmerProfileId: lead.farmerProfileId,
+              messages: enhancedContext,
+            });
+            replyText = result.replyText;
+          } catch (geminiError) {
+            const safeError = toSafeErrorSummary(geminiError);
+            console.error("[KaAni] Gemini call failed in sendLeadMessage:", {
+              errorCode: safeError.code,
+              errorMessage: safeError.message,
+            });
+            // Guard: If we have flow context (slots/progress computed), suppress generic fallback
+            // Only show fallback on true Gemini/network failure when no flow context exists
+            const hasFlowContext = flow && (Object.keys(mergedSlots).length > 0 || whatWeKnow.length > 0);
+            if (hasFlowContext) {
+              // Generate contextual reply instead of generic fallback
+              const dialect = input.dialect || 'tagalog';
+              replyText = dialect === 'english' 
+                ? "I understand. Could you provide a bit more information?"
+                : dialect === 'cebuano'
+                ? "Nakasabot ko. Pwede ka mopuno og dugang impormasyon?"
+                : "Naintindihan ko. Pwede po bang magbigay pa kayo ng kaunting impormasyon?";
+            } else {
+              replyText = fallbackReply;
+            }
+          }
+
+          // Persist assistant reply
+          await db.appendConversationMessage({
+            conversationId: lead.conversationId,
+            role: 'assistant',
+            content: replyText,
+          });
+
+          // Persist flow state if flow exists
+          if (flow) {
+            await db.appendFlowStateMessage({
+              conversationId: lead.conversationId,
+              flowId: flow.id,
+              slots: mergedSlots,
+              progress,
+              nextStepId,
+              whatWeKnow,
+              loanOfficerSummary,
+            });
+          }
+
+          return {
+            reply: replyText,
+            nextSuggestions: suggestedChips,
+            flow: flow ? {
+              flowId: flow.id,
+              nextStepId,
+              suggestedChips,
+              progress,
+              whatWeKnow,
+              loanOfficerSummary,
+            } : null,
+          };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in sendLeadMessage:", {
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to send message",
+          });
+        }
+      }),
+
+    captureLead: publicProcedure
+      .input(z.object({
+        sessionToken: z.string().max(64),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        consentObtained: z.boolean().optional(),
+        consentTextVersion: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const lead = await dbLeadGen.getLeadBySessionToken(input.sessionToken);
+          if (!lead) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Invalid session token",
+            });
+          }
+
+          await dbLeadGen.attachLeadCapture(lead.id, {
+            name: input.name,
+            email: input.email,
+            phone: input.phone,
+            consentObtained: input.consentObtained,
+            consentTextVersion: input.consentTextVersion,
+          });
+
+          return { ok: true };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in captureLead:", {
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to capture lead information",
+          });
+        }
+      }),
+
+    getArtifacts: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        try {
+          // Get farmer profile ID
+          const farmerProfileId = await db.ensureFarmerProfileForConversation(
+            input.conversationId,
+            ctx.user.id
+          );
+
+          // Get latest flow state
+          const latestState = await db.getLatestFlowState(input.conversationId);
+          const flowState: FlowState | null = latestState ? {
+            flowId: latestState.flowId,
+            slots: latestState.slots,
+          } : null;
+
+          // Get conversation messages
+          const allMessages = await db.getConversationMessages(input.conversationId);
+          const messages = allMessages.slice(-50); // Take last 50
+
+          // Build artifacts
+          const bundle = buildArtifacts({
+            conversationId: input.conversationId,
+            audience: input.audience,
+            dialect: input.dialect,
+            farmerProfileId,
+            flowState,
+            messages: messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              metadata: m.metadata,
+            })),
+          });
+
+          // Persist artifacts
+          await db.appendArtifactsMessage({
+            conversationId: input.conversationId,
+            bundle,
+          });
+
+          return {
+            bundle,
+            farmerProfileId,
+          };
+        } catch (error) {
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in getArtifacts:", {
+            conversationId: input.conversationId,
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate artifacts",
+          });
+        }
+      }),
+
+    getLeadArtifacts: publicProcedure
+      .input(z.object({
+        sessionToken: z.string().max(64),
+        audience: z.enum(['loan_officer', 'farmer']),
+        dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        try {
+          // Get lead by session token
+          const lead = await dbLeadGen.getLeadBySessionToken(input.sessionToken);
+          if (!lead || !lead.conversationId) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Invalid session token",
+            });
+          }
+
+          // Get latest flow state
+          const latestState = await db.getLatestFlowState(lead.conversationId);
+          const flowState: FlowState | null = latestState ? {
+            flowId: latestState.flowId,
+            slots: latestState.slots,
+          } : null;
+
+          // Get conversation messages
+          const allMessages = await db.getConversationMessages(lead.conversationId);
+          const messages = allMessages.slice(-50); // Take last 50
+
+          // Build artifacts
+          const bundle = buildArtifacts({
+            conversationId: lead.conversationId,
+            audience: input.audience || lead.audience,
+            dialect: input.dialect,
+            farmerProfileId: lead.farmerProfileId || null,
+            flowState,
+            messages: messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              metadata: m.metadata,
+            })),
+          });
+
+          // Persist artifacts
+          await db.appendArtifactsMessage({
+            conversationId: lead.conversationId,
+            bundle,
+          });
+
+          return {
+            bundle,
+          };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          const safeError = toSafeErrorSummary(error);
+          console.error("[KaAni] Error in getLeadArtifacts:", {
+            errorCode: safeError.code,
+            errorMessage: safeError.message,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to generate artifacts",
+          });
+        }
+      }),
   }),
 
   // Analytics router for visual dashboard
@@ -1324,14 +2129,14 @@ Respond in the specified dialect using practical, concrete advice.`;
 
     create: protectedProcedure
       .input(z.object({
-        title: z.string(),
+        title: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const conversationId = await db.createConversation({
+        const result = await db.createConversation({
           userId: ctx.user.id,
           title: input.title,
         });
-        return { conversationId };
+        return { conversationId: result.conversationId, farmerProfileId: result.farmerProfileId };
       }),
 
     updateTitle: protectedProcedure
@@ -1358,7 +2163,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         conversationId: z.number(),
       }))
       .query(async ({ input }) => {
-        return await db.getChatMessagesByConversationId(input.conversationId);
+        return await db.getConversationMessages(input.conversationId);
       }),
 
     search: protectedProcedure
@@ -1385,6 +2190,18 @@ Respond in the specified dialect using practical, concrete advice.`;
           category: input.profile, // Store profile in category field
         });
         return { messageId };
+      }),
+
+    ensureFarmerProfile: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const farmerProfileId = await db.ensureFarmerProfileForConversation(
+          input.conversationId,
+          ctx.user.id
+        );
+        return { farmerProfileId };
       }),
   }),
 

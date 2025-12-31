@@ -1,0 +1,69 @@
+{
+  "id": "farmer.default",
+  "version": "1.0",
+  "audience": "farmer",
+  "dialectsSupported": [
+    "tagalog",
+    "cebuano",
+    "english"
+  ],
+  "intro": {
+    "title": "Farmer Assistant",
+    "description": "Ako si KaAni, ang iyong assistant para sa pagsasaka. Paano kita matutulungan ngayon?"
+  },
+  "slots": [
+    {
+      "key": "farmer.cropPrimary",
+      "label": "Primary Crop",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "cropPrimary"
+    },
+    {
+      "key": "farmer.farmSize",
+      "label": "Farm Size (hectares)",
+      "type": "number",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "farmSize"
+    },
+    {
+      "key": "location.barangay",
+      "label": "Barangay",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "barangay"
+    },
+    {
+      "key": "location.municipality",
+      "label": "Municipality",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "municipality"
+    },
+    {
+      "key": "location.province",
+      "label": "Province",
+      "type": "text",
+      "required": false,
+      "saveToProfile": true,
+      "profileField": "province"
+    }
+  ],
+  "steps": [
+    {
+      "id": "start",
+      "title": "start",
+      "prompt": "Kumusta! Ako si KaAni. Paano kita matutulungan sa iyong pagsasaka ngayon?",
+      "slotKeys": [],
+      "suggestions": [
+        "Paano magtanim ng palay?",
+        "Ano ang dapat gawin kapag may peste?",
+        "Kailan ang tamang panahon para mag-ani?"
+      ]
+    }
+  ]
+}

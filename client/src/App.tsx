@@ -16,6 +16,7 @@ import PriceComparison from "./components/PriceComparison";
 import OrderCalculator from "./pages/OrderCalculator";
 import Login from "./pages/Login";
 import KaAniChat from "./pages/KaAniChat";
+import KaAniPublic from "./pages/KaAniPublic";
 import Marketplace from "./pages/Marketplace";
 import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
@@ -122,12 +123,16 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/kaani">
+      <Route path="/erp/kaani">
         <ProtectedRoute>
           <Layout>
             <KaAniChat />
           </Layout>
         </ProtectedRoute>
+      </Route>
+      
+      <Route path="/kaani">
+        <KaAniPublic />
       </Route>
       
       <Route path="/marketplace">
