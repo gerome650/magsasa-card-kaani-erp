@@ -308,10 +308,14 @@ export default function FarmDetail() {
       const previousBoundaries = utils.boundaries.getByFarmId.getData({ farmId: farmId! });
       
       // Optimistically update cache
-      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, (old) => {
+      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, () => {
         return newBoundaries.boundaries.map(b => ({
+          id: 0,
+          farmId: farmId!,
           ...b,
           area: typeof b.area === 'number' ? b.area.toString() : b.area,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         }));
       });
       
