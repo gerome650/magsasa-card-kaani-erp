@@ -271,7 +271,7 @@ export default function FarmDetail() {
         photoUrls: Array.isArray(dbFarm.photoUrls) ? dbFarm.photoUrls : (dbFarm.photoUrls ? [dbFarm.photoUrls] : []),
         lastHarvest: (dbFarm as any).lastHarvest,
         boundary: (dbFarm as any).boundary,
-      } as Farm;
+      } as unknown as Farm;
     } catch (error) {
       logDevError('[FarmDetail] Error transforming farm data:', error);
       return undefined;
