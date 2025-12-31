@@ -656,7 +656,7 @@ export default function FarmDetail() {
     if (!farm || !farmFromList || farmLoading) return;
     
     // Find this farm in the list
-    const listFarm = farmFromList.find(f => f.id === farm.id);
+    const listFarm = farmFromList.find((f: any) => f.id === farm.id);
     if (!listFarm) {
       logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} not found in list query response`);
       return;
@@ -1952,7 +1952,7 @@ ${placemarks}
               <CardTitle>Farm Photos</CardTitle>
             </CardHeader>
             <CardContent>
-              <PhotoGallery photos={farm.photoUrls} />
+              <PhotoGallery photos={(farm as any).photoUrls || []} />
             </CardContent>
           </Card>
 
@@ -2401,7 +2401,7 @@ ${placemarks}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Link href={`/farmers/${farm.userId || farm.id}`}>
+              <Link href={`/farmers/${(farm as any).userId || farm.id}`}>
                 <div className="hover:bg-gray-50 p-3 rounded-lg transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
