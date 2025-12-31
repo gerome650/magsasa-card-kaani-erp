@@ -27,7 +27,6 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   manager: 3,
   supplier: 4,
   admin: 5,
-  admin: 4
 };
 
 /**
