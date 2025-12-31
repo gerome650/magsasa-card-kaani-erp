@@ -2699,21 +2699,6 @@ export function addFarmer(farmer: Omit<Farmer, 'id'>): Farmer {
 export function updateFarmer(id: string, updates: Partial<Farmer>): Farmer | undefined {
   const index = farmersData.findIndex(farmer => farmer.id === id);
   if (index !== -1) {
-    // Update location string if address changed
-    if (updates.address) {
-      updates.location = `Brgy. ${updates.address.barangay}, ${updates.address.municipality}, Laguna`;
-      updates.barangay = updates.address.barangay;
-      updates.municipality = updates.address.municipality;
-    }
-    // Update totalLandArea if farmSize changed
-    if (updates.farmSize !== undefined) {
-      updates.totalLandArea = updates.farmSize;
-    }
-    // Update crops if primaryCrop changed
-    if (updates.primaryCrop) {
-      updates.crops = [updates.primaryCrop];
-    }
-    
     farmersData[index] = { ...farmersData[index], ...updates };
     return farmersData[index];
   }
