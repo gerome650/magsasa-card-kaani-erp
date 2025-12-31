@@ -28,7 +28,7 @@ import {
   UrgencyLevel,
   getUrgencyDisplayName
 } from "@/data/permissionRequestsData";
-import { addAuditLog } from "@/data/auditLogData";
+import { addAuditLog, AuditActionType } from "@/data/auditLogData";
 
 interface RequestPermissionDialogProps {
   open: boolean;
