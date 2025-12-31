@@ -91,7 +91,7 @@ export default function AdminCsvUpload() {
         }
         return value;
       },
-      complete: (results) => {
+      complete: (results: any) => {
         setIsLoading(false);
         
         if (results.errors.length > 0) {
