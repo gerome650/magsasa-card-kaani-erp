@@ -173,7 +173,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierDashboard />
           </Layout>
@@ -181,7 +181,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/inventory">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierInventory />
           </Layout>
@@ -189,7 +189,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/deliveries">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierDeliveries />
           </Layout>
@@ -197,7 +197,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/audit-log">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AuditLog />
           </Layout>
@@ -205,7 +205,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/audit-archive">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AuditArchive />
           </Layout>
@@ -213,7 +213,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/retention-settings">
-        <ProtectedRoute allowedRoles={['supplier', 'manager']}>
+        <ProtectedRoute allowedRoles={['manager']}>
           <Layout>
             <RetentionSettings />
           </Layout>
@@ -227,7 +227,7 @@ function Router() {
       </Route>
       
       <Route path="/permission-approval">
-        <ProtectedRoute allowedRoles={['manager', 'admin']}>
+        <ProtectedRoute allowedRoles={['manager']}>
           <Layout>
             <PermissionApproval />
           </Layout>
@@ -235,7 +235,7 @@ function Router() {
       </Route>
       
       <Route path="/admin/csv-upload">
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AdminCsvUpload />
           </Layout>
