@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   qa-label-enforcement:
-    name: qa-label-enforcement
+    name: QA Label Enforcement / qa-label-enforcement
     runs-on: ubuntu-latest
     steps:
       - name: Check QA label requirements

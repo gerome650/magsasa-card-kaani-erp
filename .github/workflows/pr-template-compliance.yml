@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   pr-template-compliance:
-    name: pr-template-compliance
+    name: PR Template Compliance / pr-template-compliance
     runs-on: ubuntu-latest
     steps:
       - name: Check PR template compliance
