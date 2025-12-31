@@ -2691,15 +2691,6 @@ export function addFarmer(farmer: Omit<Farmer, 'id'>): Farmer {
   const newFarmer: Farmer = {
     ...farmer,
     id: newId,
-    location: `Brgy. ${farmer.address.barangay}, ${farmer.address.municipality}, Laguna`,
-    barangay: farmer.address.barangay,
-    municipality: farmer.address.municipality,
-    province: 'Laguna',
-    totalLandArea: farmer.farmSize || 0,
-    activeFarms: 0,
-    totalHarvest: 0,
-    crops: farmer.primaryCrop ? [farmer.primaryCrop] : [],
-    lastActivity: new Date().toISOString().split('T')[0],
   };
   farmersData.push(newFarmer);
   return newFarmer;
