@@ -2317,7 +2317,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         // Validate all farms exist
         const farmIds = input.items.map(item => item.farmId);
         const uniqueFarmIds = [...new Set(farmIds)];
-        for (const farmId of uniqueFarmIds) {
+                for (const farmId of Array.from(uniqueFarmIds)) {
           const farm = await db.getFarmById(farmId);
           if (!farm) {
             throw new Error(`Farm with ID ${farmId} does not exist`);
@@ -2453,7 +2453,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         // Validate all farms exist
         const farmIds = input.items.map(item => item.farmId);
         const uniqueFarmIds = [...new Set(farmIds)];
-        for (const farmId of uniqueFarmIds) {
+                for (const farmId of Array.from(uniqueFarmIds)) {
           const farm = await db.getFarmById(farmId);
           if (!farm) {
             throw new Error(`Farm with ID ${farmId} does not exist`);
