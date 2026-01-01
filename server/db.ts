@@ -66,12 +66,14 @@ async function createPool(): Promise<mysql.Pool> {
     connection.release();
 
     // Handle pool errors
-    _pool.on('error', (err: any) => {
-      console.error("[Database] Pool error:", err);
-      if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
-        console.log("[Database] Connection lost, pool will reconnect automatically");
-      }
-    });
+    if (_pool) {
+      _pool.on('error', (err: NodeJS.ErrnoException) => {
+        console.error("[Database] Pool error:", err);
+        if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
+          console.log("[Database] Connection lost, pool will reconnect automatically");
+        }
+      });
+    }
 
     return _pool;
   } catch (error) {
@@ -1195,6 +1197,7 @@ export async function addChatMessage(data: {
   category?: string;
 }) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   
   const result = await db.insert(chatMessages).values({

@@ -78,6 +78,33 @@ function redactIdentifier(identifier?: string): string {
   return `${start}***${end}`;
 }
 
+// Helper to categorize farm detail errors for metrics
+function categorizeFarmDetailError(error: unknown): string {
+  const err = error as { code?: string; message?: string };
+  
+  if (err.code === "NOT_FOUND" || err.message?.includes("not found")) {
+    return "not_found";
+  }
+  if (err.code === "TIMEOUT" || err.message?.includes("timeout")) {
+    return "timeout";
+  }
+  if (err.code === "ECONNREFUSED" || err.message?.includes("connection")) {
+    return "connection_error";
+  }
+  return "unknown_error";
+}
+
+// Helper to record farm detail metrics (no-op telemetry)
+function recordFarmDetailMetric(
+  event: "view_started" | "view_completed" | "view_failed",
+  data: Record<string, unknown>
+): void {
+  // No-op telemetry - can be extended later with actual metric collection
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[FarmDetail Metric] ${event}:`, data);
+  }
+}
+
 // Helper to create safe error summaries for logging (no PII, no stack traces, no connection strings)
 function toSafeErrorSummary(error: unknown): { code?: string; message: string } {
   const err = error as { code?: string; message?: string; sqlMessage?: string };
@@ -280,7 +307,7 @@ export const appRouter = router({
             email: demoUser.email,
             loginMethod: "demo",
             role: demoUser.role, // "user" or "admin"
-            lastSignedIn: new Date(),
+            lastSignedIn: new Date().toISOString(),
           });
           user = await db.getUserByOpenId(demoUser.openId);
         }
@@ -650,8 +677,20 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const farmId = await db.createFarm({
-          ...input,
           userId: ctx.user.id,
+          name: input.name,
+          farmerName: input.farmerName,
+          barangay: input.barangay,
+          municipality: input.municipality,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          size: input.size.toString(),
+          crops: JSON.stringify(input.crops),
+          status: input.status || "active",
+          soilType: input.soilType || null,
+          irrigationType: input.irrigationType || null,
+          averageYield: input.averageYield?.toString() || null,
+          photoUrls: input.photoUrls ? JSON.stringify(input.photoUrls) : null,
         });
         return { farmId };
       }),
@@ -673,7 +712,21 @@ export const appRouter = router({
         status: z.enum(["active", "inactive", "fallow"]).optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
+        const { id, ...rawData } = input;
+        // Convert to schema-compatible format
+        const data: Partial<typeof farms.$inferInsert> = {};
+        if (rawData.name !== undefined) data.name = rawData.name;
+        if (rawData.farmerName !== undefined) data.farmerName = rawData.farmerName;
+        if (rawData.barangay !== undefined) data.barangay = rawData.barangay;
+        if (rawData.municipality !== undefined) data.municipality = rawData.municipality;
+        if (rawData.latitude !== undefined) data.latitude = rawData.latitude;
+        if (rawData.longitude !== undefined) data.longitude = rawData.longitude;
+        if (rawData.size !== undefined) data.size = rawData.size.toString();
+        if (rawData.crops !== undefined) data.crops = JSON.stringify(rawData.crops) as any;
+        if (rawData.status !== undefined) data.status = rawData.status;
+        if (rawData.soilType !== undefined) data.soilType = rawData.soilType || null;
+        if (rawData.irrigationType !== undefined) data.irrigationType = rawData.irrigationType || null;
+        if (rawData.averageYield !== undefined) data.averageYield = rawData.averageYield?.toString() || null;
         await db.updateFarm(id, data);
         return { success: true };
       }),
