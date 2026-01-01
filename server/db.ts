@@ -1,7 +1,16 @@
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost, batchOrders, batchOrderItems, InsertBatchOrder, InsertBatchOrderItem } from "../drizzle/schema";
+import { users, farms, boundaries, yields, costs, batchOrders, batchOrderItems } from "../drizzle/schema";
+import type { InferInsertModel } from "drizzle-orm";
+
+type InsertUser = InferInsertModel<typeof users>;
+type InsertFarm = InferInsertModel<typeof farms>;
+type InsertBoundary = InferInsertModel<typeof boundaries>;
+type InsertYield = InferInsertModel<typeof yields>;
+type InsertCost = InferInsertModel<typeof costs>;
+type InsertBatchOrder = InferInsertModel<typeof batchOrders>;
+type InsertBatchOrderItem = InferInsertModel<typeof batchOrderItems>;
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
