@@ -61,7 +61,7 @@ export function getClientIP(req: { headers: Record<string, string | string[] | u
  */
 setInterval(() => {
   const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
+  for (const [key, entry] of Array.from(rateLimitStore.entries())) {
     if (entry.resetAt < now) {
       rateLimitStore.delete(key);
     }

@@ -1,7 +1,14 @@
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import type { InferInsertModel } from "drizzle-orm";
 import mysql from "mysql2/promise";
-import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
+import { users, farms, boundaries, yields, costs } from "../drizzle/schema";
+
+type InsertUser = InferInsertModel<typeof users>;
+type InsertFarm = InferInsertModel<typeof farms>;
+type InsertBoundary = InferInsertModel<typeof boundaries>;
+type InsertYield = InferInsertModel<typeof yields>;
+type InsertCost = InferInsertModel<typeof costs>;
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -59,9 +66,9 @@ async function createPool(): Promise<mysql.Pool> {
     connection.release();
 
     // Handle pool errors
-    _pool.on('error', (err) => {
+    _pool.on('error', (err: any) => {
       console.error("[Database] Pool error:", err);
-      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
+      if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
         console.log("[Database] Connection lost, pool will reconnect automatically");
       }
     });
@@ -92,7 +99,7 @@ export async function getDb() {
   for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
     try {
       const pool = await createPool();
-      _db = drizzle(pool);
+      _db = drizzle(pool) as ReturnType<typeof drizzle>;
       console.log(`[Database] Connected successfully (attempt ${attempt}/${RETRY_CONFIG.maxRetries})`);
       return _db;
     } catch (error) {
@@ -210,11 +217,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
 
     if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
+      values.lastSignedIn = new Date().toISOString();
     }
 
     if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
+      updateSet.lastSignedIn = new Date().toISOString();
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
@@ -438,11 +445,11 @@ export async function getAllFarmsBaseQuery(filters?: {
     }
     
     if (filters?.startDate) {
-      conditions.push(gte(farms.createdAt, new Date(filters.startDate)));
+      conditions.push(gte(farms.createdAt, filters.startDate));
     }
     
     if (filters?.endDate) {
-      conditions.push(lte(farms.createdAt, new Date(filters.endDate)));
+      conditions.push(lte(farms.createdAt, filters.endDate));
     }
     
     // Select only non-PII fields for consistency
@@ -620,6 +627,7 @@ export async function createChatMessage(data: {
 
 export async function getChatMessagesByUserId(userId: number, limit: number = 50) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { desc, eq } = await import("drizzle-orm");
   
@@ -635,6 +643,7 @@ export async function getChatMessagesByUserId(userId: number, limit: number = 50
 
 export async function getChatMessagesByConversationId(conversationId: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { asc, eq } = await import("drizzle-orm");
   
@@ -649,6 +658,7 @@ export async function getChatMessagesByConversationId(conversationId: number) {
 
 export async function deleteChatMessagesByUserId(userId: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
