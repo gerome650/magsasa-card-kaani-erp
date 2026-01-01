@@ -2314,8 +2314,11 @@ Respond in the specified dialect using practical, concrete advice.`;
           throw new Error(dateError);
         }
 
+        // Validate all farms exist
+        const farmIds = input.items.map(item => item.farmId);
+                for (const farmId of Array.from(uniqueFarmIds)) {
+                for (const farmId of Array.from(uniqueFarmIds)) {
           const farm = await db.getFarmById(farmId);
-        const uniqueFarmIds = Array.from(new Set(farmIds));
           if (!farm) {
             throw new Error(`Farm with ID ${farmId} does not exist`);
           }
@@ -2450,8 +2453,11 @@ Respond in the specified dialect using practical, concrete advice.`;
         // Validate all farms exist
         const farmIds = input.items.map(item => item.farmId);
                 for (const farmId of Array.from(uniqueFarmIds)) {
+                for (const farmId of Array.from(uniqueFarmIds)) {
+          const farm = await db.getFarmById(farmId);
+          if (!farm) {
+            throw new Error(`Farm with ID ${farmId} does not exist`);
           }
-        const uniqueFarmIds = Array.from(new Set(farmIds));
         }
 
         // Compute totals
