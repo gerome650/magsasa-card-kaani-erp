@@ -65,15 +65,13 @@ async function createPool(): Promise<mysql.Pool> {
     console.log("[Database] Connection pool created successfully");
     connection.release();
 
-    // Handle pool errors
-    if (_pool) {
-      _pool.on('error', (err: NodeJS.ErrnoException) => {
-        console.error("[Database] Pool error:", err);
-        if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
-          console.log("[Database] Connection lost, pool will reconnect automatically");
-        }
-      });
-    }
+    // Handle pool errors (type assertion needed due to mysql2 typing)
+    (_pool as any).on('error', (err: NodeJS.ErrnoException) => {
+      console.error("[Database] Pool error:", err);
+      if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
+        console.log("[Database] Connection lost, pool will reconnect automatically");
+      }
+    });
 
     return _pool;
   } catch (error) {
