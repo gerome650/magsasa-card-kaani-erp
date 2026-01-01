@@ -25,7 +25,7 @@ export async function sendMessageToKaAni(
   conversationHistory?: KaAniMessage[]
 ): Promise<string> {
   try {
-    const result = await trpc.kaani.sendMessage.mutate({
+    const result = await trpcClient.kaani.sendMessage.mutate({
       message,
       conversationHistory,
     });
@@ -58,8 +58,8 @@ export async function sendMessageToKaAni(
  */
 export async function loadChatHistory(limit: number = 50): Promise<KaAniMessage[]> {
   try {
-    const messages = await trpc.kaani.getHistory.query({ limit });
-    return messages.map(msg => ({
+    const messages = await trpcClient.kaani.getHistory.query({ limit });
+    return messages.map((msg: { role: "user" | "assistant"; content: string }) => ({
       role: msg.role,
       content: msg.content,
     }));
@@ -82,7 +82,7 @@ export async function sendMessageToKaAniStream(
   onChunk: (chunk: string) => void
 ): Promise<string> {
   try {
-    const result = await trpc.kaani.sendMessageStream.mutate({
+    const result = await trpcClient.kaani.sendMessageStream.mutate({
       message,
       conversationHistory,
     });
@@ -299,7 +299,7 @@ export async function sendMessageToKaAniSSE(
  */
 export async function clearChatHistory(): Promise<void> {
   try {
-    await trpc.kaani.clearHistory.mutate();
+    await trpcClient.kaani.clearHistory.mutate();
   } catch (error) {
     console.error("[KaAni] Error clearing chat history:", error);
     throw new Error("Failed to clear chat history. Please try again.");

@@ -8,7 +8,10 @@ export type AuditActionType =
   | 'single_order_confirm'
   | 'single_order_decline'
   | 'single_inventory_update'
-  | 'single_tracking_assign';
+  | 'single_tracking_assign'
+  | 'permission_request_approved'
+  | 'permission_request_rejected'
+  | 'permission_request_cancelled';
 
 export interface AuditLogEntry {
   id: string;
@@ -25,7 +28,7 @@ export interface AuditLogEntry {
     after?: any;
     [key: string]: any;
   };
-  category: 'orders' | 'inventory' | 'deliveries';
+  category: 'orders' | 'inventory' | 'deliveries' | 'permissions';
 }
 
 // Mock audit log data

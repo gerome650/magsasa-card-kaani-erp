@@ -42,6 +42,7 @@ import {
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { Farm } from "@/data/farmsData";
 
 const logDevWarn = (...args: Parameters<typeof console.warn>) => {
   if (import.meta.env.DEV) {
@@ -268,7 +269,9 @@ export default function FarmDetail() {
         irrigationType: dbFarm.irrigationType || 'Rainfed',
         dateRegistered: dbFarm.registrationDate ? new Date(dbFarm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         photoUrls: Array.isArray(dbFarm.photoUrls) ? dbFarm.photoUrls : (dbFarm.photoUrls ? [dbFarm.photoUrls] : []),
-      };
+        lastHarvest: (dbFarm as any).lastHarvest,
+        boundary: (dbFarm as any).boundary,
+      } as unknown as Farm;
     } catch (error) {
       logDevError('[FarmDetail] Error transforming farm data:', error);
       return undefined;
@@ -306,7 +309,16 @@ export default function FarmDetail() {
       const previousBoundaries = utils.boundaries.getByFarmId.getData({ farmId: farmId! });
       
       // Optimistically update cache
-      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, newBoundaries.boundaries);
+      utils.boundaries.getByFarmId.setData({ farmId: farmId! }, () => {
+        return newBoundaries.boundaries.map(b => ({
+          id: 0,
+          farmId: farmId!,
+          ...b,
+          area: typeof b.area === 'number' ? b.area.toString() : b.area,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+      });
       
       toast.success("Saving boundaries...", { duration: 1000 });
       
@@ -338,14 +350,14 @@ export default function FarmDetail() {
       const optimisticYield = {
         id: Date.now(),
         farmId: farmId!,
-        parcelId: newYield.parcelId,
-        crop: newYield.crop,
+        parcelIndex: newYield.parcelIndex,
+        cropType: newYield.cropType,
         harvestDate: newYield.harvestDate,
         quantity: newYield.quantity.toString(),
         unit: newYield.unit,
         qualityGrade: newYield.qualityGrade || null,
-        notes: newYield.notes || null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       utils.yields.getByFarmId.setData({ farmId: farmId! }, (old) => {
@@ -411,12 +423,13 @@ export default function FarmDetail() {
       const optimisticCost = {
         id: Date.now(),
         farmId: farmId!,
-        parcelId: newCost.parcelId,
+        parcelIndex: newCost.parcelIndex ?? null,
         category: newCost.category,
         amount: newCost.amount.toString(),
         date: newCost.date,
         description: newCost.description || null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       utils.costs.getByFarmId.setData({ farmId: farmId! }, (old) => {
@@ -504,23 +517,33 @@ export default function FarmDetail() {
   // QA Pass 2: Memoize expensive transformations to avoid recalculating on every render
   // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
   // Transform backend yields to display format
-  const yieldRecords = useMemo(() => {
+  type YieldRecord = {
+    id: string;
+    parcelIndex: number;
+    cropType: string;
+    harvestDate: string;
+    quantity: number;
+    unit: 'kg' | 'tons';
+    qualityGrade: 'Premium' | 'Standard' | 'Below Standard';
+  };
+  
+  const yieldRecords = useMemo((): YieldRecord[] => {
     if (!dbYields) return [];
-    const validRecords: typeof yieldRecords = [];
+    const validRecords: YieldRecord[] = [];
     
-    dbYields.forEach((yieldRecord, index) => {
+    dbYields.forEach((yieldRow, index) => {
       try {
         // QA Pass 5: Safe numeric parsing with clamping
-        let quantity = parseFloat(yieldRecord.quantity?.toString() || '0');
+        let quantity = parseFloat(yieldRow.quantity?.toString() || '0');
         if (isNaN(quantity) || !isFinite(quantity) || quantity < 0) {
           if (import.meta.env.DEV) {
-            logDevWarn(`[FarmDetail] Invalid yield quantity at index ${index} for farm ${farmId}: ${yieldRecord.quantity}, defaulting to 0`);
+            logDevWarn(`[FarmDetail] Invalid yield quantity at index ${index} for farm ${farmId}: ${yieldRow.quantity}, defaulting to 0`);
           }
           quantity = 0;
         }
         
         // QA Pass 5: Safe date parsing
-        const harvestDate = yieldRecord.harvestDate || yieldRecord.date || '';
+        const harvestDate = yieldRow.harvestDate || '';
         if (!harvestDate || harvestDate === 'Invalid Date') {
           if (import.meta.env.DEV) {
             logDevWarn(`[FarmDetail] Invalid harvest date at index ${index} for farm ${farmId}: ${harvestDate}, skipping record`);
@@ -529,13 +552,13 @@ export default function FarmDetail() {
         }
         
         validRecords.push({
-          id: yieldRecord.id.toString(),
-          parcelIndex: yieldRecord.parcelIndex,
-          cropType: yieldRecord.cropType || yieldRecord.crop || '',
+          id: yieldRow.id.toString(),
+          parcelIndex: yieldRow.parcelIndex,
+          cropType: yieldRow.cropType || '',
           harvestDate,
           quantity,
-          unit: (yieldRecord.unit === 'tons' || yieldRecord.unit === 'kg' ? yieldRecord.unit : 'kg') as 'kg' | 'tons',
-          qualityGrade: (yieldRecord.qualityGrade || 'Standard') as 'Premium' | 'Standard' | 'Below Standard',
+          unit: (yieldRow.unit === 'tons' || yieldRow.unit === 'kg' ? yieldRow.unit : 'kg') as 'kg' | 'tons',
+          qualityGrade: (yieldRow.qualityGrade || 'Standard') as 'Premium' | 'Standard' | 'Below Standard',
         });
       } catch (error) {
         // QA Pass 5: Skip records that fail parsing, log warning in dev
@@ -550,9 +573,18 @@ export default function FarmDetail() {
 
   // Transform backend costs to display format
   // QA Pass 5: Enhanced defensive parsing for corrupted/weird data
-  const costRecords = useMemo(() => {
+  type CostRecord = {
+    id: string;
+    date: string;
+    category: 'Fertilizer' | 'Pesticides' | 'Seeds' | 'Labor' | 'Equipment' | 'Other';
+    description: string;
+    amount: number;
+    parcelIndex: number | null;
+  };
+  
+  const costRecords = useMemo((): CostRecord[] => {
     if (!dbCosts) return [];
-    const validRecords: typeof costRecords = [];
+    const validRecords: CostRecord[] = [];
     
     dbCosts.forEach((cost, index) => {
       try {
@@ -624,7 +656,7 @@ export default function FarmDetail() {
     if (!farm || !farmFromList || farmLoading) return;
     
     // Find this farm in the list
-    const listFarm = farmFromList.find(f => f.id === farm.id);
+    const listFarm = farmFromList.find((f: any) => f.id === farm.id);
     if (!listFarm) {
       logDevWarn(`[FarmDetailIntegrity] Farm ${farm.id} not found in list query response`);
       return;
@@ -652,7 +684,7 @@ export default function FarmDetail() {
     const detailCropsSet = new Set(detailCrops);
     
     if (listCropsSet.size !== detailCropsSet.size || 
-        ![...listCropsSet].every(c => detailCropsSet.has(c))) {
+        !Array.from(listCropsSet as Set<string>).every((c: string) => detailCropsSet.has(c))) {
       logDevWarn(`[FarmDetailIntegrity] Crop list mismatch detected for farm ${farm.id}`);
     }
     
@@ -1584,7 +1616,9 @@ ${placemarks}
                     </div>
                   )}
                   <MapView
-                    onMapReady={(map, google) => {
+                    onMapReady={(map: google.maps.Map) => {
+                      const google = (window as any).google;
+                      if (!google) return;
                       // Hide loading overlay
                       setIsMapLoading(false);
                       
@@ -1903,7 +1937,7 @@ ${placemarks}
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {farm.crops.map((crop) => (
+                {farm.crops.map((crop: string) => (
                   <Badge key={crop} variant="outline" className="text-sm">
                     {crop}
                   </Badge>
@@ -1918,7 +1952,7 @@ ${placemarks}
               <CardTitle>Farm Photos</CardTitle>
             </CardHeader>
             <CardContent>
-              <PhotoGallery photos={farm.photoUrls} />
+              <PhotoGallery photos={(farm as any).photoUrls || []} />
             </CardContent>
           </Card>
 
@@ -1982,7 +2016,7 @@ ${placemarks}
                               <SelectValue placeholder="Select crop" />
                             </SelectTrigger>
                             <SelectContent>
-                              {farm.crops.map((crop) => (
+                              {farm.crops.map((crop: string) => (
                                 <SelectItem key={crop} value={crop}>
                                   {crop}
                                 </SelectItem>
@@ -2367,14 +2401,14 @@ ${placemarks}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Link href={`/farmers/${farm.userId || farm.id}`}>
+              <Link href={`/farmers/${(farm as any).userId || farm.id}`}>
                 <div className="hover:bg-gray-50 p-3 rounded-lg transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                       <span className="text-lg font-bold text-green-600">
                         {farm.farmerName
                           .split(" ")
-                          .map((n) => n[0])
+                          .map((n: string) => n[0])
                           .join("")}
                       </span>
                     </div>

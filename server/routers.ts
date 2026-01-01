@@ -16,6 +16,7 @@ import {
   isNegativeMargin,
 } from "./batchOrderUtils";
 import { farms, yields } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { runKaAniAgent } from "./ai/kaaniAgent";
 import { loadFlowPackage } from "./ai/flows/flowLoader";
 import * as dbLeadGen from "./db_leadgen";
@@ -95,6 +96,33 @@ function redactIdentifier(identifier?: string): string {
   const start = identifier.substring(0, 4);
   const end = identifier.substring(identifier.length - 2);
   return `${start}***${end}`;
+}
+
+// Helper to categorize farm detail errors for metrics
+function categorizeFarmDetailError(error: unknown): string {
+  const err = error as { code?: string; message?: string };
+  
+  if (err.code === "NOT_FOUND" || err.message?.includes("not found")) {
+    return "not_found";
+  }
+  if (err.code === "TIMEOUT" || err.message?.includes("timeout")) {
+    return "timeout";
+  }
+  if (err.code === "ECONNREFUSED" || err.message?.includes("connection")) {
+    return "connection_error";
+  }
+  return "unknown_error";
+}
+
+// Helper to record farm detail metrics (no-op telemetry)
+function recordFarmDetailMetric(
+  event: "view_started" | "view_completed" | "view_failed",
+  data: Record<string, unknown>
+): void {
+  // No-op telemetry - can be extended later with actual metric collection
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[FarmDetail Metric] ${event}:`, data);
+  }
 }
 
 // Helper to create safe error summaries for logging (no PII, no stack traces, no connection strings)
@@ -299,7 +327,7 @@ export const appRouter = router({
             email: demoUser.email,
             loginMethod: "demo",
             role: demoUser.role, // "user" or "admin"
-            lastSignedIn: new Date(),
+            lastSignedIn: new Date().toISOString(),
           });
           user = await db.getUserByOpenId(demoUser.openId);
         }
@@ -669,8 +697,20 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const farmId = await db.createFarm({
-          ...input,
           userId: ctx.user.id,
+          name: input.name,
+          farmerName: input.farmerName,
+          barangay: input.barangay,
+          municipality: input.municipality,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          size: input.size.toString(),
+          crops: JSON.stringify(input.crops),
+          status: input.status || "active",
+          soilType: input.soilType || null,
+          irrigationType: input.irrigationType || null,
+          averageYield: input.averageYield?.toString() || null,
+          photoUrls: input.photoUrls ? JSON.stringify(input.photoUrls) : null,
         });
         return { farmId };
       }),
@@ -692,7 +732,21 @@ export const appRouter = router({
         status: z.enum(["active", "inactive", "fallow"]).optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
+        const { id, ...rawData } = input;
+        // Convert to schema-compatible format
+        const data: Partial<typeof farms.$inferInsert> = {};
+        if (rawData.name !== undefined) data.name = rawData.name;
+        if (rawData.farmerName !== undefined) data.farmerName = rawData.farmerName;
+        if (rawData.barangay !== undefined) data.barangay = rawData.barangay;
+        if (rawData.municipality !== undefined) data.municipality = rawData.municipality;
+        if (rawData.latitude !== undefined) data.latitude = rawData.latitude;
+        if (rawData.longitude !== undefined) data.longitude = rawData.longitude;
+        if (rawData.size !== undefined) data.size = rawData.size.toString();
+        if (rawData.crops !== undefined) data.crops = JSON.stringify(rawData.crops) as any;
+        if (rawData.status !== undefined) data.status = rawData.status;
+        if (rawData.soilType !== undefined) data.soilType = rawData.soilType || null;
+        if (rawData.irrigationType !== undefined) data.irrigationType = rawData.irrigationType || null;
+        if (rawData.averageYield !== undefined) data.averageYield = rawData.averageYield?.toString() || null;
         await db.updateFarm(id, data);
         return { success: true };
       }),
@@ -769,7 +823,12 @@ export const appRouter = router({
         })),
       }))
       .mutation(async ({ input }) => {
-        await db.saveBoundaries(input.farmId, input.boundaries);
+        await db.saveBoundaries(input.farmId, input.boundaries.map(b => ({
+          farmId: input.farmId,
+          parcelIndex: b.parcelIndex,
+          geoJson: b.geoJson,
+          area: b.area.toString(),
+        })));
         return { success: true };
       }),
   }),
@@ -792,7 +851,10 @@ export const appRouter = router({
         qualityGrade: z.enum(["Premium", "Standard", "Below Standard"]),
       }))
       .mutation(async ({ input }) => {
-        const yieldId = await db.createYield(input);
+        const yieldId = await db.createYield({
+          ...input,
+          quantity: input.quantity.toString(),
+        });
         return { yieldId };
       }),
     
@@ -821,7 +883,10 @@ export const appRouter = router({
         parcelIndex: z.number().nullable(),
       }))
       .mutation(async ({ input }) => {
-        const costId = await db.createCost(input);
+        const costId = await db.createCost({
+          ...input,
+          amount: input.amount.toString(),
+        });
         return { costId };
       }),
     
@@ -1147,9 +1212,9 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
                 console.log("[KaAni DEBUG] Gemini client initialized with model:", modelName);
 
                 // Build profile-specific instruction
-                function getProfileInstruction(
+                const getProfileInstruction = (
                   profile?: 'farmer' | 'technician' | 'loanMatching' | 'riskScoring'
-                ): string {
+                ): string => {
                   switch (profile) {
                     case 'technician':
                       return 'You are KaAni, an agricultural technician assistant. Focus on diagnostics, soil analysis, and technical recommendations.';
@@ -1683,7 +1748,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         message: z.string().min(1).max(2000), // Input length guard
         dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
         flowId: z.string().optional(),
-        slots: z.record(z.unknown()).optional(),
+        slots: z.record(z.string(), z.unknown()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Rate limiting: max 20 requests per 5 minutes per IP
@@ -2592,7 +2657,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                   email: row.email && row.email.trim() ? row.email : null, // Only set if non-empty
                   loginMethod: "demo",
                   role: "user",
-                  lastSignedIn: new Date(),
+                  lastSignedIn: new Date().toISOString(),
                 });
                 insertedCount.current++;
               } catch (error: any) {
@@ -2751,7 +2816,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                 }
 
                 // Parse crops JSON if it's a string
-                let cropsValue = row.crops;
+                let cropsValue: unknown = row.crops;
                 if (typeof cropsValue === "string") {
                   try {
                     // If it's already JSON, parse it; otherwise wrap it
@@ -2771,7 +2836,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                   latitude: row.latitude,
                   longitude: row.longitude,
                   size: row.size,
-                  crops: JSON.stringify(cropsValue),
+                  crops: JSON.stringify(cropsValue) as any,
                   soilType: row.soilType || null,
                   irrigationType: row.irrigationType || null,
                   averageYield: row.averageYield || null,

@@ -80,15 +80,17 @@ export default function AddFarmerDialog({
       name: formData.name,
       contactNumber: formData.contactNumber,
       email: formData.email || undefined,
-      address: {
-        barangay: formData.barangay,
-        municipality: formData.municipality,
-      },
-      farmSize: formData.farmSize ? parseFloat(formData.farmSize) : 0,
-      primaryCrop: formData.primaryCrop || "Not specified",
+      location: `Brgy. ${formData.barangay}, ${formData.municipality}, Laguna`,
+      barangay: formData.barangay,
+      municipality: formData.municipality,
+      province: 'Laguna',
+      cardMemberSince: new Date().toISOString().split("T")[0],
+      totalLandArea: formData.farmSize ? parseFloat(formData.farmSize) : 0,
+      activeFarms: 0,
+      totalHarvest: 0,
       status: "active",
-      dateJoined: new Date().toISOString().split("T")[0],
-      agScore: null,
+      crops: formData.primaryCrop ? [formData.primaryCrop] : [],
+      lastActivity: new Date().toISOString().split("T")[0],
     };
 
     addFarmer(newFarmer);

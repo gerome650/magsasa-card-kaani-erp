@@ -7,7 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import superjson from "superjson";
+// superjson transformer removed - not supported in current tRPC version
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -42,7 +42,6 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-      transformer: superjson,
     })
   );
   // development mode uses Vite, production mode uses static files

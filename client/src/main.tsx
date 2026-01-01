@@ -118,7 +118,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <App />
       {/* React Query DevTools - only shows in development */}
-      <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
+      <ReactQueryDevtools initialIsOpen={false} position={"bottom-right" as any} />
     </QueryClientProvider>
   </trpc.Provider>
 );

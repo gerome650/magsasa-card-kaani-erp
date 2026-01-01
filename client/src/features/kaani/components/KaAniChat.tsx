@@ -22,8 +22,8 @@ import type { KaAniArtifactBundle } from "../types";
 interface Conversation {
   id: number;
   title: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export function KaAniChat() {
@@ -70,8 +70,15 @@ export function KaAniChat() {
     const loadConversations = async () => {
       try {
         const convos = await trpcClient.conversations.list.query();
-        const sorted = [...(convos as Conversation[])].sort(
-          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        // Convert API response to Conversation[] with Date objects
+        const conversations: Conversation[] = (convos as any[]).map(conv => ({
+          id: conv.id,
+          title: conv.title,
+          createdAt: typeof conv.createdAt === 'string' ? new Date(conv.createdAt) : conv.createdAt,
+          updatedAt: typeof conv.updatedAt === 'string' ? new Date(conv.updatedAt) : conv.updatedAt,
+        }));
+        const sorted = conversations.sort(
+          (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
         );
         setConversations(sorted);
 

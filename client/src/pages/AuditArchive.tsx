@@ -26,7 +26,8 @@ import {
   RotateCcw,
   CheckCircle2,
   FileText,
-  Download
+  Download,
+  Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
