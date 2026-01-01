@@ -750,7 +750,12 @@ export const appRouter = router({
         })),
       }))
       .mutation(async ({ input }) => {
-        await db.saveBoundaries(input.farmId, input.boundaries);
+        await db.saveBoundaries(input.farmId, input.boundaries.map(b => ({
+          farmId: input.farmId,
+          parcelIndex: b.parcelIndex,
+          geoJson: b.geoJson,
+          area: b.area.toString(),
+        })));
         return { success: true };
       }),
   }),
