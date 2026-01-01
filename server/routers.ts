@@ -773,7 +773,10 @@ export const appRouter = router({
         qualityGrade: z.enum(["Premium", "Standard", "Below Standard"]),
       }))
       .mutation(async ({ input }) => {
-        const yieldId = await db.createYield(input);
+        const yieldId = await db.createYield({
+          ...input,
+          quantity: input.quantity.toString(),
+        });
         return { yieldId };
       }),
     
@@ -802,7 +805,10 @@ export const appRouter = router({
         parcelIndex: z.number().nullable(),
       }))
       .mutation(async ({ input }) => {
-        const costId = await db.createCost(input);
+        const costId = await db.createCost({
+          ...input,
+          amount: input.amount.toString(),
+        });
         return { costId };
       }),
     
