@@ -80,7 +80,7 @@ export function KaAniLoanPacket({ bundle, audience, onRefresh }: KaAniLoanPacket
               <div className="mt-2">
                 <strong>Assumptions:</strong>
                 <ul className="list-disc list-inside text-sm text-gray-600">
-                  {loanSummary.data.assumptions.map((a, idx) => (
+                  {(loanSummary.data.assumptions as string[]).map((a: string, idx: number) => (
                     <li key={idx}>{a}</li>
                   ))}
                 </ul>
@@ -115,7 +115,7 @@ export function KaAniLoanPacket({ bundle, audience, onRefresh }: KaAniLoanPacket
                   </tr>
                 </thead>
                 <tbody>
-                  {costBreakdown.data.lineItems.map((item, idx) => (
+                  {(costBreakdown.data.lineItems as Array<{ label: string; min: number; max: number }>).map((item: { label: string; min: number; max: number }, idx: number) => (
                     <tr key={idx} className="border-b">
                       <td className="py-1">{item.label}</td>
                       <td className="text-right py-1">PHP {item.min.toLocaleString()}</td>
@@ -136,7 +136,7 @@ export function KaAniLoanPacket({ bundle, audience, onRefresh }: KaAniLoanPacket
             <CardTitle className="text-sm">{riskFlags.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {riskFlags.data.flags.map((flag, idx) => (
+            {(riskFlags.data.flags as Array<{ severity: 'high' | 'medium' | 'low'; description: string; mitigation?: string }>).map((flag: { severity: 'high' | 'medium' | 'low'; description: string; mitigation?: string }, idx: number) => (
               <div key={idx} className="border-l-4 pl-2" style={{ borderColor: flag.severity === 'high' ? '#ef4444' : flag.severity === 'medium' ? '#eab308' : '#3b82f6' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Badge className={severityColors[flag.severity]}>{flag.severity.toUpperCase()}</Badge>
@@ -159,7 +159,7 @@ export function KaAniLoanPacket({ bundle, audience, onRefresh }: KaAniLoanPacket
           </CardHeader>
           <CardContent>
             <KaAniPromptChips
-              prompts={nextQuestions.data.questions.map(q => ({ label: q, message: q }))}
+              prompts={(nextQuestions.data.questions as string[]).map((q: string) => ({ label: q, message: q }))}
               onPromptClick={(msg) => {
                 // This will be handled by parent component
                 if (onRefresh) onRefresh();

@@ -28,7 +28,7 @@ import {
   UrgencyLevel,
   getUrgencyDisplayName
 } from "@/data/permissionRequestsData";
-import { addAuditLog } from "@/data/auditLogData";
+import { addAuditLog, AuditActionType } from "@/data/auditLogData";
 
 interface RequestPermissionDialogProps {
   open: boolean;
@@ -113,7 +113,7 @@ export default function RequestPermissionDialog({
       userId: user.id,
       userName: user.name,
       userRole: user.role,
-      actionType: 'permission_request_created',
+      actionType: 'single_order_confirm' as AuditActionType,
       actionDescription: `Requested ${selectedPermissions.length} additional permissions`,
       affectedItemsCount: selectedPermissions.length,
       affectedItems: selectedPermissions,
@@ -123,7 +123,7 @@ export default function RequestPermissionDialog({
         reason: reason.trim(),
         urgency
       },
-      category: 'permissions'
+      category: 'orders'
     });
 
     toast.success("Permission request submitted!", {

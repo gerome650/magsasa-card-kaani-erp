@@ -12,6 +12,7 @@ export async function upsertFarmerProfileFromSlots(data: {
   flow: { slots: Array<{ key: string; saveToProfile?: boolean; profileField?: string }> };
 }): Promise<void> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { farmerProfiles } = await import("../drizzle/schema");
 
   // Build updates object from slots that have saveToProfile=true
@@ -70,6 +71,7 @@ export async function createLeadSession(data: {
   farmerProfileId: string;
 }> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { kaaniLeads, conversations, farmerProfiles } = await import("../drizzle/schema");
 
   // Generate cryptographically strong session token (64 hex chars = 256 bits)
@@ -125,6 +127,7 @@ export async function getLeadBySessionToken(sessionToken: string): Promise<{
   farmerProfileId: string | null;
 } | null> {
   const db = await getDb();
+  if (!db) return null;
   const { kaaniLeads } = await import("../drizzle/schema");
 
   const [lead] = await db
@@ -155,6 +158,7 @@ export async function attachLeadCapture(
   }
 ): Promise<void> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { kaaniLeads } = await import("../drizzle/schema");
 
   const updates: Record<string, unknown> = {};

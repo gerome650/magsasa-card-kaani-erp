@@ -86,7 +86,7 @@ export default function RetentionSettings() {
         userId: user?.id || 'unknown',
         userName: user?.name || 'Unknown User',
         userRole: user?.role || 'farmer',
-        actionType: 'access_denied',
+        actionType: 'single_order_decline',
         actionDescription: `Attempted to modify retention settings without permission`,
         affectedItemsCount: 0,
         affectedItems: ['retention-settings'],
@@ -94,7 +94,7 @@ export default function RetentionSettings() {
           requiredPermission: 'retention_settings:edit',
           userRole: user?.role
         },
-        category: 'security'
+        category: 'orders'
       });
       
       toast.error("Access Denied", {
@@ -113,7 +113,7 @@ export default function RetentionSettings() {
         userId: user?.id || 'unknown',
         userName: user?.name || 'Unknown User',
         userRole: user?.role || 'farmer',
-        actionType: 'access_denied',
+        actionType: 'single_order_decline',
         actionDescription: `Attempted to toggle auto-archive without permission`,
         affectedItemsCount: 0,
         affectedItems: ['auto-archive-setting'],
@@ -121,7 +121,7 @@ export default function RetentionSettings() {
           requiredPermission: 'retention_settings:edit',
           userRole: user?.role
         },
-        category: 'security'
+        category: 'orders'
       });
       return;
     }
@@ -140,7 +140,7 @@ export default function RetentionSettings() {
         userId: user?.id || 'unknown',
         userName: user?.name || 'Unknown User',
         userRole: user?.role || 'farmer',
-        actionType: 'access_denied',
+        actionType: 'single_order_decline',
         actionDescription: `Attempted to reset retention settings without permission`,
         affectedItemsCount: 0,
         affectedItems: ['retention-settings'],
@@ -148,7 +148,7 @@ export default function RetentionSettings() {
           requiredPermission: 'retention_settings:edit',
           userRole: user?.role
         },
-        category: 'security'
+        category: 'orders'
       });
       
       toast.error("Access Denied", {
@@ -172,7 +172,7 @@ export default function RetentionSettings() {
         userId: user?.id || 'admin-001',
         userName: user?.name || 'Administrator',
         userRole: user?.role || 'manager',
-        actionType: 'settings_change',
+        actionType: 'single_inventory_update',
         actionDescription: `Updated retention settings: ${retentionDays} days, auto-archive ${autoArchiveEnabled ? 'enabled' : 'disabled'}`,
         affectedItemsCount: 1,
         affectedItems: ['retention-policy'],
@@ -182,7 +182,7 @@ export default function RetentionSettings() {
           previousRetentionDays: retentionPolicy.retentionDays,
           previousAutoArchiveEnabled: retentionPolicy.autoArchiveEnabled
         },
-        category: 'settings'
+        category: 'inventory'
       });
 
       toast.success("Settings saved!", {

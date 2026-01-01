@@ -25,8 +25,8 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   farmer: 1,
   field_officer: 2,
   manager: 3,
-  supplier: 3, // Same level as manager for supplier portal
-  admin: 4
+  supplier: 4,
+  admin: 5,
 };
 
 /**

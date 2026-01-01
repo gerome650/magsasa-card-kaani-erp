@@ -2691,15 +2691,6 @@ export function addFarmer(farmer: Omit<Farmer, 'id'>): Farmer {
   const newFarmer: Farmer = {
     ...farmer,
     id: newId,
-    location: `Brgy. ${farmer.address.barangay}, ${farmer.address.municipality}, Laguna`,
-    barangay: farmer.address.barangay,
-    municipality: farmer.address.municipality,
-    province: 'Laguna',
-    totalLandArea: farmer.farmSize || 0,
-    activeFarms: 0,
-    totalHarvest: 0,
-    crops: farmer.primaryCrop ? [farmer.primaryCrop] : [],
-    lastActivity: new Date().toISOString().split('T')[0],
   };
   farmersData.push(newFarmer);
   return newFarmer;
@@ -2708,21 +2699,6 @@ export function addFarmer(farmer: Omit<Farmer, 'id'>): Farmer {
 export function updateFarmer(id: string, updates: Partial<Farmer>): Farmer | undefined {
   const index = farmersData.findIndex(farmer => farmer.id === id);
   if (index !== -1) {
-    // Update location string if address changed
-    if (updates.address) {
-      updates.location = `Brgy. ${updates.address.barangay}, ${updates.address.municipality}, Laguna`;
-      updates.barangay = updates.address.barangay;
-      updates.municipality = updates.address.municipality;
-    }
-    // Update totalLandArea if farmSize changed
-    if (updates.farmSize !== undefined) {
-      updates.totalLandArea = updates.farmSize;
-    }
-    // Update crops if primaryCrop changed
-    if (updates.primaryCrop) {
-      updates.crops = [updates.primaryCrop];
-    }
-    
     farmersData[index] = { ...farmersData[index], ...updates };
     return farmersData[index];
   }

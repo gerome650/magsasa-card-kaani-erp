@@ -44,12 +44,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else {
           // DEMO MODE: Auto-login as manager for presentation
-          const demoUser = {
+          const demoUser: User = {
             id: 'demo-manager',
+            username: 'demo-manager',
             name: 'Demo Manager',
             email: 'demo@magsasa.com',
+            password: 'demo123',
             role: 'manager' as UserRole,
-            barangay: 'All'
+            phone: '',
+            createdAt: new Date().toISOString()
           };
           setUser(demoUser);
           localStorage.setItem('magsasa_user', JSON.stringify(demoUser));
@@ -58,12 +61,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('magsasa_user');
         // DEMO MODE: Auto-login as manager for presentation
-        const demoUser = {
+        const demoUser: User = {
           id: 'demo-manager',
+          username: 'demo-manager',
           name: 'Demo Manager',
           email: 'demo@magsasa.com',
+          password: 'demo123',
           role: 'manager' as UserRole,
-          barangay: 'All'
+          phone: '',
+          createdAt: new Date().toISOString()
         };
         setUser(demoUser);
         localStorage.setItem('magsasa_user', JSON.stringify(demoUser));

@@ -1,5 +1,5 @@
 // User roles in the MAGSASA-CARD system
-export type UserRole = 'farmer' | 'manager' | 'field_officer';
+export type UserRole = 'farmer' | 'manager' | 'field_officer' | 'supplier' | 'admin';
 
 // User interface
 export interface User {

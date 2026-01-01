@@ -50,10 +50,10 @@ export default function EditFarmerDialog({
         name: farmer.name,
         contactNumber: farmer.contactNumber,
         email: farmer.email || "",
-        barangay: farmer.address.barangay,
-        municipality: farmer.address.municipality,
-        farmSize: farmer.farmSize?.toString() || "",
-        primaryCrop: farmer.primaryCrop || "",
+        barangay: farmer.barangay,
+        municipality: farmer.municipality,
+        farmSize: farmer.totalLandArea.toString(),
+        primaryCrop: farmer.crops[0] || "",
         status: farmer.status,
       });
     }
@@ -100,12 +100,12 @@ export default function EditFarmerDialog({
       name: formData.name,
       contactNumber: formData.contactNumber,
       email: formData.email || undefined,
-      address: {
-        barangay: formData.barangay,
-        municipality: formData.municipality,
-      },
-      farmSize: formData.farmSize ? parseFloat(formData.farmSize) : 0,
-      primaryCrop: formData.primaryCrop || "Not specified",
+      location: `Brgy. ${formData.barangay}, ${formData.municipality}, Laguna`,
+      barangay: formData.barangay,
+      municipality: formData.municipality,
+      province: 'Laguna',
+      totalLandArea: formData.farmSize ? parseFloat(formData.farmSize) : 0,
+      crops: formData.primaryCrop ? [formData.primaryCrop] : [],
       status: formData.status,
     };
 

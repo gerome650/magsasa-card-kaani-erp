@@ -1,7 +1,14 @@
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import type { InferInsertModel } from "drizzle-orm";
 import mysql from "mysql2/promise";
-import { InsertUser, users, farms, boundaries, yields, costs, InsertFarm, InsertBoundary, InsertYield, InsertCost } from "../drizzle/schema";
+import { users, farms, boundaries, yields, costs } from "../drizzle/schema";
+
+type InsertUser = InferInsertModel<typeof users>;
+type InsertFarm = InferInsertModel<typeof farms>;
+type InsertBoundary = InferInsertModel<typeof boundaries>;
+type InsertYield = InferInsertModel<typeof yields>;
+type InsertCost = InferInsertModel<typeof costs>;
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -58,10 +65,10 @@ async function createPool(): Promise<mysql.Pool> {
     console.log("[Database] Connection pool created successfully");
     connection.release();
 
-    // Handle pool errors
-    _pool.on('error', (err) => {
+    // Handle pool errors (type assertion needed due to mysql2 typing)
+    (_pool as any).on('error', (err: NodeJS.ErrnoException) => {
       console.error("[Database] Pool error:", err);
-      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
+      if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
         console.log("[Database] Connection lost, pool will reconnect automatically");
       }
     });
@@ -92,7 +99,7 @@ export async function getDb() {
   for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
     try {
       const pool = await createPool();
-      _db = drizzle(pool);
+      _db = drizzle(pool) as unknown as ReturnType<typeof drizzle>;
       console.log(`[Database] Connected successfully (attempt ${attempt}/${RETRY_CONFIG.maxRetries})`);
       return _db;
     } catch (error) {
@@ -210,11 +217,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
 
     if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
+      values.lastSignedIn = new Date().toISOString();
     }
 
     if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
+      updateSet.lastSignedIn = new Date().toISOString();
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
@@ -438,11 +445,11 @@ export async function getAllFarmsBaseQuery(filters?: {
     }
     
     if (filters?.startDate) {
-      conditions.push(gte(farms.createdAt, new Date(filters.startDate)));
+      conditions.push(gte(farms.createdAt, filters.startDate));
     }
     
     if (filters?.endDate) {
-      conditions.push(lte(farms.createdAt, new Date(filters.endDate)));
+      conditions.push(lte(farms.createdAt, filters.endDate));
     }
     
     // Select only non-PII fields for consistency
@@ -605,6 +612,7 @@ export async function createChatMessage(data: {
   category?: string;
 }) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   
   const result = await db.insert(chatMessages).values({
@@ -620,6 +628,7 @@ export async function createChatMessage(data: {
 
 export async function getChatMessagesByUserId(userId: number, limit: number = 50) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { desc, eq } = await import("drizzle-orm");
   
@@ -635,6 +644,7 @@ export async function getChatMessagesByUserId(userId: number, limit: number = 50
 
 export async function getChatMessagesByConversationId(conversationId: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { asc, eq } = await import("drizzle-orm");
   
@@ -649,6 +659,7 @@ export async function getChatMessagesByConversationId(conversationId: number) {
 
 export async function deleteChatMessagesByUserId(userId: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
@@ -663,6 +674,7 @@ export async function createConversation(data: {
   farmerProfileId?: string;
 }): Promise<{ conversationId: number; farmerProfileId: string }> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations, farmerProfiles } = await import("../drizzle/schema");
   
   // If farmerProfileId provided, ensure it exists
@@ -704,6 +716,7 @@ export async function createConversation(data: {
 
 export async function getConversationsByUserId(userId: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations } = await import("../drizzle/schema");
   const { desc, eq } = await import("drizzle-orm");
   
@@ -718,17 +731,19 @@ export async function getConversationsByUserId(userId: number) {
 
 export async function updateConversationTitle(id: number, title: string) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
   await db
     .update(conversations)
-    .set({ title, updatedAt: new Date() })
+    .set({ title, updatedAt: new Date().toISOString() })
     .where(eq(conversations.id, id));
 }
 
 export async function deleteConversation(id: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations, chatMessages } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
@@ -741,12 +756,13 @@ export async function deleteConversation(id: number) {
 
 export async function touchConversation(id: number) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   
   await db
     .update(conversations)
-    .set({ updatedAt: new Date() })
+    .set({ updatedAt: new Date().toISOString() })
     .where(eq(conversations.id, id));
 }
 
@@ -761,6 +777,7 @@ export async function ensureFarmerProfileForConversation(
   createdByUserId?: number
 ): Promise<string> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations, farmerProfiles } = await import("../drizzle/schema");
   
   // Check if conversation already has a farmer_profile_id
@@ -812,6 +829,7 @@ export async function updateFarmerProfile(
   }
 ): Promise<void> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { farmerProfiles } = await import("../drizzle/schema");
   
   // Filter out undefined values
@@ -843,6 +861,7 @@ export async function saveRecommendation(data: {
   status: string;
 }): Promise<number> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { kaaniRecommendations } = await import("../drizzle/schema");
   
   const result = await db.insert(kaaniRecommendations).values({
@@ -865,6 +884,7 @@ export async function appendConversationMessage(data: {
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversationMessages } = await import("../drizzle/schema");
   
   await db.insert(conversationMessages).values({
@@ -885,6 +905,7 @@ export async function getConversationMessages(conversationId: number): Promise<A
   createdAt: string;
 }>> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversationMessages } = await import("../drizzle/schema");
   const { asc, eq } = await import("drizzle-orm");
   
@@ -935,6 +956,7 @@ export async function getLatestFlowState(
   conversationId: number
 ): Promise<{ flowId?: string; slots: Record<string, any> } | null> {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversationMessages } = await import("../drizzle/schema");
   const { desc, eq, isNotNull } = await import("drizzle-orm");
 
@@ -1024,7 +1046,7 @@ export async function appendArtifactsMessage(params: {
         type: "kaani_artifacts_v1",
         bundle: params.bundle,
       },
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     });
 
   return Number(result[0].insertId);
@@ -1051,8 +1073,10 @@ export async function getLatestArtifacts(conversationId: number): Promise<{
       metadata: conversationMessages.metadata,
     })
     .from(conversationMessages)
-    .where(eq(conversationMessages.conversationId, conversationId))
-    .where(eq(conversationMessages.role, "tool"))
+    .where(and(
+      eq(conversationMessages.conversationId, conversationId),
+      eq(conversationMessages.role, "tool")
+    ))
     .orderBy(desc(conversationMessages.createdAt))
     .limit(50);
 
@@ -1093,8 +1117,9 @@ export async function getConversationWithFarmerProfile(conversationId: number): 
 
 export async function searchConversations(userId: number, query: string) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { conversations, chatMessages } = await import("../drizzle/schema");
-  const { desc, eq, like, or, sql } = await import("drizzle-orm");
+  const { desc, eq, like, or, sql, and } = await import("drizzle-orm");
   
   if (!query || query.trim() === "") {
     // Return all conversations if no query
@@ -1170,6 +1195,7 @@ export async function addChatMessage(data: {
   category?: string;
 }) {
   const db = await getDb();
+  if (!db) throw new Error("Database not available");
   const { chatMessages } = await import("../drizzle/schema");
   
   const result = await db.insert(chatMessages).values({
@@ -1378,7 +1404,7 @@ export async function getCostAnalysis(input?: {
     .from(yields)
     .innerJoin(farms, eq(yields.farmId, farms.id))
     .where(yieldConditions.length > 0 ? and(...yieldConditions) : undefined)
-    .groupBy(yields.crop, yields.farmId);
+    .groupBy(yields.cropType, yields.farmId);
 
   // Calculate ROI by crop
   const costMap = new Map(farmCosts.map(fc => [fc.farmId, fc.totalCost]));
