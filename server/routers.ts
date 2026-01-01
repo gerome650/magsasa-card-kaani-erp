@@ -1128,9 +1128,9 @@ Respond in Filipino (Tagalog) when the user asks in Filipino, and in English whe
                 console.log("[KaAni DEBUG] Gemini client initialized with model:", modelName);
 
                 // Build profile-specific instruction
-                function getProfileInstruction(
+                const getProfileInstruction = (
                   profile?: 'farmer' | 'technician' | 'loanMatching' | 'riskScoring'
-                ): string {
+                ): string => {
                   switch (profile) {
                     case 'technician':
                       return 'You are KaAni, an agricultural technician assistant. Focus on diagnostics, soil analysis, and technical recommendations.';
@@ -1664,7 +1664,7 @@ Respond in the specified dialect using practical, concrete advice.`;
         message: z.string().min(1).max(2000), // Input length guard
         dialect: z.enum(['tagalog', 'cebuano', 'english']).optional(),
         flowId: z.string().optional(),
-        slots: z.record(z.unknown()).optional(),
+        slots: z.record(z.string(), z.unknown()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Rate limiting: max 20 requests per 5 minutes per IP
@@ -2267,7 +2267,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                   email: row.email && row.email.trim() ? row.email : null, // Only set if non-empty
                   loginMethod: "demo",
                   role: "user",
-                  lastSignedIn: new Date(),
+                  lastSignedIn: new Date().toISOString(),
                 });
                 insertedCount.current++;
               } catch (error: any) {
