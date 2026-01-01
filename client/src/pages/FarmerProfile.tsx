@@ -350,7 +350,7 @@ export default function FarmerProfile() {
                 <Card className="p-0 overflow-hidden">
                   <div className="h-[600px]">
                     <MapView
-                      onMapReady={(map, google) => {
+                      onMapReady={(map) => {
                         const bounds = new google.maps.LatLngBounds();
                         const infoWindow = new google.maps.InfoWindow();
 
@@ -402,14 +402,14 @@ export default function FarmerProfile() {
                         });
 
                         // Fit map to show all markers
-                        if (farmerFarms.length > 1) {
+                        if (farmerFarms.length > 1 && map) {
                           map.fitBounds(bounds);
                           // Add padding
                           const listener = google.maps.event.addListener(map, 'idle', () => {
-                            if (map.getZoom() > 15) map.setZoom(15);
+                            if (map && map.getZoom() && map.getZoom()! > 15) map.setZoom(15);
                             google.maps.event.removeListener(listener);
                           });
-                        } else if (farmerFarms.length === 1) {
+                        } else if (farmerFarms.length === 1 && map) {
                           map.setCenter({
                             lat: farmerFarms[0].location.coordinates.lat,
                             lng: farmerFarms[0].location.coordinates.lng

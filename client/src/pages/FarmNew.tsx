@@ -143,21 +143,21 @@ export default function FarmNew() {
         farmerName: newFarm.farmerName,
         barangay: newFarm.barangay,
         municipality: newFarm.municipality,
-        latitude: newFarm.latitude,
-        longitude: newFarm.longitude,
+        latitude: newFarm.latitude.toString(),
+        longitude: newFarm.longitude.toString(),
         size: newFarm.size.toString(),
         crops: JSON.stringify(newFarm.crops),
-        soilType: newFarm.soilType,
-        irrigationType: newFarm.irrigationType,
-        status: newFarm.status,
+        status: newFarm.status || 'active' as 'active' | 'inactive' | 'fallow',
         registrationDate: new Date().toISOString(),
-        userId: 0, // Will be set by server
         averageYield: null,
       };
       
-      utils.farms.list.setData(undefined, (old) => {
-        return old ? [...old, optimisticFarm] : [optimisticFarm];
-      });
+      const currentFarms = utils.farms.list.getData();
+      if (currentFarms) {
+        utils.farms.list.setData(undefined, [...currentFarms, optimisticFarm]);
+      } else {
+        utils.farms.list.setData(undefined, [optimisticFarm]);
+      }
       
       // Show optimistic toast
       toast.success("Creating farm...", { duration: 1000 });
@@ -670,8 +670,8 @@ export default function FarmNew() {
               <div className="border rounded-lg overflow-hidden" style={{ height: "500px" }}>
                 <MapView
                   onMapReady={handleMapReady}
-                  center={{ lat: formData.latitude, lng: formData.longitude }}
-                  zoom={15}
+                  initialCenter={{ lat: formData.latitude, lng: formData.longitude }}
+                  initialZoom={15}
                 />
               </div>
 

@@ -24,6 +24,7 @@ import {
   FileText
 } from "lucide-react";
 import { toast } from "sonner";
+import { addAuditLog } from "@/data/auditLogData";
 
 export default function SupplierDashboardBulk() {
   const { user } = useAuth();
