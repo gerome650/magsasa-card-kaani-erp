@@ -10,6 +10,7 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { farms, yields } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
 import { runKaAniAgent } from "./ai/kaaniAgent";
 import { loadFlowPackage } from "./ai/flows/flowLoader";
 import * as dbLeadGen from "./db_leadgen";
@@ -2425,7 +2426,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                 }
 
                 // Parse crops JSON if it's a string
-                let cropsValue = row.crops;
+                let cropsValue: unknown = row.crops;
                 if (typeof cropsValue === "string") {
                   try {
                     // If it's already JSON, parse it; otherwise wrap it
@@ -2445,7 +2446,7 @@ Respond in the specified dialect using practical, concrete advice.`;
                   latitude: row.latitude,
                   longitude: row.longitude,
                   size: row.size,
-                  crops: JSON.stringify(cropsValue),
+                  crops: JSON.stringify(cropsValue) as any,
                   soilType: row.soilType || null,
                   irrigationType: row.irrigationType || null,
                   averageYield: row.averageYield || null,
