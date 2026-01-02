@@ -1586,6 +1586,57 @@ export async function getBatchOrderById(orderId: string) {
     };
   }, "getBatchOrderById");
 }
+
+export async function listBatchOrders(filters?: {
+  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+  supplierId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  return withRetry(async (db) => {
+    let query = db.select().from(batchOrders);
+    
+    const conditions: any[] = [];
+    
+    if (filters?.status && filters.status.length > 0) {
+      conditions.push(
+        or(...filters.status.map(s => eq(batchOrders.status, s)))
+      );
+    }
+    
+    if (filters?.supplierId) {
+      conditions.push(eq(batchOrders.supplierId, filters.supplierId));
+    }
+    
+    if (filters?.fromDate) {
+      conditions.push(gte(batchOrders.expectedDeliveryDate, filters.fromDate));
+    }
+    
+    if (filters?.toDate) {
+      conditions.push(lte(batchOrders.expectedDeliveryDate, filters.toDate));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(batchOrders.createdAt)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }, "listBatchOrders");
+}
+
+
 export async function deleteBatchOrder(orderId: string) {
   return withRetry(async (db) => {
     // Delete items first (cascade)
