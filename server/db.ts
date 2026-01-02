@@ -1562,17 +1562,9 @@ export async function updateBatchOrder(
 
     // logBatchOrderDbEvent("update", {
       batchOrderId: orderId,
-      status: orderData.status,
-    //       itemCount: items.length,
-    //     });
-    // 
-    //     return orderId;
-    //   }, "updateBatchOrder");
-    // }
-
-    
-    if (!order) {
-      return null;
+    return orderId;
+  }, "updateBatchOrder");
+}      return null;
     }
     
     const items = await db.select()
