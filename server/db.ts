@@ -1583,8 +1583,6 @@ export async function updateBatchOrder(
       ...order,
       items,
     };
-  }, "getBatchOrderById");
-}
 
 export async function listBatchOrders(filters?: {
   status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
