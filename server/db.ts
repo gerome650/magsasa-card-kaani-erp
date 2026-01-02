@@ -1585,7 +1585,7 @@ export async function getBatchOrderById(orderId: string) {
       items,
     };
   }, "getBatchOrderById");
-
+}
 export async function deleteBatchOrder(orderId: string) {
   return withRetry(async (db) => {
     // Delete items first (cascade)
