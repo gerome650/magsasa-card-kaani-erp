@@ -1562,11 +1562,6 @@ export async function updateBatchOrder(
 
     // logBatchOrderDbEvent("update", {
       batchOrderId: orderId,
-    return orderId;
-  }, "updateBatchOrder");
-}      return null;
-    }
-    
     const items = await db.select()
       .from(batchOrderItems)
       .where(eq(batchOrderItems.batchOrderId, orderId));
