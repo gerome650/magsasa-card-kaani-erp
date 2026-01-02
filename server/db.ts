@@ -464,11 +464,13 @@ export async function getAllFarmsBaseQuery(filters?: {
       conditions.push(lte(farms.createdAt, filters.endDate));
     }
     
-    // Select only non-PII fields for consistency
+    // Select fields for consistency
     // Note: name and farmerName are included for Map View info windows, but not used for filtering/aggregation
+    // userId is included for batch orders and other features that need to link farms to farmers
     const query = db
       .select({
         id: farms.id,
+        userId: farms.userId, // Included for batch orders and farmer linking
         name: farms.name, // Needed for Map View info windows
         farmerName: farms.farmerName, // Needed for Map View info windows
         latitude: farms.latitude,
@@ -1018,7 +1020,7 @@ export async function appendFlowStateMessage(params: {
       nextStepId: params.nextStepId || null,
       whatWeKnow: params.whatWeKnow || [],
       loanOfficerSummary: params.loanOfficerSummary || null,
-      updatedAt: new Date().toISOString().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   };
 
@@ -1058,7 +1060,7 @@ export async function appendArtifactsMessage(params: {
         type: "kaani_artifacts_v1",
         bundle: params.bundle,
       },
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     });
 
   return Number(result[0].insertId);
@@ -1080,13 +1082,16 @@ export async function getLatestArtifacts(conversationId: number): Promise<{
   const { conversationMessages } = await import("../drizzle/schema");
   const { desc, eq } = await import("drizzle-orm");
 
+  const { and } = await import("drizzle-orm");
   const messages = await db
     .select({
       metadata: conversationMessages.metadata,
     })
     .from(conversationMessages)
-    .where(eq(conversationMessages.conversationId, conversationId))
-    .where(eq(conversationMessages.role, "tool"))
+    .where(and(
+      eq(conversationMessages.conversationId, conversationId),
+      eq(conversationMessages.role, "tool")
+    ))
     .orderBy(desc(conversationMessages.createdAt))
     .limit(50);
 
@@ -1311,7 +1316,7 @@ export async function getCropPerformance(input?: {
   // Query with grouping by crop type
   const results = await db
     .select({
-      crop: yields.cropTypeType,
+      crop: yields.cropType,
       totalQuantity: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('totalQuantity'),
       avgYield: sql<number>`AVG(CAST(${yields.quantity} AS DECIMAL(10,2)))`.as('avgYield'),
       totalRevenue: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)) * 50)`.as('totalRevenue'), // Assuming avg price of 50 per unit
@@ -1321,7 +1326,7 @@ export async function getCropPerformance(input?: {
     .from(yields)
     .innerJoin(farms, eq(yields.farmId, farms.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .groupBy(yields.cropTypeType)
+    .groupBy(yields.cropType)
     .orderBy(sql`totalRevenue DESC`);
 
   return results;
@@ -1335,11 +1340,9 @@ export async function getCostAnalysis(input?: {
   endDate?: string;
   region?: "all" | "bacolod" | "laguna";
 }) {
-  const db = await getDb();
-  if (!db) return { costsByCategory: [], roiByCrop: [] };
-
-  const { costs, yields, farms } = await import("../drizzle/schema");
-  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+  return withRetry(async (db) => {
+    const { costs, yields, farms } = await import("../drizzle/schema");
+    const { sql, eq, and, gte, lte, like } = await import("drizzle-orm");
 
   // Build where conditions for costs
   const costConditions = [];
@@ -1386,6 +1389,9 @@ export async function getCostAnalysis(input?: {
     .groupBy(costs.farmId);
 
   // Build where conditions for yields
+  const yieldConditions = [];
+  
+  if (input?.region && input.region !== "all") {
     if (input.region === "bacolod") {
       yieldConditions.push(like(farms.municipality, "%Bacolod%"));
     } else if (input.region === "laguna") {
@@ -1404,7 +1410,7 @@ export async function getCostAnalysis(input?: {
   // Get total revenue per crop
   const cropRevenue = await db
     .select({
-      crop: yields.cropTypeType,
+      crop: yields.cropType,
       farmId: yields.farmId,
       totalRevenue: sql<number>`SUM(CAST(${yields.quantity} AS DECIMAL(10,2)) * 50)`.as('totalRevenue'), // Assuming avg price of 50 per unit
     })
@@ -1447,7 +1453,8 @@ export async function getCostAnalysis(input?: {
     farmCount: data.count,
   })).sort((a, b) => b.roi - a.roi);
 
-  return { costsByCategory, roiByCrop };
+    return { costsByCategory, roiByCrop };
+  }, "getCostAnalysis");
 }
 
 /**
@@ -1457,11 +1464,9 @@ export async function getRegionalComparison(input?: {
   startDate?: string;
   endDate?: string;
 }) {
-  const db = await getDb();
-  if (!db) return [];
-
-  const { yields, costs, farms } = await import("../drizzle/schema");
-  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+  return withRetry(async (db) => {
+    const { yields, costs, farms } = await import("../drizzle/schema");
+    const { sql, eq, and, gte, lte } = await import("drizzle-orm");
 
   // Build where conditions
   const conditions = [];
@@ -1520,9 +1525,20 @@ export async function getRegionalComparison(input?: {
     .groupBy(sql`region`);
 
   // Merge results
-  }));
+  const costMap = new Map(costResults.map(cr => [cr.region, cr.totalCost]));
+  const finalResults = results.map(r => {
+    const totalCost = costMap.get(r.region) || 0;
+    const totalRevenue = Number(r.totalRevenue) || 0;
+    const roi = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0;
+    return {
+      ...r,
+      totalCost,
+      roi,
+    };
+  });
 
-  return finalResults;
+    return finalResults;
+  }, "getRegionalComparison");
 }
 
 // Batch Orders management

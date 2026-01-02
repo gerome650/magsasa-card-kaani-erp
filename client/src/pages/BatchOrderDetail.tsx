@@ -185,7 +185,7 @@ export default function BatchOrderDetail() {
       tempId: crypto.randomUUID(),
       farmId: farm.id,
       farmName: farm.name,
-      farmerId: undefined, // Farm doesn't have userId, will be resolved from farmId
+      farmerId: (farm as any).userId || null, // Use farm.userId if available, otherwise null
       quantityOrdered: 0,
       unit: "kg",
       supplierUnitPrice: 0,
