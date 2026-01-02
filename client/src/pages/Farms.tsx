@@ -46,6 +46,7 @@ import { DateRange } from "react-day-picker";
 import { FilterChips } from "@/components/FilterChips";
 import { HighlightText } from "@/components/HighlightText";
 import { FilterBreadcrumb } from "@/components/FilterBreadcrumb";
+import { toast } from "sonner";
 
 export default function Farms() {
   const [, navigate] = useLocation();
@@ -101,9 +102,7 @@ export default function Farms() {
       });
       
       // Show optimistic toast
-      import('sonner').then(({ toast }) => {
-        toast.loading(`Deleting ${variables.ids.length} farm${variables.ids.length !== 1 ? 's' : ''}...`);
-      });
+      toast.loading(`Deleting ${variables.ids.length} farm${variables.ids.length !== 1 ? 's' : ''}...`);
       
       return { previousFarms };
     },
@@ -112,24 +111,20 @@ export default function Farms() {
       if (context?.previousFarms) {
         utils.farms.list.setData(undefined, context.previousFarms);
       }
-      import('sonner').then(({ toast }) => {
-        toast.dismiss();
-        toast.error('Failed to delete farms', {
-          description: err.message,
-        });
+      toast.dismiss();
+      toast.error('Failed to delete farms', {
+        description: err.message,
       });
     },
     onSuccess: (data) => {
-      import('sonner').then(({ toast }) => {
-        toast.dismiss();
-        if (data.failed.length === 0) {
-          toast.success(`Successfully deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}`);
-        } else {
-          toast.warning(`Deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}, ${data.failed.length} failed`, {
-            description: `Failed farms: ${data.failed.map(f => f.id).join(', ')}`,
-          });
-        }
-      });
+      toast.dismiss();
+      if (data.failed.length === 0) {
+        toast.success(`Successfully deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}`);
+      } else {
+        toast.warning(`Deleted ${data.success.length} farm${data.success.length !== 1 ? 's' : ''}, ${data.failed.length} failed`, {
+          description: `Failed farms: ${data.failed.map(f => f.id).join(', ')}`,
+        });
+      }
     },
     onSettled: () => {
       // Always refetch after error or success
@@ -307,9 +302,7 @@ export default function Farms() {
     document.body.removeChild(link);
 
     // Show success message
-    import('sonner').then(({ toast }) => {
-      toast.success(`Exported ${selectedFarms.size} farm${selectedFarms.size !== 1 ? 's' : ''} to CSV`);
-    });
+    toast.success(`Exported ${selectedFarms.size} farm${selectedFarms.size !== 1 ? 's' : ''} to CSV`);
   };
 
   const handleDeleteSelected = () => {
