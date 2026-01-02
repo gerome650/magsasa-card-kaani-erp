@@ -4,7 +4,10 @@ import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
-import type { User } from "../../drizzle/schema";
+import type { InferSelectModel } from "drizzle-orm";
+import { users } from "../../drizzle/schema";
+
+type User = InferSelectModel<typeof users>;
 import * as db from "../db";
 import { ENV } from "./env";
 import type {
@@ -276,7 +279,7 @@ class SDKServer {
             name: "Demo Manager",
             email: "demo@magsasa.com",
             loginMethod: "demo",
-            lastSignedIn: new Date(),
+            lastSignedIn: new Date().toISOString(),
           });
           user = await db.getUserByOpenId(demoOpenId);
         }
@@ -291,7 +294,7 @@ class SDKServer {
     }
 
     const sessionUserId = session.openId;
-    const signedInAt = new Date();
+    const signedInAt = new Date().toISOString();
     let user = await db.getUserByOpenId(sessionUserId);
 
     // If user not in DB, sync from OAuth server automatically

@@ -78,7 +78,7 @@ export function CostBreakdownChart({ data, loading }: CostBreakdownChartProps) {
                 
                 return {
                   text: `${label} (${percentage}%)`,
-                  fillStyle: data.datasets[0].backgroundColor?.[i] as string,
+                  fillStyle: (data.datasets[0].backgroundColor as string[])?.[i] as string,
                   hidden: false,
                   index: i,
                 };

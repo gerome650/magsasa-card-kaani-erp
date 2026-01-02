@@ -22,6 +22,9 @@ import ShoppingCart from "./pages/ShoppingCart";
 import Checkout from "./pages/Checkout";
 import OrderHistory from "./pages/OrderHistory";
 import BatchOrders from "./pages/BatchOrders";
+import BatchOrdersList from "./pages/BatchOrdersList";
+import BatchOrderCreate from "./pages/BatchOrderCreate";
+import BatchOrderDetail from "./pages/BatchOrderDetail";
 import SupplierDashboard from "./pages/SupplierDashboardBulk";
 import SupplierInventory from "./pages/SupplierInventory";
 import SupplierDeliveries from "./pages/SupplierDeliveries";
@@ -164,16 +167,37 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/batch-orders">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <BatchOrders />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
+      {/* Batch Orders routes - gated by feature flag */}
+      {import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' && (
+        <>
+          <Route path="/batch-orders">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrdersList />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/batch-orders/new">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrderCreate />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/batch-orders/:id">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <BatchOrderDetail />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+        </>
+      )}
       
       <Route path="/supplier">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierDashboard />
           </Layout>
@@ -181,7 +205,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/inventory">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierInventory />
           </Layout>
@@ -189,7 +213,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/deliveries">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <SupplierDeliveries />
           </Layout>
@@ -197,7 +221,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/audit-log">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AuditLog />
           </Layout>
@@ -205,7 +229,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/audit-archive">
-        <ProtectedRoute allowedRoles={['supplier']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AuditArchive />
           </Layout>
@@ -213,7 +237,7 @@ function Router() {
       </Route>
       
       <Route path="/supplier/retention-settings">
-        <ProtectedRoute allowedRoles={['supplier', 'manager']}>
+        <ProtectedRoute allowedRoles={['manager']}>
           <Layout>
             <RetentionSettings />
           </Layout>
@@ -227,7 +251,7 @@ function Router() {
       </Route>
       
       <Route path="/permission-approval">
-        <ProtectedRoute allowedRoles={['manager', 'admin']}>
+        <ProtectedRoute allowedRoles={['manager']}>
           <Layout>
             <PermissionApproval />
           </Layout>
@@ -235,7 +259,7 @@ function Router() {
       </Route>
       
       <Route path="/admin/csv-upload">
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
           <Layout>
             <AdminCsvUpload />
           </Layout>

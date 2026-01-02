@@ -20,7 +20,7 @@ export default function TRPCClientTest() {
 
   // Test 1: Basic Connection
   const { data: userData, isLoading: userLoading, error: userError, refetch: refetchUser } = 
-    trpc.auth.getUser.useQuery(undefined, { enabled: false });
+    trpc.auth.me.useQuery(undefined, { enabled: false });
 
   // Test 2: Farms Query (requires auth)
   const { data: farmsData, isLoading: farmsLoading, error: farmsError, refetch: refetchFarms } = 

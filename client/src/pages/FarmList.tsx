@@ -19,26 +19,35 @@ export default function FarmList() {
   const { data: dbFarms, isLoading, error } = trpc.farms.list.useQuery();
   
   // Transform database format to frontend format
-  const allFarms: Farm[] = dbFarms ? dbFarms.map(farm => ({
-    id: farm.id.toString(),
-    name: farm.name,
-    farmerName: farm.farmerName,
-    location: {
-      barangay: farm.barangay,
-      municipality: farm.municipality,
-      coordinates: {
-        lat: parseFloat(farm.latitude as unknown as string),
-        lng: parseFloat(farm.longitude as unknown as string),
+  const allFarms: Farm[] = dbFarms ? dbFarms.map(farm => {
+    const irrigationType = (farm as any).irrigationType;
+    const validIrrigationType: 'Irrigated' | 'Rainfed' | 'Upland' = 
+      (irrigationType === 'Irrigated' || irrigationType === 'Rainfed' || irrigationType === 'Upland')
+        ? irrigationType
+        : 'Rainfed';
+    
+    return {
+      id: farm.id.toString(),
+      farmerId: (farm as any).userId?.toString() || farm.id.toString(),
+      name: farm.name,
+      farmerName: farm.farmerName,
+      location: {
+        barangay: farm.barangay,
+        municipality: farm.municipality,
+        coordinates: {
+          lat: parseFloat(farm.latitude as unknown as string),
+          lng: parseFloat(farm.longitude as unknown as string),
+        },
       },
-    },
-    size: parseFloat(farm.size as unknown as string),
-    crops: Array.isArray(farm.crops) ? farm.crops : JSON.parse(farm.crops as unknown as string),
-    soilType: farm.soilType || 'Unknown',
-    irrigationType: farm.irrigationType || 'Rainfed',
-    status: farm.status as 'active' | 'inactive' | 'fallow',
-    dateRegistered: farm.registrationDate ? new Date(farm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    averageYield: farm.averageYield ? parseFloat(farm.averageYield as unknown as string) : undefined,
-  })) : [];
+      size: parseFloat(farm.size as unknown as string),
+      crops: Array.isArray(farm.crops) ? farm.crops : (typeof farm.crops === 'string' ? JSON.parse(farm.crops) : []),
+      soilType: (farm as any).soilType || 'Unknown',
+      irrigationType: validIrrigationType,
+      status: farm.status as 'active' | 'inactive' | 'fallow',
+      dateRegistered: farm.registrationDate ? new Date(farm.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      averageYield: farm.averageYield ? parseFloat(farm.averageYield as unknown as string) : undefined,
+    };
+  }) : [];
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cropFilter, setCropFilter] = useState<string>("all");

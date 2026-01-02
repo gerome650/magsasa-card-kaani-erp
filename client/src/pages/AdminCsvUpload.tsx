@@ -5,7 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+// @ts-ignore - papaparse doesn't have TypeScript definitions
 import Papa from "papaparse";
+
+// Type definitions for Papa.parse callbacks
+interface PapaParseResult<T> {
+  data: T[];
+  errors: Array<{ row: number; message: string }>;
+  meta: { fields?: string[] };
+}
+
+interface PapaParseError {
+  row: number;
+  message: string;
+  type?: string;
+}
 import { trpcClient } from "@/lib/trpcClient";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -80,22 +94,22 @@ export default function AdminCsvUpload() {
       header: true,
       skipEmptyLines: true,
       encoding: 'utf-8', // Explicit UTF-8 encoding
-      transformHeader: (header) => {
+      transformHeader: (header: string) => {
         // Strip BOM and trim whitespace from headers
         return header.replace(/^\uFEFF/, '').trim();
       },
-      transform: (value) => {
+      transform: (value: string) => {
         // Trim whitespace from values and handle Excel quirks
         if (typeof value === 'string') {
           return value.trim().replace(/^["']|["']$/g, ''); // Remove surrounding quotes
         }
         return value;
       },
-      complete: (results) => {
+      complete: (results: PapaParseResult<ParsedRow>) => {
         setIsLoading(false);
         
         if (results.errors.length > 0) {
-          const errorMessages = results.errors.map((err) => 
+          const errorMessages = results.errors.map((err: PapaParseError) => 
             `Row ${err.row}: ${err.message}`
           );
           setValidationErrors(errorMessages);
@@ -137,7 +151,7 @@ export default function AdminCsvUpload() {
         setPreviewData(data.slice(0, 10)); // Show first 10 rows for preview
         toast.success(`Parsed ${data.length} rows successfully`);
       },
-      error: (error) => {
+      error: (error: Error) => {
         setIsLoading(false);
         toast.error(`Failed to parse CSV: ${error.message}`);
       },

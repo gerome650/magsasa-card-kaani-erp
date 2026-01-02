@@ -17,12 +17,12 @@ export function getAnalyticsConfig(): AnalyticsConfig | null {
   // In client-side code, use import.meta.env (Vite's way)
   // In build/plugin context, use process.env
   const endpoint =
-    typeof import.meta !== "undefined" && import.meta?.env?.VITE_ANALYTICS_ENDPOINT
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_ANALYTICS_ENDPOINT
       ? import.meta.env.VITE_ANALYTICS_ENDPOINT
       : process.env.VITE_ANALYTICS_ENDPOINT;
 
   const websiteId =
-    typeof import.meta !== "undefined" && import.meta?.env?.VITE_ANALYTICS_WEBSITE_ID
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_ANALYTICS_WEBSITE_ID
       ? import.meta.env.VITE_ANALYTICS_WEBSITE_ID
       : process.env.VITE_ANALYTICS_WEBSITE_ID;
 

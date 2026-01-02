@@ -74,13 +74,17 @@ export default function AuditLog() {
     'single_order_confirm': { label: 'Confirm Order', icon: CheckCircle2, color: 'bg-green-400' },
     'single_order_decline': { label: 'Decline Order', icon: XCircle, color: 'bg-red-400' },
     'single_inventory_update': { label: 'Update Inventory', icon: Box, color: 'bg-blue-400' },
-    'single_tracking_assign': { label: 'Assign Tracking', icon: Navigation, color: 'bg-orange-400' }
+    'single_tracking_assign': { label: 'Assign Tracking', icon: Navigation, color: 'bg-orange-400' },
+    'permission_request_approved': { label: 'Permission Approved', icon: CheckCircle2, color: 'bg-green-400' },
+    'permission_request_rejected': { label: 'Permission Rejected', icon: XCircle, color: 'bg-red-400' },
+    'permission_request_cancelled': { label: 'Permission Cancelled', icon: XCircle, color: 'bg-gray-400' }
   };
 
-  const categoryConfig = {
+  const categoryConfig: Record<'orders' | 'inventory' | 'deliveries' | 'permissions', { label: string; icon: any; color: string }> = {
     orders: { label: 'Orders', icon: Package, color: 'bg-blue-100 text-blue-700' },
     inventory: { label: 'Inventory', icon: Box, color: 'bg-green-100 text-green-700' },
-    deliveries: { label: 'Deliveries', icon: Truck, color: 'bg-orange-100 text-orange-700' }
+    deliveries: { label: 'Deliveries', icon: Truck, color: 'bg-orange-100 text-orange-700' },
+    permissions: { label: 'Permissions', icon: FileText, color: 'bg-purple-100 text-purple-700' }
   };
 
   const handleExport = () => {

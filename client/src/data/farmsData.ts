@@ -211,7 +211,6 @@ export function addFarm(farm: Omit<Farm, 'id'>): Farm {
   const newFarm: Farm = {
     ...farm,
     id: `F${String(mockFarms.length + 1).padStart(3, '0')}`,
-    lastYield: farm.lastYield || undefined,
   };
   mockFarms.push(newFarm);
   return newFarm;

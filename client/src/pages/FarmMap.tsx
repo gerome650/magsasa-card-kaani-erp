@@ -23,6 +23,23 @@ interface Farm {
   averageYield: number;
 }
 
+// Type for farm data from API (may have string/number mix)
+// Based on tRPC farms.mapList response structure
+type ApiFarm = {
+  id: number;
+  name: string;
+  farmerName: string;
+  latitude: string | number;
+  longitude: string | number;
+  crops: unknown;
+  size: string | number;
+  municipality: string;
+  barangay: string;
+  status: "active" | "inactive" | "fallow";
+  averageYield: string | number | null;
+  registrationDate?: string;
+};
+
 // Color palettes
 const CROP_COLORS: Record<string, string> = {
   Rice: "#10b981", // green-500
@@ -140,10 +157,34 @@ export default function FarmMap() {
     }
   }, [farms, allFarms]);
 
+  // Helper to convert averageYield to number
+  const toNumber = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    const parsed = parseFloat(String(value));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Helper to normalize crops to string[]
+  const normalizeCrops = (crops: unknown): string[] => {
+    if (Array.isArray(crops)) {
+      return crops.filter((c): c is string => typeof c === 'string');
+    }
+    if (typeof crops === 'string') {
+      try {
+        const parsed = JSON.parse(crops);
+        return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === 'string') : [];
+      } catch {
+        return crops ? [crops] : [];
+      }
+    }
+    return [];
+  };
+
   // Memoize performance percentiles calculation
   const performancePercentiles = useMemo(() => {
     if (!farms || farms.length === 0) return { p25: 0, p75: 0 };
-    const allYields = farms.map(f => f.averageYield || 0).filter(y => y > 0);
+    const allYields = farms.map(f => toNumber(f.averageYield)).filter(y => y > 0);
     if (allYields.length === 0) return { p25: 0, p75: 0 };
     const sorted = [...allYields].sort((a, b) => a - b);
     return {
@@ -165,7 +206,8 @@ export default function FarmMap() {
     if (!farms) return [];
     
     return farms.filter((farm) => {
-      if (debouncedSelectedCrop !== "all" && !farm.crops.includes(debouncedSelectedCrop)) {
+      const farmCrops = normalizeCrops(farm.crops);
+      if (debouncedSelectedCrop !== "all" && !farmCrops.includes(debouncedSelectedCrop)) {
         return false;
       }
       
@@ -183,14 +225,16 @@ export default function FarmMap() {
   }, [farms, debouncedSelectedCrop, debouncedSelectedRegion]);
 
   // Get marker color based on color mode (memoized)
-  const getMarkerColor = useCallback((farm: Farm) => {
+  const getMarkerColor = useCallback((farm: ApiFarm) => {
     if (colorMode === "crop") {
       // Use primary crop color
-      const primaryCrop = farm.crops[0] || "Rice";
+      const farmCrops = normalizeCrops(farm.crops);
+      const primaryCrop = farmCrops[0] || "Rice";
       return CROP_COLORS[primaryCrop] || "#6b7280"; // gray-500 default
     } else {
       // Performance-based color
-      const level = calculatePerformanceLevel(farm.averageYield || 0, performancePercentiles);
+      const yieldValue = toNumber(farm.averageYield);
+      const level = calculatePerformanceLevel(yieldValue, performancePercentiles);
       return PERFORMANCE_COLORS[level];
     }
   }, [colorMode, performancePercentiles, calculatePerformanceLevel]);
@@ -258,7 +302,7 @@ export default function FarmMap() {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: useSimplifiedMarkers ? 6 : 8, // Smaller markers for large datasets
-          fillColor: getMarkerColor(farm as Farm),
+          fillColor: getMarkerColor(farm),
           fillOpacity: 0.9,
           strokeColor: "#ffffff",
           strokeWeight: useSimplifiedMarkers ? 1 : 2,
