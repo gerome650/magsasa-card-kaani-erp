@@ -52,7 +52,14 @@ export const POLICY_PROFILES: Record<DeploymentProfile, LoanSuggestionPolicy> = 
 
 /**
  * Get the current deployment profile from environment
- * Defaults to DEV if not specified
+ * 
+ * Controls partner-specific policies and UI visibility for loan suggestions:
+ * - CARD_MRI: UI visible to farmers
+ * - LANDBANK: Internal only (loan officers)
+ * - DEV: UI visible (development mode)
+ * 
+ * Must be set per deployment environment via DEPLOYMENT_PROFILE env var.
+ * Defaults to DEV if not specified.
  */
 export function getCurrentProfile(): DeploymentProfile {
   const profile = process.env.DEPLOYMENT_PROFILE?.toUpperCase() as DeploymentProfile;
