@@ -185,7 +185,7 @@ export default function BatchOrderDetail() {
       tempId: crypto.randomUUID(),
       farmId: farm.id,
       farmName: farm.name,
-      farmerId: farm.userId,
+      farmerId: undefined, // Farm doesn't have userId, will be resolved from farmId
       quantityOrdered: 0,
       unit: "kg",
       supplierUnitPrice: 0,
@@ -408,11 +408,11 @@ export default function BatchOrderDetail() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">Created At</Label>
-                  <p className="font-semibold">{formatDate(order.createdAt)}</p>
+                  <p className="font-semibold">{formatDate(typeof order.createdAt === 'string' ? order.createdAt : order.createdAt.toISOString())}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Updated At</Label>
-                  <p className="font-semibold">{formatDate(order.updatedAt)}</p>
+                  <p className="font-semibold">{formatDate(typeof order.updatedAt === 'string' ? order.updatedAt : order.updatedAt.toISOString())}</p>
                 </div>
               </div>
             </CardContent>

@@ -41,6 +41,7 @@ export default function BatchOrderCreate() {
 
   const createMutation = trpc.batchOrder.create.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       toast.success(`Batch order ${data.referenceCode} created successfully!`);
       navigate(`/batch-orders/${data.id}`);
     },
@@ -70,7 +71,7 @@ export default function BatchOrderCreate() {
       tempId: crypto.randomUUID(),
       farmId: farm.id,
       farmName: farm.name,
-      farmerId: farm.userId,
+      farmerId: undefined, // Farm doesn't have userId, will be resolved from farmId
       quantityOrdered: 0,
       unit: "kg",
       supplierUnitPrice: 0,

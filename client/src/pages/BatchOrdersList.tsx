@@ -211,7 +211,7 @@ export default function BatchOrdersList() {
                       <TableCell className="text-right font-semibold text-green-600">
                         {formatCurrency(order.totalAgsenseRevenue)}
                       </TableCell>
-                      <TableCell>{formatDate(order.createdAt)}</TableCell>
+                      <TableCell>{formatDate(typeof order.createdAt === 'string' ? order.createdAt : order.createdAt.toISOString())}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
