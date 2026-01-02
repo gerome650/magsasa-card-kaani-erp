@@ -1591,7 +1591,6 @@ export async function createBatchOrder(
   toDate?: string;
   limit?: number;
   offset?: number;
-}) {
   return withRetry(async (db) => {
     let query = db.select().from(batchOrders);
     
