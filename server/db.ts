@@ -1552,8 +1552,10 @@ export async function updateBatchOrder(
     await db.transaction(async (tx) => {
       await tx.update(batchOrders)
         .set(orderData)
+        .where(eq(batchOrders.id, orderId));
+
       await tx.delete(batchOrderItems)
-        .where(eq(batchOrderItems.batchOrderId, orderId));
+        .where(eq(batchOrderItems.batchOrderId, orderId));        .where(eq(batchOrderItems.batchOrderId, orderId));
 
       if (items.length > 0) {
         await tx.insert(batchOrderItems).values(items);
