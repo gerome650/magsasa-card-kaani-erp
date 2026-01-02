@@ -1585,38 +1585,6 @@ export async function getBatchOrderById(orderId: string) {
       items,
     };
   }, "getBatchOrderById");
-}    
-    if (filters?.supplierId) {
-      conditions.push(eq(batchOrders.supplierId, filters.supplierId));
-    }
-    
-    if (filters?.fromDate) {
-      conditions.push(gte(batchOrders.expectedDeliveryDate, filters.fromDate));
-    }
-    
-    if (filters?.toDate) {
-      conditions.push(lte(batchOrders.expectedDeliveryDate, filters.toDate));
-    }
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-    
-    // Order by created date descending
-    query = query.orderBy(desc(batchOrders.createdAt)) as any;
-    
-    // Apply limit and offset
-    if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
-    }
-    
-    if (filters?.offset) {
-      query = query.offset(filters.offset) as any;
-    }
-    
-    return await query;
-  }, "listBatchOrders");
-}
 
 export async function deleteBatchOrder(orderId: string) {
   return withRetry(async (db) => {
