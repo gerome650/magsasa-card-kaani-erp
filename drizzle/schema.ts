@@ -172,6 +172,51 @@ export const batchOrderItems = mysqlTable("batch_order_items", {
 
 export type BatchOrderItem = typeof batchOrderItems.$inferSelect;
 export type InsertBatchOrderItem = typeof batchOrderItems.$inferInsert;
+
+// Delivery Requests tables for Logistics v0
+export const deliveryRequests = mysqlTable("delivery_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  batchOrderId: varchar("batchOrderId", { length: 36 }), // FK to batch_orders.id, nullable for drafts
+  status: mysqlEnum("status", ["DRAFT", "QUEUED", "ASSIGNED", "IN_TRANSIT", "DELIVERED", "FAILED"]).default("DRAFT").notNull(),
+  createdByUserId: int("createdByUserId"),
+  assignedToUserId: int("assignedToUserId"),
+  notes: text("notes"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+  foreignKey({
+    columns: [table.batchOrderId],
+    foreignColumns: [batchOrders.id],
+    name: "delivery_requests_batchOrderId_fk"
+  }).onDelete("set null"),
+]);
+
+export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
+export type InsertDeliveryRequest = typeof deliveryRequests.$inferInsert;
+
+export const deliveryRequestEvents = mysqlTable("delivery_request_events", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  deliveryRequestId: varchar("deliveryRequestId", { length: 36 }).notNull(), // FK to delivery_requests.id
+  fromStatus: mysqlEnum("fromStatus", ["DRAFT", "QUEUED", "ASSIGNED", "IN_TRANSIT", "DELIVERED", "FAILED"]).notNull(),
+  toStatus: mysqlEnum("toStatus", ["DRAFT", "QUEUED", "ASSIGNED", "IN_TRANSIT", "DELIVERED", "FAILED"]).notNull(),
+  actorUserId: int("actorUserId"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+},
+(table) => [
+  foreignKey({
+    columns: [table.deliveryRequestId],
+    foreignColumns: [deliveryRequests.id],
+    name: "delivery_request_events_deliveryRequestId_fk"
+  }).onDelete("cascade"),
+  index("idx_delivery_request_events_deliveryRequestId_createdAt").on(table.deliveryRequestId, table.createdAt),
+]);
+
+export type DeliveryRequestEvent = typeof deliveryRequestEvents.$inferSelect;
+export type InsertDeliveryRequestEvent = typeof deliveryRequestEvents.$inferInsert;
+
 export const farmerProfiles = mysqlTable("farmer_profiles", {
 	farmerProfileId: char("farmer_profile_id", { length: 36 }).notNull(),
 	createdByUserId: int("created_by_user_id"),

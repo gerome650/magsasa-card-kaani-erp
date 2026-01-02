@@ -7,6 +7,7 @@ import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { z } from "zod";
 import * as db from "./db";
+import { logisticsRouter } from "./logistics/router";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
@@ -3070,6 +3071,8 @@ Respond in the specified dialect using practical, concrete advice.`;
         }
       }),
   }),
+
+  logistics: logisticsRouter,
 });
 
 // ✅ SECOND-PASS QA VERIFIED (Production Hardening):
