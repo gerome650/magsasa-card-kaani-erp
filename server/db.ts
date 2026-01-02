@@ -1556,10 +1556,9 @@ export async function updateBatchOrder(
         .where(eq(batchOrderItems.batchOrderId, orderId));
 
       if (items.length > 0) {
-        await tx.insert(batchOrderItems).values(items);
-      .where(eq(batchOrderItems.batchOrderId, orderId));
-    
-    return {
+    return orderId;
+  }, "updateBatchOrder");
+}    return {
       ...order,
       items,
     };
