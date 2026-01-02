@@ -1386,9 +1386,6 @@ export async function getCostAnalysis(input?: {
     .groupBy(costs.farmId);
 
   // Build where conditions for yields
-  const yieldConditions = [];
-  
-  if (input?.region && input.region !== "all") {
     if (input.region === "bacolod") {
       yieldConditions.push(like(farms.municipality, "%Bacolod%"));
     } else if (input.region === "laguna") {
@@ -1543,45 +1540,50 @@ export async function createBatchOrder(
       }
     });
 
-    // logBatchOrderDbEvent("create", {
-      batchOrderId: order.id,
-      referenceCode: order.referenceCode,
+    return order.id;
+  }, "createBatchOrder");
 }
-
 export async function updateBatchOrder(
   orderId: string,
   orderData: Partial<InsertBatchOrder>,
-
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    await db.transaction(async (tx) => {
+      await tx.update(batchOrders)
+        .set(orderData)
       await tx.delete(batchOrderItems)
         .where(eq(batchOrderItems.batchOrderId, orderId));
 
       if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
     return orderId;
   }, "updateBatchOrder");
-}    return {
+}
+
+export async function getBatchOrderById(orderId: string) {
+  return withRetry(async (db) => {
+    const [order] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.id, orderId));
+
+    if (!order) {
+      return null;
+    }
+
+    const items = await db.select()
+      .from(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+
+    return {
       ...order,
       items,
     };
-
-export async function listBatchOrders(filters?: {
-  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
-  supplierId?: string;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  return withRetry(async (db) => {
-    let query = db.select().from(batchOrders);
-    
-    const conditions: any[] = [];
-    
-    if (filters?.status && filters.status.length > 0) {
-      conditions.push(
-        or(...filters.status.map(s => eq(batchOrders.status, s)))
-      );
-    }
-    
+  }, "getBatchOrderById");
+}    
     if (filters?.supplierId) {
       conditions.push(eq(batchOrders.supplierId, filters.supplierId));
     }
