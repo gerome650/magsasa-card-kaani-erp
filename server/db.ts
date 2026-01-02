@@ -1557,8 +1557,6 @@ export async function updateBatchOrder(
 
       if (items.length > 0) {
         await tx.insert(batchOrderItems).values(items);
-      }
-      .from(batchOrderItems)
       .where(eq(batchOrderItems.batchOrderId, orderId));
     
     return {
