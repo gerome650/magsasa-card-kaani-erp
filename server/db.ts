@@ -1585,12 +1585,7 @@ export async function createBatchOrder(
     
     return orderId;
   }, "updateBatchOrder");
-}    };
-  }, "getBatchOrderById");
-}
-
-export async function listBatchOrders(filters?: {
-  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+}  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
   supplierId?: string;
   fromDate?: string;
   toDate?: string;
