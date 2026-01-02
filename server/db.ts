@@ -1553,13 +1553,6 @@ export async function createBatchOrder(
     // logBatchOrderDbEvent("create", {
       batchOrderId: order.id,
       referenceCode: order.referenceCode,
-    //       status: order.status,
-    //       itemCount: items.length,
-    //       createdByUserId: order.createdByUserId,
-    //     });
-    // 
-    //     return order.id;
-    //   }, "createBatchOrder");
 }
 
 export async function updateBatchOrder(
@@ -1591,12 +1584,6 @@ export async function updateBatchOrder(
     //   }, "updateBatchOrder");
     // }
 
-export async function getBatchOrderById(orderId: string) {
-  return withRetry(async (db) => {
-    const [order] = await db.select()
-      .from(batchOrders)
-      .where(eq(batchOrders.id, orderId))
-      .limit(1);
     
     if (!order) {
       return null;
