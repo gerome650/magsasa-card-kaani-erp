@@ -1552,15 +1552,9 @@ export async function createBatchOrder(
 
     // logBatchOrderDbEvent("create", {
       batchOrderId: order.id,
-      referenceCode: order.referenceCode,
-}
-
-export async function updateBatchOrder(
-  orderId: string,
-  orderData: Partial<InsertBatchOrder>,
-  items: InsertBatchOrderItem[]
-) {
-  return withRetry(async (db) => {
+    return order.id;
+  }, "createBatchOrder");
+}  return withRetry(async (db) => {
     await db.transaction(async (tx) => {
       await tx.update(batchOrders)
         .set(orderData)
@@ -1589,14 +1583,9 @@ export async function updateBatchOrder(
       return null;
     }
     
-    const items = await db.select()
-      .from(batchOrderItems)
-      .where(eq(batchOrderItems.batchOrderId, orderId));
-    
-    return {
-      ...order,
-      items,
-    };
+    return orderId;
+  }, "updateBatchOrder");
+}    };
   }, "getBatchOrderById");
 }
 
