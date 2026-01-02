@@ -76,9 +76,10 @@
 
 /// <reference types="@types/google.maps" />
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 declare global {
   interface Window {
@@ -92,19 +93,136 @@ const FORGE_BASE_URL =
   "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
-function loadMapScript() {
-  return new Promise(resolve => {
+const SCRIPT_LOAD_TIMEOUT_MS = 20000; // 20 seconds
+
+/**
+ * Detects common Google Maps error patterns from console errors or API responses.
+ * Returns a diagnostic hint if a known error pattern is found.
+ */
+function detectGoogleMapsError(msg: string): string | null {
+  if (!import.meta.env.DEV) return null;
+
+  const msgLower = msg.toLowerCase();
+
+  // Common Google Maps error patterns
+  if (msgLower.includes("apinotactivatedmaperror") || msgLower.includes("api not activated")) {
+    return "Maps JavaScript API is not enabled in Google Cloud.";
+  }
+  if (msgLower.includes("referernotallowedmaperror") || msgLower.includes("referer not allowed")) {
+    return "Referrer restrictions are blocking this request. Add localhost:3000/* to allowed referrers.";
+  }
+  if (msgLower.includes("invalidkeymaperror") || msgLower.includes("invalid key")) {
+    return "Invalid or expired API key.";
+  }
+  if (msgLower.includes("quotaexceeded") || msgLower.includes("over_quota") || msgLower.includes("quota exceeded")) {
+    return "API quota exceeded.";
+  }
+
+  return null;
+}
+
+/**
+ * Loads Google Maps JavaScript API script with timeout and error handling.
+ * Resolves when window.google.maps is available, rejects on failure or timeout.
+ */
+function loadMapScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // QA: Dev-only token validation
+    if (import.meta.env.DEV && !API_KEY) {
+      console.warn(
+        "[MapView][DEV] VITE_FRONTEND_FORGE_API_KEY is missing. Map script will fail to load."
+      );
+    }
+
+    if (import.meta.env.DEV) {
+      console.info("[MapView][DEV] Starting Google Maps script load...");
+    }
+
+    // Check if already loaded
+    if (window.google?.maps) {
+      if (import.meta.env.DEV) {
+        console.info("[MapView][DEV] Google Maps already loaded, skipping script injection.");
+      }
+      resolve();
+      return;
+    }
+
     const script = document.createElement("script");
     script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
     script.async = true;
     script.crossOrigin = "anonymous";
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let resolved = false;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      // Don't remove script immediately - let it finish loading if it's still trying
+    };
+
+    const checkGoogleMaps = () => {
+      if (window.google?.maps) {
+        resolved = true;
+        cleanup();
+        if (import.meta.env.DEV) {
+          console.info("[MapView][DEV] Google Maps script loaded successfully");
+        }
+        resolve();
+      }
+    };
+
+    // Poll for window.google.maps availability (script.onload doesn't guarantee API is ready)
+    const pollInterval = setInterval(() => {
+      checkGoogleMaps();
+      if (resolved) {
+        clearInterval(pollInterval);
+      }
+    }, 100);
+
+    // Timeout after SCRIPT_LOAD_TIMEOUT_MS
+    timeoutId = setTimeout(() => {
+      clearInterval(pollInterval);
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        const error = new Error("Google Maps script load timeout");
+        if (import.meta.env.DEV) {
+          console.error("[MapView][DEV] Google Maps script load timed out after 20s");
+        }
+        reject(error);
+      }
+    }, SCRIPT_LOAD_TIMEOUT_MS);
+
     script.onload = () => {
-      resolve(null);
-      script.remove(); // Clean up immediately
+      // Script loaded, but API might not be ready yet
+      // Polling will handle the actual resolution
+      checkGoogleMaps();
     };
+
     script.onerror = () => {
-      console.error("Failed to load Google Maps script");
+      clearInterval(pollInterval);
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        const error = new Error(
+          API_KEY
+            ? "Failed to load Google Maps script (check network or API key validity)"
+            : "Failed to load Google Maps script (VITE_FRONTEND_FORGE_API_KEY is missing)"
+        );
+        if (import.meta.env.DEV) {
+          console.error("[MapView][DEV] Google Maps script failed to load:", error.message);
+          const hint = detectGoogleMapsError(error.message);
+          if (hint) {
+            console.warn(`[MapView][DEV] Hint: ${hint}`);
+          }
+        }
+        reject(error);
+      }
     };
+
     document.head.appendChild(script);
   });
 }
@@ -114,6 +232,7 @@ interface MapViewProps {
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
   onMapReady?: (map: google.maps.Map) => void;
+  onError?: (reason: string) => void;
 }
 
 export function MapView({
@@ -121,27 +240,126 @@ export function MapView({
   initialCenter = { lat: 37.7749, lng: -122.4194 },
   initialZoom = 12,
   onMapReady,
+  onError,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const init = usePersistFn(async () => {
-    await loadMapScript();
-    if (!mapContainer.current) {
-      console.error("Map container not found");
+    setIsLoading(true);
+    setHasError(false);
+    setErrorMessage(null);
+
+    try {
+      await loadMapScript();
+    } catch (error) {
+      setIsLoading(false);
+      setHasError(true);
+      
+      const errorMsg = error instanceof Error ? error.message : "Failed to load Google Maps";
+      setErrorMessage(errorMsg);
+
+      if (import.meta.env.DEV) {
+        console.error("[MapView][DEV] Failed to load map script:", error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const hint = detectGoogleMapsError(errorMsg);
+        if (hint) {
+          console.warn(`[MapView][DEV] Hint: ${hint}`);
+        }
+      }
+
+      // Notify parent component
+      if (onError) {
+        onError(errorMsg);
+      }
       return;
     }
-    map.current = new window.google.maps.Map(mapContainer.current, {
-      zoom: initialZoom,
-      center: initialCenter,
-      mapTypeControl: true,
-      fullscreenControl: true,
-      zoomControl: true,
-      streetViewControl: true,
-      mapId: "DEMO_MAP_ID",
-    });
-    if (onMapReady) {
-      onMapReady(map.current);
+
+    if (!mapContainer.current) {
+      const errorMsg = "Map container not found";
+      setIsLoading(false);
+      setHasError(true);
+      setErrorMessage(errorMsg);
+      console.error("[MapView]", errorMsg);
+      if (onError) {
+        onError(errorMsg);
+      }
+      return;
+    }
+
+    // QA: Dev-only container size check before map init
+    if (import.meta.env.DEV) {
+      const rect = mapContainer.current.getBoundingClientRect();
+      console.info("[MapView][DEV] Initializing map with container size:", {
+        width: rect.width,
+        height: rect.height,
+      });
+      if (rect.height < 50) {
+        console.warn(
+          "[MapView][DEV] Container height is very small before map init. Map may not render correctly."
+        );
+      }
+    }
+
+    if (!window.google?.maps) {
+      const errorMsg = "Google Maps API not available after script load";
+      setIsLoading(false);
+      setHasError(true);
+      setErrorMessage(errorMsg);
+      console.error("[MapView]", errorMsg);
+      if (import.meta.env.DEV) {
+        const hint = detectGoogleMapsError(errorMsg);
+        if (hint) {
+          console.warn(`[MapView][DEV] Hint: ${hint}`);
+        }
+      }
+      if (onError) {
+        onError(errorMsg);
+      }
+      return;
+    }
+
+    try {
+      map.current = new window.google.maps.Map(mapContainer.current, {
+        zoom: initialZoom,
+        center: initialCenter,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        zoomControl: true,
+        streetViewControl: true,
+        mapId: "DEMO_MAP_ID",
+      });
+
+      if (import.meta.env.DEV) {
+        console.info("[MapView][DEV] Google Maps instance created successfully");
+      }
+
+      setIsLoading(false);
+      setHasError(false);
+
+      if (onMapReady) {
+        onMapReady(map.current);
+      }
+    } catch (error) {
+      setIsLoading(false);
+      setHasError(true);
+      const errorMsg = error instanceof Error ? error.message : "Failed to initialize Google Maps";
+      setErrorMessage(errorMsg);
+      
+      if (import.meta.env.DEV) {
+        console.error("[MapView][DEV] Failed to create map instance:", error);
+        const hint = detectGoogleMapsError(errorMsg);
+        if (hint) {
+          console.warn(`[MapView][DEV] Hint: ${hint}`);
+        }
+      }
+      
+      if (onError) {
+        onError(errorMsg);
+      }
     }
   });
 
@@ -150,6 +368,45 @@ export function MapView({
   }, [init]);
 
   return (
-    <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />
+    <div ref={mapContainer} className={cn("w-full h-[500px] relative", className)}>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading map...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state - Development */}
+      {hasError && import.meta.env.DEV && (
+        <div className="absolute inset-0 flex items-center justify-center bg-yellow-50 border-2 border-yellow-200 rounded">
+          <div className="max-w-md mx-4 p-4 bg-white rounded-md shadow-sm border border-yellow-300">
+            <h3 className="font-semibold text-yellow-900 mb-2">[DEV] Google Maps failed to load</h3>
+            <p className="text-sm text-yellow-800 mb-2">
+              Check API key, referrer restrictions, and Maps JavaScript API enablement. See docs for details.
+            </p>
+            {errorMessage && (
+              <p className="text-xs text-yellow-700 font-mono bg-yellow-50 p-2 rounded mt-2">
+                {errorMessage}
+              </p>
+            )}
+            <p className="text-xs text-yellow-600 mt-2">
+              Check browser console for <code className="bg-yellow-100 px-1 rounded">[MapView][DEV]</code> logs and diagnostic hints.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state - Production */}
+      {hasError && !import.meta.env.DEV && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="text-center p-4">
+            <p className="text-sm text-muted-foreground">Map temporarily unavailable. Please try again later.</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,14 +1,16 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import type { InferInsertModel } from "drizzle-orm";
 import mysql from "mysql2/promise";
-import { users, farms, boundaries, yields, costs } from "../drizzle/schema";
+import { users, farms, boundaries, yields, costs, batchOrders, batchOrderItems } from "../drizzle/schema";
+import type { InferInsertModel } from "drizzle-orm";
 
 type InsertUser = InferInsertModel<typeof users>;
 type InsertFarm = InferInsertModel<typeof farms>;
 type InsertBoundary = InferInsertModel<typeof boundaries>;
 type InsertYield = InferInsertModel<typeof yields>;
 type InsertCost = InferInsertModel<typeof costs>;
+type InsertBatchOrder = InferInsertModel<typeof batchOrders>;
+type InsertBatchOrderItem = InferInsertModel<typeof batchOrderItems>;
 import { ENV } from './_core/env';
 import { and, or, like, gte, lte, sql, count, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -65,10 +67,10 @@ async function createPool(): Promise<mysql.Pool> {
     console.log("[Database] Connection pool created successfully");
     connection.release();
 
-    // Handle pool errors (type assertion needed due to mysql2 typing)
+    // Handle pool errors
     (_pool as any).on('error', (err: NodeJS.ErrnoException) => {
       console.error("[Database] Pool error:", err);
-      if (err?.code === 'PROTOCOL_CONNECTION_LOST' || err?.code === 'ECONNRESET') {
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
         console.log("[Database] Connection lost, pool will reconnect automatically");
       }
     });
@@ -81,6 +83,16 @@ async function createPool(): Promise<mysql.Pool> {
   }
 }
 
+
+/**
+ * Require database instance (throws if not available)
+ */
+function requireDb() {
+  if (!_db) {
+    throw new Error("Database not available");
+  }
+  return _db;
+}
 /**
  * Get database instance with automatic retry logic
  */
@@ -221,7 +233,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
 
     if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date().toISOString();
+      updateSet.lastSignedIn = new Date();
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
@@ -452,11 +464,13 @@ export async function getAllFarmsBaseQuery(filters?: {
       conditions.push(lte(farms.createdAt, filters.endDate));
     }
     
-    // Select only non-PII fields for consistency
+    // Select fields for consistency
     // Note: name and farmerName are included for Map View info windows, but not used for filtering/aggregation
+    // userId is included for batch orders and other features that need to link farms to farmers
     const query = db
       .select({
         id: farms.id,
+        userId: farms.userId, // Included for batch orders and farmer linking
         name: farms.name, // Needed for Map View info windows
         farmerName: farms.farmerName, // Needed for Map View info windows
         latitude: farms.latitude,
@@ -846,7 +860,7 @@ export async function updateFarmerProfile(
   
   await db
     .update(farmerProfiles)
-    .set({ ...cleanUpdates, updatedAt: new Date() })
+    .set({ ...cleanUpdates, updatedAt: new Date().toISOString() })
     .where(eq(farmerProfiles.farmerProfileId, farmerProfileId));
 }
 
@@ -1068,6 +1082,7 @@ export async function getLatestArtifacts(conversationId: number): Promise<{
   const { conversationMessages } = await import("../drizzle/schema");
   const { desc, eq } = await import("drizzle-orm");
 
+  const { and } = await import("drizzle-orm");
   const messages = await db
     .select({
       metadata: conversationMessages.metadata,
@@ -1119,7 +1134,7 @@ export async function searchConversations(userId: number, query: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const { conversations, chatMessages } = await import("../drizzle/schema");
-  const { desc, eq, like, or, sql, and } = await import("drizzle-orm");
+  const { desc, eq, like, or, sql } = await import("drizzle-orm");
   
   if (!query || query.trim() === "") {
     // Return all conversations if no query
@@ -1325,11 +1340,9 @@ export async function getCostAnalysis(input?: {
   endDate?: string;
   region?: "all" | "bacolod" | "laguna";
 }) {
-  const db = await getDb();
-  if (!db) return { costsByCategory: [], roiByCrop: [] };
-
-  const { costs, yields, farms } = await import("../drizzle/schema");
-  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+  return withRetry(async (db) => {
+    const { costs, yields, farms } = await import("../drizzle/schema");
+    const { sql, eq, and, gte, lte, like } = await import("drizzle-orm");
 
   // Build where conditions for costs
   const costConditions = [];
@@ -1440,7 +1453,8 @@ export async function getCostAnalysis(input?: {
     farmCount: data.count,
   })).sort((a, b) => b.roi - a.roi);
 
-  return { costsByCategory, roiByCrop };
+    return { costsByCategory, roiByCrop };
+  }, "getCostAnalysis");
 }
 
 /**
@@ -1450,11 +1464,9 @@ export async function getRegionalComparison(input?: {
   startDate?: string;
   endDate?: string;
 }) {
-  const db = await getDb();
-  if (!db) return [];
-
-  const { yields, costs, farms } = await import("../drizzle/schema");
-  const { sql, eq, and, gte, lte } = await import("drizzle-orm");
+  return withRetry(async (db) => {
+    const { yields, costs, farms } = await import("../drizzle/schema");
+    const { sql, eq, and, gte, lte } = await import("drizzle-orm");
 
   // Build where conditions
   const conditions = [];
@@ -1514,13 +1526,159 @@ export async function getRegionalComparison(input?: {
 
   // Merge results
   const costMap = new Map(costResults.map(cr => [cr.region, cr.totalCost]));
-  const finalResults = results.map(r => ({
-    ...r,
-    totalCost: costMap.get(r.region) || 0,
-    roi: (costMap.get(r.region) || 0) > 0 
-      ? (((r.totalRevenue || 0) - (costMap.get(r.region) || 0)) / (costMap.get(r.region) || 0)) * 100 
-      : 0,
-  }));
+  const finalResults = results.map(r => {
+    const totalCost = costMap.get(r.region) || 0;
+    const totalRevenue = Number(r.totalRevenue) || 0;
+    const roi = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0;
+    return {
+      ...r,
+      totalCost,
+      roi,
+    };
+  });
 
-  return finalResults;
+    return finalResults;
+  }, "getRegionalComparison");
+}
+
+// Batch Orders management
+
+export async function createBatchOrder(
+  order: InsertBatchOrder,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    await db.transaction(async (tx) => {
+      await tx.insert(batchOrders).values(order);
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    return order.id;
+  }, "createBatchOrder");
+}
+export async function updateBatchOrder(
+  orderId: string,
+  orderData: Partial<InsertBatchOrder>,
+  items: InsertBatchOrderItem[]
+) {
+  return withRetry(async (db) => {
+    await db.transaction(async (tx) => {
+      await tx.update(batchOrders)
+        .set(orderData)
+        .where(eq(batchOrders.id, orderId));
+
+      await tx.delete(batchOrderItems)
+        .where(eq(batchOrderItems.batchOrderId, orderId));
+
+      if (items.length > 0) {
+        await tx.insert(batchOrderItems).values(items);
+      }
+    });
+
+    return orderId;
+  }, "updateBatchOrder");
+}
+
+export async function getBatchOrderById(orderId: string) {
+  return withRetry(async (db) => {
+    const [order] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.id, orderId));
+
+    if (!order) {
+      return null;
+    }
+
+    const items = await db.select()
+      .from(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+
+    return {
+      ...order,
+      items,
+    };
+  }, "getBatchOrderById");
+}
+
+export async function listBatchOrders(filters?: {
+  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+  supplierId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  return withRetry(async (db) => {
+    let query = db.select().from(batchOrders);
+    
+    const conditions: any[] = [];
+    
+    if (filters?.status && filters.status.length > 0) {
+      conditions.push(
+        or(...filters.status.map(s => eq(batchOrders.status, s)))
+      );
+    }
+    
+    if (filters?.supplierId) {
+      conditions.push(eq(batchOrders.supplierId, filters.supplierId));
+    }
+    
+    if (filters?.fromDate) {
+      conditions.push(gte(batchOrders.expectedDeliveryDate, filters.fromDate));
+    }
+    
+    if (filters?.toDate) {
+      conditions.push(lte(batchOrders.expectedDeliveryDate, filters.toDate));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    query = query.orderBy(desc(batchOrders.createdAt)) as any;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+    
+    return await query;
+  }, "listBatchOrders");
+}
+
+
+export async function deleteBatchOrder(orderId: string) {
+  return withRetry(async (db) => {
+    // Delete items first (cascade)
+    await db.delete(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    // Delete order
+    await db.delete(batchOrders)
+      .where(eq(batchOrders.id, orderId));
+  }, "deleteBatchOrder");
+}
+
+/**
+ * Check if a batch order reference code already exists in the database.
+ * Used for ensuring uniqueness when generating new reference codes.
+ * 
+ * @param referenceCode - The reference code to check
+ * @returns true if the code is unique (doesn't exist), false if it already exists
+ */
+export async function isBatchOrderReferenceCodeUnique(referenceCode: string): Promise<boolean> {
+  return withRetry(async (db) => {
+    const [existing] = await db.select()
+      .from(batchOrders)
+      .where(eq(batchOrders.referenceCode, referenceCode))
+      .limit(1);
+    
+    return !existing; // Return true if no existing order found (code is unique)
+  }, "isBatchOrderReferenceCodeUnique");
 }

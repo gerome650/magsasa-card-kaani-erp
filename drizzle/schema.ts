@@ -27,6 +27,9 @@ export const chatMessages = mysqlTable("chatMessages", {
 	primaryKey({ columns: [table.id], name: "chatMessages_id"}),
 ]);
 
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
 export const conversations = mysqlTable("conversations", {
 	id: int().autoincrement().notNull(),
 	userId: int().notNull(),
@@ -111,6 +114,64 @@ export const yields = mysqlTable("yields", {
 	primaryKey({ columns: [table.id], name: "yields_id"}),
 ]);
 
+// Batch Orders tables for Agri Input procurement
+export const batchOrders = mysqlTable("batch_orders", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  referenceCode: varchar("referenceCode", { length: 50 }).notNull().unique(),
+  status: mysqlEnum("status", ["draft", "pending_approval", "approved", "cancelled", "completed"]).default("draft").notNull(),
+  supplierId: varchar("supplierId", { length: 36 }),
+  inputType: mysqlEnum("inputType", ["fertilizer", "seed", "feed", "pesticide", "other"]),
+  pricingMode: mysqlEnum("pricingMode", ["margin"]).default("margin").notNull(),
+  currency: varchar("currency", { length: 10 }).default("PHP").notNull(),
+  
+  expectedDeliveryDate: varchar("expectedDeliveryDate", { length: 50 }).notNull(), // ISO date string
+  deliveryWindowStart: timestamp("deliveryWindowStart"),
+  deliveryWindowEnd: timestamp("deliveryWindowEnd"),
+  
+  // Financial totals (all computed on server)
+  totalQuantity: decimal("totalQuantity", { precision: 15, scale: 2 }).default("0").notNull(),
+  totalSupplierTotal: decimal("totalSupplierTotal", { precision: 15, scale: 2 }).default("0").notNull(),
+  totalFarmerTotal: decimal("totalFarmerTotal", { precision: 15, scale: 2 }).default("0").notNull(),
+  totalAgsenseRevenue: decimal("totalAgsenseRevenue", { precision: 15, scale: 2 }).default("0").notNull(),
+  
+  // Meta
+  createdByUserId: int("createdByUserId").notNull(), // FK to users.id
+  approvedByUserId: int("approvedByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BatchOrder = typeof batchOrders.$inferSelect;
+export type InsertBatchOrder = typeof batchOrders.$inferInsert;
+
+export const batchOrderItems = mysqlTable("batch_order_items", {
+  id: varchar("id", { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  batchOrderId: varchar("batchOrderId", { length: 36 }).notNull(), // FK to batch_orders.id
+  farmId: int("farmId").notNull(), // FK to farms.id
+  farmerId: int("farmerId"), // FK to users.id or nullable
+  productId: varchar("productId", { length: 36 }), // FK to products table if exists
+  inputType: mysqlEnum("inputType", ["fertilizer", "seed", "feed", "pesticide", "other"]),
+  
+  quantityOrdered: decimal("quantityOrdered", { precision: 15, scale: 2 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(), // kg, bag, sack, etc.
+  
+  // Pricing per line
+  supplierUnitPrice: decimal("supplierUnitPrice", { precision: 15, scale: 2 }).notNull(),
+  farmerUnitPrice: decimal("farmerUnitPrice", { precision: 15, scale: 2 }).notNull(),
+  marginPerUnit: decimal("marginPerUnit", { precision: 15, scale: 2 }).notNull(),
+  
+  // Derived totals per line
+  lineSupplierTotal: decimal("lineSupplierTotal", { precision: 15, scale: 2 }).notNull(),
+  lineFarmerTotal: decimal("lineFarmerTotal", { precision: 15, scale: 2 }).notNull(),
+  lineAgsenseRevenue: decimal("lineAgsenseRevenue", { precision: 15, scale: 2 }).notNull(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BatchOrderItem = typeof batchOrderItems.$inferSelect;
+export type InsertBatchOrderItem = typeof batchOrderItems.$inferInsert;
 export const farmerProfiles = mysqlTable("farmer_profiles", {
 	farmerProfileId: char("farmer_profile_id", { length: 36 }).notNull(),
 	createdByUserId: int("created_by_user_id"),

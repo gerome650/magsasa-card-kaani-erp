@@ -139,6 +139,7 @@ export default function FarmNew() {
       // Optimistically update the cache with the new farm
       const optimisticFarm = {
         id: Date.now(), // Temporary ID
+        userId: 0, // Placeholder - will be set by server
         name: newFarm.name,
         farmerName: newFarm.farmerName,
         barangay: newFarm.barangay,

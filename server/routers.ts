@@ -9,6 +9,12 @@ import { z } from "zod";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  isValidBatchOrderDeliveryDate,
+  getDeliveryDateValidationError,
+  generateUniqueBatchOrderReferenceCode,
+  isNegativeMargin,
+} from "./batchOrderUtils";
 import { farms, yields } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { runKaAniAgent } from "./ai/kaaniAgent";
@@ -26,6 +32,20 @@ import {
 import { buildLoanOfficerMvpSummary } from "./ai/flows/runtime/loanOfficerSummary";
 import { buildArtifacts } from "./ai/artifacts/buildArtifacts";
 import type { FlowState } from "./ai/artifacts/types";
+
+const logBatchOrderRouterEvent = (event: string, payload: Record<string, unknown>) => {
+  try {
+    console.info(
+      JSON.stringify({
+        source: "batchOrder.router",
+        event,
+        ...payload,
+      })
+    );
+  } catch {
+    // Swallow logging failures to avoid impacting business logic
+  }
+};
 
 // Default Gemini model for KaAni. Override via GOOGLE_AI_STUDIO_MODEL if needed.
 // This is evaluated at module load time, after dotenv/config is imported in index.ts
@@ -2247,6 +2267,312 @@ Respond in the specified dialect using practical, concrete advice.`;
           ctx.user.id
         );
         return { farmerProfileId };
+      }),
+  }),
+
+  // Batch Orders router for Agri Input procurement
+  batchOrder: router({
+    create: protectedProcedure
+      .use(async ({ ctx, next }) => {
+        // Feature flag: BATCH_ORDERS_ENABLED
+        if (!process.env.BATCH_ORDERS_ENABLED || process.env.BATCH_ORDERS_ENABLED !== 'true') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Batch Orders feature is disabled',
+          });
+        }
+        return next({ ctx });
+      })
+      .input(z.object({
+        referenceCode: z.string().optional(),
+        supplierId: z.string().nullable().optional(),
+        inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+        expectedDeliveryDate: z.string(), // ISO date
+        deliveryWindowStart: z.string().optional().nullable(),
+        deliveryWindowEnd: z.string().optional().nullable(),
+        currency: z.literal("PHP").default("PHP"),
+        pricingMode: z.literal("margin").default("margin"),
+        items: z.array(
+          z.object({
+            farmId: z.number(),
+            farmerId: z.number().nullable().optional(),
+            productId: z.string().nullable().optional(),
+            inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+            quantityOrdered: z.number().positive(),
+            unit: z.string().min(1),
+            supplierUnitPrice: z.number().min(0),
+            farmerUnitPrice: z.number().min(0),
+            notes: z.string().optional().nullable(),
+          })
+        ).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Validate expected delivery date using centralized helper
+        const deliveryDate = new Date(input.expectedDeliveryDate);
+        const dateError = getDeliveryDateValidationError(deliveryDate);
+        if (dateError) {
+          throw new Error(dateError);
+        }
+
+        // Validate all farms exist
+        const farmIds = input.items.map(item => item.farmId);
+        const uniqueFarmIds = Array.from(new Set(farmIds));
+        for (const farmId of uniqueFarmIds) {
+          const farm = await db.getFarmById(farmId);
+          if (!farm) {
+            throw new Error(`Farm with ID ${farmId} does not exist`);
+          }
+        }
+
+        // Generate unique reference code if not provided (with retry logic for collisions)
+        const referenceCode = input.referenceCode || await generateUniqueBatchOrderReferenceCode(
+          async (code) => await db.isBatchOrderReferenceCodeUnique(code)
+        );
+
+        // Compute totals
+        let totalQuantity = 0;
+        let totalSupplierTotal = 0;
+        let totalFarmerTotal = 0;
+        let totalAgsenseRevenue = 0;
+
+        const processedItems = input.items.map(item => {
+          const marginPerUnit = item.farmerUnitPrice - item.supplierUnitPrice;
+          const lineSupplierTotal = item.quantityOrdered * item.supplierUnitPrice;
+          const lineFarmerTotal = item.quantityOrdered * item.farmerUnitPrice;
+          const lineAgsenseRevenue = item.quantityOrdered * marginPerUnit;
+
+          totalQuantity += item.quantityOrdered;
+          totalSupplierTotal += lineSupplierTotal;
+          totalFarmerTotal += lineFarmerTotal;
+          totalAgsenseRevenue += lineAgsenseRevenue;
+
+          return {
+            id: crypto.randomUUID(),
+            batchOrderId: '', // Will be set below
+            farmId: item.farmId,
+            farmerId: item.farmerId || null,
+            productId: item.productId || null,
+            inputType: item.inputType || null,
+            quantityOrdered: item.quantityOrdered.toString(),
+            unit: item.unit,
+            supplierUnitPrice: item.supplierUnitPrice.toString(),
+            farmerUnitPrice: item.farmerUnitPrice.toString(),
+            marginPerUnit: marginPerUnit.toString(),
+            lineSupplierTotal: lineSupplierTotal.toString(),
+            lineFarmerTotal: lineFarmerTotal.toString(),
+            lineAgsenseRevenue: lineAgsenseRevenue.toString(),
+            notes: item.notes || null,
+          };
+        });
+
+        const batchOrderId = crypto.randomUUID();
+        
+        // Set batchOrderId for all items
+        processedItems.forEach(item => {
+          item.batchOrderId = batchOrderId;
+        });
+
+        const batchOrder = {
+          id: batchOrderId,
+          referenceCode,
+          status: "draft" as const,
+          supplierId: input.supplierId || null,
+          inputType: input.inputType || null,
+          pricingMode: "margin" as const,
+          currency: "PHP",
+          expectedDeliveryDate: input.expectedDeliveryDate,
+          deliveryWindowStart: input.deliveryWindowStart ? new Date(input.deliveryWindowStart) : null,
+          deliveryWindowEnd: input.deliveryWindowEnd ? new Date(input.deliveryWindowEnd) : null,
+          totalQuantity: totalQuantity.toString(),
+          totalSupplierTotal: totalSupplierTotal.toString(),
+          totalFarmerTotal: totalFarmerTotal.toString(),
+          totalAgsenseRevenue: totalAgsenseRevenue.toString(),
+          createdByUserId: ctx.user.id,
+          approvedByUserId: null,
+        };
+
+        await db.createBatchOrder(batchOrder, processedItems);
+
+        logBatchOrderRouterEvent("create.success", {
+          batchOrderId,
+          referenceCode,
+          itemCount: processedItems.length,
+          status: batchOrder.status,
+          createdByUserId: ctx.user.id,
+        });
+
+        return await db.getBatchOrderById(batchOrderId);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        status: z.enum(["draft", "pending_approval"]).optional(),
+        supplierId: z.string().nullable().optional(),
+        inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+        expectedDeliveryDate: z.string().optional(),
+        deliveryWindowStart: z.string().optional().nullable(),
+        deliveryWindowEnd: z.string().optional().nullable(),
+        currency: z.literal("PHP").optional(),
+        items: z.array(
+          z.object({
+            id: z.string().optional(),
+            farmId: z.number(),
+            farmerId: z.number().nullable().optional(),
+            productId: z.string().nullable().optional(),
+            inputType: z.enum(["fertilizer", "seed", "feed", "pesticide", "other"]).optional(),
+            quantityOrdered: z.number().positive(),
+            unit: z.string().min(1),
+            supplierUnitPrice: z.number().min(0),
+            farmerUnitPrice: z.number().min(0),
+            notes: z.string().optional().nullable(),
+          })
+        ).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Get existing order
+        const existingOrder = await db.getBatchOrderById(input.id);
+        if (!existingOrder) {
+          throw new Error("Batch order not found");
+        }
+
+        // Only allow updates if status is draft or pending_approval
+        if (existingOrder.status !== "draft" && existingOrder.status !== "pending_approval") {
+          throw new Error(`This batch order cannot be edited. Only draft and pending approval orders can be modified. Current status: ${existingOrder.status}`);
+        }
+
+        // Validate delivery date if provided using centralized helper
+        if (input.expectedDeliveryDate) {
+          const deliveryDate = new Date(input.expectedDeliveryDate);
+          const dateError = getDeliveryDateValidationError(deliveryDate);
+          if (dateError) {
+            throw new Error(dateError);
+          }
+        }
+
+        // Validate all farms exist
+        const farmIds = input.items.map(item => item.farmId);
+        const uniqueFarmIds = Array.from(new Set(farmIds));
+        for (const farmId of uniqueFarmIds) {
+          const farm = await db.getFarmById(farmId);
+          if (!farm) {
+            throw new Error(`Farm with ID ${farmId} does not exist`);
+          }
+        }
+
+        // Compute totals
+        let totalQuantity = 0;
+        let totalSupplierTotal = 0;
+        let totalFarmerTotal = 0;
+        let totalAgsenseRevenue = 0;
+
+        const processedItems = input.items.map(item => {
+          const marginPerUnit = item.farmerUnitPrice - item.supplierUnitPrice;
+          
+          // Log negative margins for monitoring (non-blocking)
+          if (isNegativeMargin(item.farmerUnitPrice, item.supplierUnitPrice)) {
+            logBatchOrderRouterEvent("negative_margin.detected", {
+              batchOrderId: input.id,
+              farmId: item.farmId,
+              marginPerUnit,
+              quantityOrdered: item.quantityOrdered,
+              supplierUnitPrice: item.supplierUnitPrice,
+              farmerUnitPrice: item.farmerUnitPrice,
+            });
+          }
+          
+          const lineSupplierTotal = item.quantityOrdered * item.supplierUnitPrice;
+          const lineFarmerTotal = item.quantityOrdered * item.farmerUnitPrice;
+          const lineAgsenseRevenue = item.quantityOrdered * marginPerUnit;
+
+          totalQuantity += item.quantityOrdered;
+          totalSupplierTotal += lineSupplierTotal;
+          totalFarmerTotal += lineFarmerTotal;
+          totalAgsenseRevenue += lineAgsenseRevenue;
+
+          return {
+            id: item.id || crypto.randomUUID(),
+            batchOrderId: input.id,
+            farmId: item.farmId,
+            farmerId: item.farmerId || null,
+            productId: item.productId || null,
+            inputType: item.inputType || null,
+            quantityOrdered: item.quantityOrdered.toString(),
+            unit: item.unit,
+            supplierUnitPrice: item.supplierUnitPrice.toString(),
+            farmerUnitPrice: item.farmerUnitPrice.toString(),
+            marginPerUnit: marginPerUnit.toString(),
+            lineSupplierTotal: lineSupplierTotal.toString(),
+            lineFarmerTotal: lineFarmerTotal.toString(),
+            lineAgsenseRevenue: lineAgsenseRevenue.toString(),
+            notes: item.notes || null,
+          };
+        });
+
+        const updateData: any = {
+          totalQuantity: totalQuantity.toString(),
+          totalSupplierTotal: totalSupplierTotal.toString(),
+          totalFarmerTotal: totalFarmerTotal.toString(),
+          totalAgsenseRevenue: totalAgsenseRevenue.toString(),
+        };
+
+        if (input.status) updateData.status = input.status;
+        if (input.supplierId !== undefined) updateData.supplierId = input.supplierId;
+        if (input.inputType) updateData.inputType = input.inputType;
+        if (input.expectedDeliveryDate) updateData.expectedDeliveryDate = input.expectedDeliveryDate;
+        if (input.deliveryWindowStart !== undefined) {
+          updateData.deliveryWindowStart = input.deliveryWindowStart ? new Date(input.deliveryWindowStart) : null;
+        }
+        if (input.deliveryWindowEnd !== undefined) {
+          updateData.deliveryWindowEnd = input.deliveryWindowEnd ? new Date(input.deliveryWindowEnd) : null;
+        }
+
+        await db.updateBatchOrder(input.id, updateData, processedItems);
+
+        const statusBefore = existingOrder.status;
+        const statusAfter = updateData.status ?? statusBefore;
+
+        logBatchOrderRouterEvent("update.success", {
+          batchOrderId: input.id,
+          fromStatus: statusBefore,
+          toStatus: statusAfter,
+          itemCount: processedItems.length,
+          requestedByUserId: ctx.user.id,
+        });
+
+        if (statusBefore !== statusAfter) {
+          logBatchOrderRouterEvent("status.transition", {
+            batchOrderId: input.id,
+            from: statusBefore,
+            to: statusAfter,
+          });
+        }
+
+        return await db.getBatchOrderById(input.id);
+      }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        const order = await db.getBatchOrderById(input.id);
+        if (!order) {
+          throw new Error("Batch order not found");
+        }
+        return order;
+      }),
+
+    list: protectedProcedure
+      .input(z.object({
+        status: z.array(z.enum(["draft", "pending_approval", "approved", "cancelled", "completed"])).optional(),
+        supplierId: z.string().optional(),
+        fromDate: z.string().optional(),
+        toDate: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+      }).optional())
+      .query(async ({ input }) => {
+        const orders = await db.listBatchOrders(input);
+        return { items: orders };
       }),
   }),
 
