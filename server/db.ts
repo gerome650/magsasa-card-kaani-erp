@@ -1523,13 +1523,6 @@ export async function getRegionalComparison(input?: {
     .groupBy(sql`region`);
 
   // Merge results
-  const costMap = new Map(costResults.map(cr => [cr.region, cr.totalCost]));
-  const finalResults = results.map(r => ({
-    ...r,
-    totalCost: costMap.get(r.region) || 0,
-    roi: (costMap.get(r.region) || 0) > 0 
-      ? (((r.totalRevenue || 0) - (costMap.get(r.region) || 0)) / (costMap.get(r.region) || 0)) * 100 
-      : 0,
   }));
 
   return finalResults;
@@ -1552,13 +1545,12 @@ export async function createBatchOrder(
 
     // logBatchOrderDbEvent("create", {
       batchOrderId: order.id,
-    return order.id;
-  }, "createBatchOrder");
-}  return withRetry(async (db) => {
-    await db.transaction(async (tx) => {
-      await tx.update(batchOrders)
-        .set(orderData)
-        .where(eq(batchOrders.id, orderId));
+      referenceCode: order.referenceCode,
+}
+
+export async function updateBatchOrder(
+  orderId: string,
+  orderData: Partial<InsertBatchOrder>,
 
       await tx.delete(batchOrderItems)
         .where(eq(batchOrderItems.batchOrderId, orderId));
@@ -1583,14 +1575,25 @@ export async function createBatchOrder(
       return null;
     }
     
-    return orderId;
-  }, "updateBatchOrder");
-}  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
+    const items = await db.select()
+      .from(batchOrderItems)
+      .where(eq(batchOrderItems.batchOrderId, orderId));
+    
+    return {
+      ...order,
+      items,
+    };
+  }, "getBatchOrderById");
+}
+
+export async function listBatchOrders(filters?: {
+  status?: Array<"draft" | "pending_approval" | "approved" | "cancelled" | "completed">;
   supplierId?: string;
   fromDate?: string;
   toDate?: string;
   limit?: number;
   offset?: number;
+}) {
   return withRetry(async (db) => {
     let query = db.select().from(batchOrders);
     
