@@ -1,164 +1,145 @@
 #!/usr/bin/env node
-// scripts/qa/proxy.mjs - ensure superjson meta present and set content-length
-import http from 'http';
-import { URL } from 'url';
-import superjson from 'superjson';
+// scripts/qa/proxy.mjs
+import http from "http";
+import fetch from "node-fetch";
+import superjson from "superjson";
 
-const argv = process.argv.slice(2);
-const kv = {};
-for (const a of argv) {
-  const [k,v] = a.split('=',2);
-  if (v === undefined) continue;
-  kv[k.replace(/^--/,'')] = v;
+const UPSTREAM = process.env.UPSTREAM || "http://localhost:3012";
+const LISTEN_PORT = Number(process.env.PROXY_PORT || process.env.PORT || 3007);
+
+function isJsonContentType(headers) {
+  const ct = headers.get("content-type") || headers.get("Content-Type") || "";
+  return ct.includes("application/json") || ct.includes("application/trpc+json") || ct.includes("application/trpc");
 }
-const upstream = kv.upstream || 'http://localhost:3012';
-const listen = Number(kv.listen || '3007');
-const upstreamUrl = new URL(upstream);
 
-function looksLikeTRPCPlainError(p) {
+function normalizeSetCookie(headers) {
+  // node-fetch returns headers as Headers object; upstream Set-Cookie may be multiple.
+  const sc = headers.raw ? headers.raw()["set-cookie"] || headers.raw()["Set-Cookie"] || null : null;
+  return sc;
+}
+
+async function transformBodyIfNeeded(path, upstreamRes, bodyText) {
+  if (!bodyText) return { transformed: false, body: bodyText };
+
+  // try to parse JSON
+  let parsed;
   try {
-    if (!p) return false;
-    if (Array.isArray(p)) {
-      return p.some(i => i && i.error && i.error.json);
-    }
-    if (typeof p === 'object') {
-      if (p.error && p.error.json) return true;
-      if (p.json) {
-        if (Array.isArray(p.json)) {
-          return p.json.some(item => item && item.error && item.error.json);
-        }
-        if (p.json && p.json.error && p.json.error.json) return true;
-      }
-    }
+    parsed = JSON.parse(bodyText);
   } catch (e) {
-    return false;
+    // not JSON, don't transform
+    return { transformed: false, body: bodyText };
   }
-  return false;
+
+  // if parsed looks like superjson wire format (top-level json & meta), do nothing
+  if (parsed && typeof parsed === "object" && Object.prototype.hasOwnProperty.call(parsed, "json") && Object.prototype.hasOwnProperty.call(parsed, "meta")) {
+    return { transformed: false, body: bodyText };
+  }
+
+  // Determine the actual payload to serialize:
+  let payloadToSerialize = parsed;
+  // If parsed has 'json' key (tRPC batch-ish) but no 'meta', use parsed.json
+  if (parsed && typeof parsed === "object" && Object.prototype.hasOwnProperty.call(parsed, "json") && !Object.prototype.hasOwnProperty.call(parsed, "meta")) {
+    payloadToSerialize = parsed.json;
+  }
+
+  // Now serialize using superjson
+  try {
+    const serialized = superjson.serialize(payloadToSerialize);
+    const out = JSON.stringify(serialized);
+    console.log(`proxy: transformed response for ${path} status=${upstreamRes.status} -> superjson keys=${Object.keys(serialized).join(",")}`);
+    return { transformed: true, body: out };
+  } catch (err) {
+    console.error("proxy: superjson.serialize failed:", err && err.message ? err.message : err);
+    // fallback: return original body
+    return { transformed: false, body: bodyText };
+  }
 }
 
-const server = http.createServer((req, res) => {
-  const targetPath = (upstreamUrl.pathname === '/' ? '' : upstreamUrl.pathname) + req.url;
-  const options = {
-    hostname: upstreamUrl.hostname,
-    port: upstreamUrl.port || (upstreamUrl.protocol === 'https:' ? 443 : 80),
-    path: targetPath,
-    method: req.method,
-    headers: { ...req.headers }
-  };
-  delete options.headers['accept-encoding'];
+const server = http.createServer(async (req, res) => {
+  const upstreamUrl = `${UPSTREAM}${req.url}`;
+  try {
+    // forward headers, remove hop-by-hop headers that shouldn't be forwarded
+    const forwardedHeaders = {};
+    for (const [k, v] of Object.entries(req.headers)) {
+      // skip host header to avoid confusion
+      if (k.toLowerCase() === "host") continue;
+      forwardedHeaders[k] = v;
+    }
 
-  const reqChunks = [];
-  req.on('data', c => reqChunks.push(c));
-  req.on('end', () => {
-    const reqBody = Buffer.concat(reqChunks);
-    const proxyReq = http.request(options, upstreamRes => {
-      // Log diagnostic info for auth.demoLogin requests
-      if (req.url && req.url.includes('auth.demoLogin')) {
-        console.log('proxy: auth.demoLogin request - upstream headers:', JSON.stringify(upstreamRes.headers));
+    // build fetch options
+    const opts = {
+      method: req.method,
+      headers: forwardedHeaders,
+      // pass body if present:
+      body: ["GET", "HEAD"].includes(req.method) ? undefined : req,
+      redirect: "manual",
+    };
+
+    // fetch upstream and get full response
+    const upstreamRes = await fetch(upstreamUrl, opts);
+
+    // read all headers and body
+    const upstreamHeaders = upstreamRes.headers;
+    const bodyText = await upstreamRes.text();
+
+    // check content type
+    if (isJsonContentType(upstreamHeaders)) {
+      const { transformed, body } = await transformBodyIfNeeded(req.url, upstreamRes, bodyText);
+      // Forward headers (excluding content-length/content-encoding if we change the body)
+      // Copy upstream headers except hop-by-hop
+      for (const [key, value] of upstreamHeaders.entries()) {
+        const k = key.toLowerCase();
+        if (["transfer-encoding", "content-length", "content-encoding"].includes(k)) continue;
+        // We will set set-cookie explicitly below
+        if (k === "set-cookie") continue;
+        res.setHeader(key, value);
       }
-      
-      const chunks = [];
-      upstreamRes.on('data', d => chunks.push(d));
-      upstreamRes.on('end', () => {
-        const bodyBuf = Buffer.concat(chunks);
-        const status = upstreamRes.statusCode || 0;
-        const contentType = (upstreamRes.headers['content-type'] || '').toLowerCase();
-
-        const forward = (bodyBuffer, extraHeaders = {}) => {
-          const headers = { ...upstreamRes.headers, ...extraHeaders };
-          delete headers['transfer-encoding'];
-          
-          // Ensure Set-Cookie headers are forwarded properly
-          const cookies = upstreamRes.headers['set-cookie'] || upstreamRes.headers['Set-Cookie'];
-          if (cookies) {
-            if (req.url && req.url.includes('auth.demoLogin')) {
-              console.log('proxy: forwarding Set-Cookie:', Array.isArray(cookies) ? cookies : [cookies]);
-            }
-            // Ensure cookies is an array for proper forwarding
-            if (Array.isArray(cookies)) {
-              res.setHeader('Set-Cookie', cookies);
-            } else {
-              res.setHeader('Set-Cookie', [cookies]);
-            }
-            // Remove from headers object since we set it explicitly
-            delete headers['set-cookie'];
-            delete headers['Set-Cookie'];
-          }
-          
-          // set correct content-length
-          headers['content-length'] = String(Buffer.byteLength(bodyBuffer));
-          // ensure content-type json when needed
-          if (!headers['content-type']) headers['content-type'] = 'application/json';
-          res.writeHead(status, headers);
-          res.end(bodyBuffer);
-        };
-
-        if (status >= 400 && contentType.includes('application/json')) {
-          let text = '';
-          try { text = bodyBuf.toString('utf8'); } catch (e) { text = ''; }
-          let parsed;
-          try { parsed = JSON.parse(text); } catch (e) { parsed = text; }
-
-          if (looksLikeTRPCPlainError(parsed)) {
-            try {
-              console.log('proxy: detected tRPC plain error shape; transforming with superjson');
-
-              // If wrapper { json: [...] } exists, serialize the inner array/object
-              let toSerialize = parsed;
-              if (parsed && typeof parsed === 'object' && parsed.json) {
-                toSerialize = parsed.json;
-              }
-
-              const serialized = superjson.serialize(toSerialize);
-              // Ensure meta key exists (client expects { json: ..., meta: ... })
-              if (!Object.prototype.hasOwnProperty.call(serialized, 'meta') || serialized.meta === undefined) {
-                serialized.meta = null;
-              }
-              // Make sure serialized.json exists
-              if (!Object.prototype.hasOwnProperty.call(serialized, 'json')) {
-                serialized.json = null;
-              }
-
-              // Log shape keys for debugging
-              console.log('proxy: serialized keys:', Object.keys(serialized));
-              const bodyStr = JSON.stringify(serialized);
-              const bodyBuffer = Buffer.from(bodyStr, 'utf8');
-              return forward(bodyBuffer, { 'content-type': 'application/json' });
-            } catch (e) {
-              console.error('proxy: superjson.serialize failed', e && (e.stack || e));
-              return forward(bodyBuf);
-            }
-          } else {
-            return forward(bodyBuf);
-          }
-        } else {
-          return forward(bodyBuf);
-        }
-      });
-      upstreamRes.on('error', err => {
-        console.error('proxy: upstreamRes error', err);
-        try { res.writeHead(502); res.end('proxy upstream error'); } catch (e) {}
-      });
-    });
-
-    proxyReq.on('error', err => {
-      if (req.url && req.url.includes('auth.demoLogin')) {
-        console.error('proxy: proxyReq error for auth.demoLogin:', err.message, err.code);
-      } else {
-        console.error('proxy: proxyReq error', err);
+      // Forward Set-Cookie headers as array if present
+      const cookies = normalizeSetCookie(upstreamHeaders);
+      if (cookies) {
+        // cookies is an array
+        res.setHeader("Set-Cookie", cookies);
+        console.log(`proxy: forwarding Set-Cookie for ${req.url} -> ${Array.isArray(cookies) ? cookies.length : 1}`);
       }
-      try { res.writeHead(502); res.end('proxy request error'); } catch (e) {}
-    });
 
-    if (reqBody && reqBody.length) proxyReq.write(reqBody);
-    proxyReq.end();
-  });
+      // Ensure content-type is application/json
+      res.setHeader("Content-Type", "application/json");
 
-  req.on('error', err => {
-    console.error('proxy: incoming req error', err);
-  });
+      // Set content-length for the new body
+      const buf = Buffer.from(body, "utf8");
+      res.setHeader("Content-Length", String(buf.length));
+
+      // send status and body
+      res.writeHead(upstreamRes.status);
+      res.end(buf);
+      return;
+    }
+
+    // Non-JSON: forward headers and body as-is
+    for (const [key, value] of upstreamHeaders.entries()) {
+      if (key.toLowerCase() === "set-cookie") continue; // handle below
+      res.setHeader(key, value);
+    }
+    const cookies = normalizeSetCookie(upstreamHeaders);
+    if (cookies) {
+      res.setHeader("Set-Cookie", cookies);
+    }
+    // set content-length if known
+    if (!res.getHeader("Content-Length")) {
+      res.setHeader("Content-Length", Buffer.byteLength(bodyText, "utf8")); // conservative
+    }
+    res.writeHead(upstreamRes.status);
+    res.end(bodyText);
+  } catch (err) {
+    console.error("proxy: error proxying request:", err && err.message ? err.message : err);
+    res.writeHead(502, { "Content-Type": "application/json" });
+    const errObj = { error: { message: "Proxy upstream error", details: String(err && err.message ? err.message : err) } };
+    res.end(JSON.stringify(errObj));
+  }
 });
 
-server.listen(listen, () => {
-  console.log(`QA proxy listening on http://localhost:${listen} -> upstream ${upstream}`);
+server.on("listening", () => {
+  console.log(`proxy: listening on port ${LISTEN_PORT}, forwarding to ${UPSTREAM}`);
 });
+
+server.listen(LISTEN_PORT);
