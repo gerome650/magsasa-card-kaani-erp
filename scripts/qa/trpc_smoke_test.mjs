@@ -25,16 +25,77 @@ const trpc = createTRPCProxyClient({
   ],
 });
 
-// Utility to get cookies for the base URL
-function getCookiesSync() {
-  // tough-cookie's getCookieStringSync may not exist depending on version; use getCookieString
+// --- managerLogin() START ---
+async function getCookieStringAsync(url) {
+  // tough-cookie uses callback API - wrap it
+  return await new Promise((resolve) => {
+    try {
+      if (jar && typeof jar.getCookieString === 'function') {
+        jar.getCookieString(url, (err, cookieStr) => {
+          if (err) return resolve(String(err));
+          return resolve(cookieStr || "");
+        });
+      } else {
+        // fallback: return empty
+        resolve("");
+      }
+    } catch (e) {
+      resolve("");
+    }
+  });
+}
+
+async function managerLogin() {
+  // Perform tRPC login using the trpc client (created earlier in the script)
   try {
-    return jar.getCookieStringSync ? jar.getCookieStringSync(BASE_URL) : jar.getCookieString(BASE_URL, () => {});
-  } catch (e) {
-    // async fallback
-    return null;
+    console.log("manager_login: calling trpc.auth.demoLogin...");
+    const result = await trpc.auth.demoLogin.mutate({ username: "manager", password: "demo123" });
+    // Wait a tick to ensure cookies are set in jar
+    await new Promise((r) => setTimeout(r, 50));
+    const cookies = await getCookieStringAsync(BASE_URL);
+    const cookiesPresent = cookies && cookies.length > 0;
+    console.log(JSON.stringify({
+      step: "manager_login_result",
+      status: 200,
+      cookies: cookiesPresent ? "present" : "none",
+      error: null
+    }));
+    return { status: 200, cookies: cookiesPresent ? cookies : null };
+  } catch (err) {
+    try {
+      // capture response if any
+      const resp = err?.response || err?.data || null;
+      const status = err?.response?.status || err?.status || 0;
+      console.error("manager_login: error.message:", err?.message || String(err));
+      if (err?.response?.data) {
+        try {
+          fs.writeFileSync("trpc_last_response.json", JSON.stringify(err.response.data, null, 2));
+        } catch (e) {}
+      }
+      // write a curl reproduction for the tRPC call (best-effort)
+      const curlBody = JSON.stringify({ input: { username: "manager", password: "demo123" } });
+      const curlCmd = `curl -i -X POST "${BASE_URL}/auth.demoLogin?batch=1" -H "Content-Type: application/json" -d '${curlBody}'`;
+      try { fs.writeFileSync("trpc_last_request_curl.sh", curlCmd); } catch (e) {}
+      console.log(JSON.stringify({
+        step: "manager_login_result",
+        status: status || 0,
+        cookies: "none",
+        error: err?.message || "unknown error"
+      }));
+      return { status: status || 0, error: err?.message || String(err) };
+    } catch (e) {
+      // ensure we return a structured result
+      console.log(JSON.stringify({
+        step: "manager_login_result",
+        status: 0,
+        cookies: "none",
+        error: String(err || e)
+      }));
+      return { status: 0, error: String(err || e) };
+    }
   }
 }
+// --- managerLogin() END ---
 
 let managerCookies = '';
 const logs = [];
