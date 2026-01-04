@@ -97,6 +97,7 @@ jobs:
           path: |
             server_log_tail.txt
             proxy_log_tail.txt
+            proxy_log.txt
             trpc_smoke_test.txt
             trpc_smoke_test_tail.txt
             server_pid.txt
