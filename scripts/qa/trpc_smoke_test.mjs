@@ -1,8 +1,40 @@
-import axios from 'axios';
-import fs from 'fs';
+import fs from "fs";
+import superjson from "superjson";
+import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
+// node-fetch v3 is ESM
+import fetch from "node-fetch";
+import fetchCookie from "fetch-cookie";
+import { CookieJar } from "tough-cookie";
 
-const PORT = process.env.PORT || process.argv[2] || 3000;
+// Prefer env PORT, then arg, then default 3007
+const PORT = process.env.PORT || process.argv[2] || 3007;
 const BASE_URL = `http://localhost:${PORT}/api/trpc`;
+
+// Cookie jar and cookie-aware fetch
+const jar = new CookieJar();
+const fetchWithCookies = fetchCookie(fetch, jar);
+
+// Create trpc client using superjson transformer and cookie-aware fetch
+const trpc = createTRPCProxyClient({
+  transformer: superjson,
+  links: [
+    httpBatchLink({
+      url: BASE_URL,
+      fetch: fetchWithCookies, // pass cookie-capable fetch
+    }),
+  ],
+});
+
+// Utility to get cookies for the base URL
+function getCookiesSync() {
+  // tough-cookie's getCookieStringSync may not exist depending on version; use getCookieString
+  try {
+    return jar.getCookieStringSync ? jar.getCookieStringSync(BASE_URL) : jar.getCookieString(BASE_URL, () => {});
+  } catch (e) {
+    // async fallback
+    return null;
+  }
+}
 
 let managerCookies = '';
 const logs = [];
@@ -158,27 +190,22 @@ async function runSmokeTest() {
 
   log({ step: 'flag_on_test_start' });
 
-  // 1. Login as manager
+  // 1. Login as manager using @trpc/client
   log({ step: 'manager_login' });
-  let loginResult;
-  try {
-    loginResult = await tRPCRequest('auth.demoLogin', { username: 'manager', password: 'demo123' });
-    log({ step: 'manager_login_result', status: loginResult.status, cookies: loginResult.cookies ? 'received' : 'none', headers: loginResult.headers });
-    
-    if (!loginResult.cookies) {
-      console.error('manager_login: No Set-Cookie returned by server. Headers:', JSON.stringify(loginResult.headers));
-    }
-  } catch (err) {
-    console.error('manager_login: Unexpected error in login call:', err.message);
-    console.error('manager_login: error.stack:', err.stack);
-    loginResult = { status: 0, error: { message: err.message }, cookies: '', data: null };
-  }
+  const loginResult = await managerLogin();
+  log({ 
+    step: 'manager_login_result', 
+    status: loginResult.status, 
+    cookies: loginResult.cookies ? 'present' : 'none',
+    error: loginResult.error || null
+  });
 
-  if (loginResult.status !== 200 || loginResult.error || (loginResult.data && loginResult.data.error)) {
-    const errorMsg = loginResult.error?.message || loginResult.data?.error?.message || 'Manager login failed';
+  if (loginResult.status !== 200 || !loginResult.cookies || loginResult.error) {
+    const errorMsg = loginResult.error || 'Manager login failed';
     console.error('manager_login failed:', errorMsg);
     console.error('loginResult:', JSON.stringify(loginResult, null, 2));
     results.flag_on.errors.push('Manager login failed: ' + errorMsg);
+    process.exitCode = 1;
     return results;
   }
 
