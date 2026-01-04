@@ -79,60 +79,33 @@ async function startServer() {
               bodyText = '';
             }
 
-            // Attempt to parse as JSON
+            // Try to parse JSON; if parsing fails, keep the raw text
+            let parsed;
             try {
-              const parsed = JSON.parse(bodyText);
-              // If parsed looks like a tRPC error wrapper or array of errors,
-              // and is NOT already superjson-wrapped (no 'json'|'meta' top-level from superjson),
-              // then re-serialize using superjson.
-              let needsReserialize = false;
-
-              // Helper: detect if the value looks like a superjson wire (object with json/meta) 
-              const looksLikeSuperjson = (v: any) => {
-                return v && typeof v === 'object' && (v.json !== undefined || v.meta !== undefined);
-              };
-
-              // Handle arrays with error objects, or object shape { error: { json: ... } }
-              if (Array.isArray(parsed)) {
-                // If array contains objects that are not superjson-wrapped
-                needsReserialize = parsed.some(item => {
-                  if (!looksLikeSuperjson(item)) {
-                    // If item.error && item.error.json exists, that means tRPC already wrapped error in plain JSON -> reserialize
-                    if (item && typeof item === 'object' && item.error && item.error.json) {
-                      return true;
-                    }
-                    // if item lacks superjson markers, check further
-                    return true;
-                  }
-                  return false;
-                });
-              } else if (parsed && typeof parsed === 'object') {
-                // If it's an object that contains tRPC error wrapper with .error.json, reserialize
-                if (parsed.error && parsed.error.json) {
-                  needsReserialize = true;
-                } else if (!looksLikeSuperjson(parsed)) {
-                  // If plain object and not superjson, consider reserialize if it contains error-like shape
-                  if (parsed.error || parsed.result) {
-                    needsReserialize = true;
-                  }
-                }
-              }
-
-              if (needsReserialize) {
-                try {
-                  // Use superjson to serialize. We wrap the parsed value in an object
-                  // that mirrors the tRPC "shape" — but to be conservative, we serialize the parsed body directly.
-                  const serialized = superjson.serialize(parsed);
-                  // Overwrite response headers/body via originalEnd
-                  res.setHeader('Content-Type', 'application/json');
-                  return originalEnd(JSON.stringify(serialized), 'utf8', cb);
-                } catch (e) {
-                  console.error('shim: superjson.serialize failed', e && (e as Error).message ? (e as Error).message : e);
-                  // fallback to original response below
-                }
-              }
+              parsed = JSON.parse(bodyText);
             } catch (e) {
-              // not JSON — do nothing
+              parsed = bodyText;
+            }
+
+            // Helper: detect if the value looks like a superjson wire (object with json/meta)
+            const looksLikeSuperjson = (v: any) => {
+              return v && typeof v === 'object' && (v.json !== undefined || v.meta !== undefined);
+            };
+
+            // Aggressive rule: if status is an error (>=400) and response is not already superjson,
+            // attempt to superjson.serialize the parsed body (or the raw text fallback).
+            const status = (res.statusCode && typeof res.statusCode === 'number') ? res.statusCode : 0;
+            if (status >= 400 && !looksLikeSuperjson(parsed)) {
+              try {
+                // Ensure we send a JSON-serializable object: prefer parsed value, if it's a string wrap it.
+                const toSerialize = (typeof parsed === 'string') ? { message: parsed } : parsed;
+                const serialized = superjson.serialize(toSerialize);
+                res.setHeader('Content-Type', 'application/json');
+                return originalEnd(JSON.stringify(serialized), 'utf8', cb);
+              } catch (e) {
+                console.error('shim: superjson.serialize failed (aggressive)', e && (e as Error).message ? (e as Error).message : e);
+                // fallthrough to original response below
+              }
             }
           }
         } catch (e) {
