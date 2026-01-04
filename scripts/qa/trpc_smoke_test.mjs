@@ -1,7 +1,7 @@
 import axios from 'axios';
 import fs from 'fs';
 
-const PORT = process.argv[2] || 3000;
+const PORT = process.env.PORT || process.argv[2] || 3000;
 const BASE_URL = `http://localhost:${PORT}/api/trpc`;
 
 let managerCookies = '';
