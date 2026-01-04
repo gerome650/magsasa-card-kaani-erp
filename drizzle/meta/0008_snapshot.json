@@ -785,8 +785,8 @@
         }
       },
       "uniqueConstraints": {
-        "identity_links_farmer_profile_id_partner_partner_farmer_ref_unique": {
-          "name": "identity_links_farmer_profile_id_partner_partner_farmer_ref_unique",
+        "id_links_farmer_profile_partner_farmer_ref_uniq": {
+          "name": "id_links_farmer_profile_partner_farmer_ref_uniq",
           "columns": [
             "farmer_profile_id",
             "partner",

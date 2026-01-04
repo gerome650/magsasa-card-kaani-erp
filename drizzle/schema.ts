@@ -277,7 +277,7 @@ export const identityLinks = mysqlTable("identity_links", {
 	primaryKey({ columns: [table.id], name: "identity_links_id"}),
 	index("identity_links_farmer_profile_id_idx").on(table.farmerProfileId),
 	index("identity_links_partner_farmer_ref_idx").on(table.partner, table.partnerFarmerRef),
-	unique("identity_links_farmer_profile_id_partner_partner_farmer_ref_unique").on(table.farmerProfileId, table.partner, table.partnerFarmerRef),
+	unique("id_links_farmer_profile_partner_farmer_ref_uniq").on(table.farmerProfileId, table.partner, table.partnerFarmerRef),
 	foreignKey({
 		columns: [table.farmerProfileId],
 		foreignColumns: [farmerProfiles.farmerProfileId],
