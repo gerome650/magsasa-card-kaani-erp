@@ -3,6 +3,7 @@ name: QA smoke test (proxy)
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 jobs:
   qa-smoke:
@@ -71,7 +72,7 @@ jobs:
 
       - name: Run smoke test
         run: |
-          PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt || true
+          PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt
 
       - name: Collect QA report (minimal)
         run: |
