@@ -9,6 +9,7 @@ jobs:
   qa-smoke:
     name: QA smoke via proxy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       mysql:
@@ -61,21 +62,23 @@ jobs:
           export NODE_ENV=development
           export PORT=3012
           pnpm dev > server_log.txt 2>&1 & echo $! > server_pid.txt
-          for i in $(seq 1 60); do
+          for i in $(seq 1 120); do
             grep -q "Server running on http://localhost:" server_log.txt && break
             sleep 1
           done
-          tail -n 200 server_log.txt
+          tail -n 500 server_log.txt > server_log_tail.txt || true
 
       - name: Start QA proxy
         run: |
           node scripts/qa/proxy.mjs --upstream="http://localhost:3012" --listen=3007 > proxy_log.txt 2>&1 & echo $! > proxy_pid.txt
-          sleep 1
-          tail -n 200 proxy_log.txt || true
+          sleep 3
+          tail -n 500 proxy_log.txt > proxy_log_tail.txt || true
 
       - name: Run smoke test
         run: |
+          set -o pipefail
           PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt
+          tail -n 500 trpc_smoke_test.txt > trpc_smoke_test_tail.txt || true
 
       - name: Collect QA report (minimal)
         run: |
@@ -86,9 +89,9 @@ jobs:
         with:
           name: qa-smoke-logs
           path: |
-            server_log.txt
-            proxy_log.txt
-            trpc_smoke_test.txt
+            server_log_tail.txt
+            proxy_log_tail.txt
+            trpc_smoke_test_tail.txt
             server_pid.txt
             proxy_pid.txt
             qa_report.json
@@ -98,4 +101,3 @@ jobs:
         run: |
           if [ -f proxy_pid.txt ]; then kill "$(cat proxy_pid.txt)" 2>/dev/null || true; fi
           if [ -f server_pid.txt ]; then kill "$(cat server_pid.txt)" 2>/dev/null || true; fi
-
