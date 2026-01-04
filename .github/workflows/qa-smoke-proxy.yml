@@ -62,8 +62,9 @@ jobs:
           export NODE_ENV=development
           export PORT=3012
           pnpm dev > server_log.txt 2>&1 & echo $! > server_pid.txt
-          for i in $(seq 1 120); do
+          for i in $(seq 1 180); do
             grep -q "Server running on http://localhost:" server_log.txt && break
+            echo "Waiting for backend server... $i"
             sleep 1
           done
           tail -n 500 server_log.txt > server_log_tail.txt || true
@@ -71,13 +72,18 @@ jobs:
       - name: Start QA proxy
         run: |
           node scripts/qa/proxy.mjs --upstream="http://localhost:3012" --listen=3007 > proxy_log.txt 2>&1 & echo $! > proxy_pid.txt
-          sleep 3
+          for i in $(seq 1 30); do
+            curl -sSf -X GET "http://localhost:3007/api/trpc/system.health" && break || true
+            echo "Waiting for proxy... $i"
+            sleep 1
+          done
           tail -n 500 proxy_log.txt > proxy_log_tail.txt || true
 
-      - name: Run smoke test
+      - name: Run smoke test (verbose)
         run: |
           set -o pipefail
-          PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt
+          # Run smoke test with verbose output - keep full log and a trimmed tail
+          PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt || true
           tail -n 500 trpc_smoke_test.txt > trpc_smoke_test_tail.txt || true
 
       - name: Collect QA report (minimal)
@@ -91,10 +97,12 @@ jobs:
           path: |
             server_log_tail.txt
             proxy_log_tail.txt
+            trpc_smoke_test.txt
             trpc_smoke_test_tail.txt
             server_pid.txt
             proxy_pid.txt
             qa_report.json
+            trpc_last_request_curl.sh
 
       - name: Teardown (always)
         if: always()

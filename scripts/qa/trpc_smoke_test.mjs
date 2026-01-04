@@ -23,12 +23,13 @@ async function tRPCRequest(endpoint, input, cookies = '') {
           'Cookie': cookies
         },
         maxRedirects: 0,
-        validateStatus: () => true
+        validateStatus: () => true,
+        timeout: 15000
       }
     );
 
-    const setCookie = response.headers['set-cookie'];
-    const cookieString = setCookie ? setCookie.map(c => c.split(';')[0]).join('; ') : '';
+    const setCookie = response.headers['set-cookie'] || response.headers['Set-Cookie'];
+    const cookieString = setCookie ? (Array.isArray(setCookie) ? setCookie.map(c => c.split(';')[0]).join('; ') : setCookie.split(';')[0]) : '';
 
     // Enhanced error parsing: handle plain JSON error responses (temporary fallback)
     // This is a client-side workaround for tRPC adapter issue where error responses
@@ -107,6 +108,32 @@ async function tRPCRequest(endpoint, input, cookies = '') {
       headers: response.headers
     };
   } catch (e) {
+    // Verbose error logging for network errors
+    console.error(`tRPCRequest error for ${endpoint}:`);
+    console.error('error.message:', e.message);
+    console.error('error.stack:', e.stack);
+    if (e.response) {
+      console.error('response.status:', e.response.status);
+      console.error('response.headers:', JSON.stringify(e.response.headers));
+      console.error('response.data:', JSON.stringify(e.response.data));
+    } else if (e.request) {
+      console.error('no response - request was sent but no response received');
+      console.error('err.request:', e.request);
+    } else {
+      console.error('error in request setup:', e);
+    }
+    
+    // Generate curl reproduction command for debugging
+    if (endpoint.includes('auth.demoLogin')) {
+      const curlCmd = `curl -i -X POST "${BASE_URL}/${endpoint}" -H "Content-Type: application/json" -d '${JSON.stringify({ input })}'`;
+      try {
+        fs.writeFileSync('trpc_last_request_curl.sh', curlCmd);
+        console.error('Saved curl reproduction to trpc_last_request_curl.sh');
+      } catch (writeErr) {
+        console.error('Failed to write curl command:', writeErr);
+      }
+    }
+    
     return {
       status: 0,
       error: {
@@ -133,11 +160,25 @@ async function runSmokeTest() {
 
   // 1. Login as manager
   log({ step: 'manager_login' });
-  const loginResult = await tRPCRequest('auth.demoLogin', { username: 'manager', password: 'demo123' });
-  log({ step: 'manager_login_result', status: loginResult.status, cookies: loginResult.cookies ? 'received' : 'none' });
+  let loginResult;
+  try {
+    loginResult = await tRPCRequest('auth.demoLogin', { username: 'manager', password: 'demo123' });
+    log({ step: 'manager_login_result', status: loginResult.status, cookies: loginResult.cookies ? 'received' : 'none', headers: loginResult.headers });
+    
+    if (!loginResult.cookies) {
+      console.error('manager_login: No Set-Cookie returned by server. Headers:', JSON.stringify(loginResult.headers));
+    }
+  } catch (err) {
+    console.error('manager_login: Unexpected error in login call:', err.message);
+    console.error('manager_login: error.stack:', err.stack);
+    loginResult = { status: 0, error: { message: err.message }, cookies: '', data: null };
+  }
 
-  if (loginResult.status !== 200 || loginResult.data.error) {
-    results.flag_on.errors.push('Manager login failed');
+  if (loginResult.status !== 200 || loginResult.error || (loginResult.data && loginResult.data.error)) {
+    const errorMsg = loginResult.error?.message || loginResult.data?.error?.message || 'Manager login failed';
+    console.error('manager_login failed:', errorMsg);
+    console.error('loginResult:', JSON.stringify(loginResult, null, 2));
+    results.flag_on.errors.push('Manager login failed: ' + errorMsg);
     return results;
   }
 
