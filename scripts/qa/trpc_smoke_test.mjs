@@ -6,93 +6,52 @@ import fetch from "node-fetch";
 import fetchCookie from "fetch-cookie";
 import { CookieJar } from "tough-cookie";
 
-// Prefer env PORT, then arg, then default 3007
-const PORT = process.env.PORT || process.argv[2] || 3007;
-const BASE_URL = `http://localhost:${PORT}/api/trpc`;
+// Ensure the smoke test targets the QA proxy.
+// Choose PROXY_PORT in this priority: PROXY_PORT env -> PORT env -> argv[2] -> 3007
+const PROXY_PORT = process.env.PROXY_PORT || process.env.PORT || process.argv[2] || 3007;
+const PROXY_BASE = `http://localhost:${PROXY_PORT}/api/trpc`;
+
+// Diagnostic print so proxy logs confirm the request path
+console.log("smoke-test: PROXY_BASE =", PROXY_BASE);
 
 // Cookie jar and cookie-aware fetch
 const jar = new CookieJar();
 const fetchWithCookies = fetchCookie(fetch, jar);
 
-// Create trpc client using superjson transformer and cookie-aware fetch
+// Create trpc client using PROXY_BASE
 const trpc = createTRPCProxyClient({
   transformer: superjson,
   links: [
     httpBatchLink({
-      url: BASE_URL,
+      url: PROXY_BASE,
       fetch: fetchWithCookies, // pass cookie-capable fetch
     }),
   ],
 });
 
 // --- managerLogin() START ---
-async function getCookieStringAsync(url) {
-  // tough-cookie uses callback API - wrap it
-  return await new Promise((resolve) => {
-    try {
-      if (jar && typeof jar.getCookieString === 'function') {
-        jar.getCookieString(url, (err, cookieStr) => {
-          if (err) return resolve(String(err));
-          return resolve(cookieStr || "");
-        });
-      } else {
-        // fallback: return empty
-        resolve("");
-      }
-    } catch (e) {
-      resolve("");
-    }
-  });
-}
-
 async function managerLogin() {
-  // Perform tRPC login using the trpc client (created earlier in the script)
+  // Diagnostic: print attempting login + cookie state
+  console.log("smoke-test: attempting manager login at", PROXY_BASE + "/auth.demoLogin?batch=1");
+  console.log("smoke-test: cookie-jar before login:", (jar && jar.getCookieStringSync ? jar.getCookieStringSync(PROXY_BASE) : ""));
   try {
-    console.log("manager_login: calling trpc.auth.demoLogin...");
-    const result = await trpc.auth.demoLogin.mutate({ username: "manager", password: "demo123" });
-    // Wait a tick to ensure cookies are set in jar
+    const loginRes = await trpc.auth.demoLogin.mutate({ username: "manager", password: "demo123" });
     await new Promise((r) => setTimeout(r, 50));
-    const cookies = await getCookieStringAsync(BASE_URL);
-    const cookiesPresent = cookies && cookies.length > 0;
-    console.log(JSON.stringify({
-      step: "manager_login_result",
-      status: 200,
-      cookies: cookiesPresent ? "present" : "none",
-      error: null
-    }));
-    return { status: 200, cookies: cookiesPresent ? cookies : null };
+    const cookies = jar.getCookieStringSync ? jar.getCookieStringSync(PROXY_BASE) : (await jar.getCookieString(PROXY_BASE));
+    console.log(JSON.stringify({ step: "manager_login_result", status: 200, cookies: cookies ? "present" : "none" }));
+    return { status: 200, cookies: cookies ? cookies : null };
   } catch (err) {
-    try {
-      // capture response if any
-      const resp = err?.response || err?.data || null;
-      const status = err?.response?.status || err?.status || 0;
-      console.error("manager_login: error.message:", err?.message || String(err));
-      if (err?.response?.data) {
-        try {
-          fs.writeFileSync("trpc_last_response.json", JSON.stringify(err.response.data, null, 2));
-        } catch (e) {}
-      }
-      // write a curl reproduction for the tRPC call (best-effort)
-      const curlBody = JSON.stringify({ input: { username: "manager", password: "demo123" } });
-      const curlCmd = `curl -i -X POST "${BASE_URL}/auth.demoLogin?batch=1" -H "Content-Type: application/json" -d '${curlBody}'`;
-      try { fs.writeFileSync("trpc_last_request_curl.sh", curlCmd); } catch (e) {}
-      console.log(JSON.stringify({
-        step: "manager_login_result",
-        status: status || 0,
-        cookies: "none",
-        error: err?.message || "unknown error"
-      }));
-      return { status: status || 0, error: err?.message || String(err) };
-    } catch (e) {
-      // ensure we return a structured result
-      console.log(JSON.stringify({
-        step: "manager_login_result",
-        status: 0,
-        cookies: "none",
-        error: String(err || e)
-      }));
-      return { status: 0, error: String(err || e) };
-    }
+    console.error("manager_login: error:", err?.message || err);
+    // ensure we write a structured line for CI
+    const status = err?.response?.status || 0;
+    console.log(JSON.stringify({ step: "manager_login_result", status, cookies: "none", error: err?.message || null }));
+    // write a curl repro that points to the proxy
+    const curlBody = JSON.stringify({ input: { username: "manager", password: "demo123" }});
+    console.log("smoke-test: curl repro (proxy):");
+    console.log(`curl -i -X POST "${PROXY_BASE}/auth.demoLogin?batch=1" -H "Content-Type: application/json" -d '${curlBody}'`);
+    // ensure failure status for CI flow
+    process.exitCode = 1;
+    return { status: status || 0, error: err?.message || String(err) };
   }
 }
 // --- managerLogin() END ---
