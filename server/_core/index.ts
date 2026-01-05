@@ -100,71 +100,7 @@ app.use('/api/trpc', (req, res, next) => {
       next();
     });
   }
-  // --- TRPC RAW BODY DEBUG MIDDLEWARE (inserted) ---
-console.log(JSON.stringify({tag:'server:trpc_dbg',ts:(new Date()).toISOString(),note:'quick-entry',msg:'middleware-started'}));
-
-app.use((req: any, res: any, next: any) => {
-  try {
-    const url = (req.url || req.originalUrl || '');
-    if (!url.startsWith('/api/trpc')) {
-      return next();
-    }
-    if (typeof req.body !== 'undefined') {
-      console.log(JSON.stringify({
-        tag: 'server:trpc_dbg',
-        ts: (new Date()).toISOString(),
-        url,
-        note: 'req.body already defined',
-        bodyType: typeof req.body
-      }));
-      return next();
-    }
-    const chunks: Buffer[] = [];
-    let ended = false, done = false;
-    req.on('data', (c: any) => {
-      try {
-        chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c));
-      } catch (e) {}
-    });
-    req.on('end', () => {
-      ended = true;
-      const rawBuf = chunks.length ? Buffer.concat(chunks) : Buffer.alloc(0);
-      try {
-        console.log(JSON.stringify({
-          tag: 'server:trpc_dbg',
-          ts: (new Date()).toISOString(),
-          url,
-          method: req.method,
-          raw_len: rawBuf.length,
-          raw_preview: rawBuf.length ? rawBuf.toString('utf8', 0, Math.min(1024, rawBuf.length)) : null
-        }));
-      } catch (_) {}
-      try {
-        if (rawBuf.length && typeof req.unshift === 'function') {
-          req.body = rawBuf.toString('utf8');
-console.log(JSON.stringify({tag:'server:trpc_dbg',ts:(new Date()).toISOString(),note:'body_set',raw_len: (rawBuf && rawBuf.length) ? rawBuf.length : 0}));
-        } else if (rawBuf.length) {
-          (req as any).rawBody = rawBuf.toString('utf8');
-        }
-      } catch (e) {
-        console.log('server:trpc_dbg: unshift failed', String(e));
-      }
-      if (!done) {
-        done = true;
-        next();
-      }
-    });
-    req.on('error', (err: any) => {
-      if (!done) {
-        done = true;
-        next();
-      }
-    });
-  } catch (err) {
-    try { next(); } catch(e) {}
-  }
-});
-// --- END TRPC RAW BODY DEBUG MIDDLEWARE ---
+  
   
 
 // --- BEGIN: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
@@ -235,7 +171,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
       } catch (err) {
         // swallow; proceed to next so server doesn't crash
         // eslint-disable-next-line no-console
-        console.error("server:dbg:reqBody_set: ERROR", err && (err && (err.stack || err.message) || String(err)));
+        console.error("server:dbg:reqBody_set: ERROR", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
       } finally {
         next();
       }
@@ -244,7 +180,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
     req.on("error", (err: any) => {
       // If there's an error reading the stream, log and continue.
       // eslint-disable-next-line no-console
-      console.error("server:dbg:reqBody_stream_error", err && (err && (err.stack || err.message) || String(err)));
+      console.error("server:dbg:reqBody_stream_error", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
       // ensure req.body is undefined and call next
       req.body = undefined;
       req._body = false;
@@ -279,7 +215,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
   } catch (err) {
     // If anything goes wrong, log and continue
     // eslint-disable-next-line no-console
-    console.error("server:dbg:reqBody_outer_error", err && (err && (err.stack || err.message) || String(err)));
+    console.error("server:dbg:reqBody_outer_error", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
     req.body = undefined;
     req._body = false;
     return next();
