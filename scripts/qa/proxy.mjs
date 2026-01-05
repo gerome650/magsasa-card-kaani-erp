@@ -52,11 +52,6 @@ function ensureWireFormatForPayload(payload){
   return JSON.stringify(finalWire);
 }
 
-  const serialized = superjson.serialize(payload);
-  // serialized is already an object { json, meta }
-  return JSON.stringify(serialized);
-}
-
 async function proxyRequest(req, res) {
   const url = req.url || '/';
   const method = req.method || 'GET';
