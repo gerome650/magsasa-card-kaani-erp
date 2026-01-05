@@ -30,10 +30,46 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+
+// --- BEGIN: tRPC body handling change -----------------
+// Create JSON/urlencoded parser instances and only apply them for non-tRPC routes.
+// This allows tRPC's HTTP adapter to read the raw request stream for /api/trpc.
+const jsonParser = express.json({
+  type: ["application/json", "application/trpc+json"],
+  verify: (req: any, _res: any, buf: Buffer) => {
+    try {
+      (req as any).rawBody = buf && buf.length ? buf.toString("utf8") : "";
+    } catch (e) {
+      (req as any).rawBody = "";
+    }
+  }
+});
+
+// urlencoded parser for non-tRPC endpoints
+const urlencodedParser = express.urlencoded({
+  extended: true,
+  type: ["application/x-www-form-urlencoded", "application/trpc+json"]
+});
+
+// Apply parsers only to non-trpc routes. This avoids consuming the raw stream for /api/trpc.
+// If req.path starts with /api/trpc, skip these parsers and let tRPC handle body parsing.
+app.use((req: any, res: any, next: any) => {
+  if (req && (req.path || req.url) && String(req.path || req.url).startsWith('/api/trpc')) {
+    return next();
+  }
+  // run json parser
+  return jsonParser(req, res, () => {
+    // then urlencoded parser if needed (safe to call; it will detect content-type)
+    return urlencodedParser(req, res, next);
+  });
+});
+// --- END: tRPC body handling change -------------------
+
+
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // replaced: express.json() moved to conditional non-tRPC parser;
+  // replaced: express.urlencoded() moved to conditional non-tRPC parser;
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Debug request body for tRPC (enabled when DEBUG_TRPC_REQ=true)
