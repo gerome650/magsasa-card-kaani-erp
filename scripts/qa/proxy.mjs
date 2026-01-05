@@ -64,6 +64,47 @@ function safeJSONParse(text){
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
+// --- Proxy: normalize httpBatchLink keyed-object -> canonical batch array ---
+function looksLikeKeyedBatchObject(obj){
+  // keyed batch object: plain object with numeric-like or string keys mapping to objects
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  const keys = Object.keys(obj);
+  if (keys.length === 0) return false;
+  // heuristic: keys are digits or include '0' style OR values are objects
+  return keys.every(k => {
+    const v = obj[k];
+    return (typeof v === 'object' && v !== null);
+  });
+}
+
+function normalizeBatchBody(parsed){
+  // If it's already an array, ensure items are tRPC items
+  if (Array.isArray(parsed)) {
+    return parsed.map(item => {
+      if (item && typeof item === 'object' && !('input' in item)) return { input: item };
+      return item;
+    });
+  }
+  // keyed-object: convert to array
+  if (looksLikeKeyedBatchObject(parsed)) {
+    const out = Object.keys(parsed).map(k => {
+      const v = parsed[k];
+      if (v && typeof v === 'object' && 'input' in v) return v;
+      return { input: v };
+    });
+    return out;
+  }
+  // fallback: if object but not keyed batch, maybe it's a non-batched call - wrap as single
+  if (parsed && typeof parsed === 'object') {
+    // If it already has "input", assume single call object
+    if ('input' in parsed || 'path' in parsed || 'method' in parsed) return [parsed];
+    return [{ input: parsed }];
+  }
+  // otherwise preserve
+  return parsed;
+}
+// --- end normalize ---
+
 function ensureWireFormatForPayload(payload){
   // Use superjson.serialize to obtain { json, meta }
   const serialized = superjson.serialize(payload);
@@ -87,6 +128,55 @@ async function proxyRequest(req, res) {
 
   try {
     const rawBody = await readBody(req);
+    
+    // Normalize request body for POST requests with JSON content-type
+    let bodyToSend = rawBody;
+    let normalized = null;
+    let requestNormalized = false;
+    
+    if (method !== 'GET' && method !== 'HEAD' && rawBody) {
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('application/json')) {
+        const parsed = safeJSONParse(rawBody);
+        if (parsed !== null) {
+          normalized = normalizeBatchBody(parsed);
+          // Check if normalization changed the structure
+          requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
+          bodyToSend = JSON.stringify(normalized);
+          
+          // Debug logging
+          const bodyType = Array.isArray(normalized) ? 'array' : typeof normalized;
+          const bodyLength = Array.isArray(normalized) ? normalized.length : 0;
+          const firstItemKeys = (Array.isArray(normalized) && normalized[0] && typeof normalized[0] === 'object') 
+            ? Object.keys(normalized[0]).slice(0, 5) 
+            : (normalized && typeof normalized === 'object' ? Object.keys(normalized).slice(0, 5) : null);
+          
+          console.log(JSON.stringify({
+            ts: new Date().toISOString(),
+            'proxy:dbg request_normalized': requestNormalized,
+            bodyType,
+            bodyLength,
+            firstItemKeys
+          }));
+          
+          console.log(`proxy:dbg sending_upstream_body_type ${bodyType} length ${bodyLength}`);
+          
+          // Additional debug for auth.demoLogin requests
+          if (url.includes('auth.demoLogin')) {
+            console.log(JSON.stringify({
+              ts: new Date().toISOString(),
+              'proxy:dbg auth.request preview': {
+                url,
+                method,
+                headersContentType: contentType,
+                bodyPreview: bodyToSend.slice(0, 200)
+              }
+            }));
+          }
+        }
+      }
+    }
+    
     // Build headers for upstream, copy most headers but let fetch set host/connection
     const upstreamHeaders = {};
     for (const [k,v] of Object.entries(req.headers)) {
@@ -94,11 +184,17 @@ async function proxyRequest(req, res) {
       if (['host','connection','keep-alive','transfer-encoding'].includes(k)) continue;
       upstreamHeaders[k] = v;
     }
+    
+    // Set content-type and content-length for normalized body
+    if (bodyToSend !== rawBody) {
+      upstreamHeaders['content-type'] = 'application/json';
+      upstreamHeaders['content-length'] = Buffer.byteLength(bodyToSend).toString();
+    }
 
     // Forward request to upstream
     const fetchOptions = { method, headers: upstreamHeaders };
     if (method !== 'GET' && method !== 'HEAD') {
-      fetchOptions.body = rawBody;
+      fetchOptions.body = bodyToSend;
     }
 
     console.log(`proxy:req: ${method} ${url} -> upstream ${upstreamUrl}`);
@@ -118,7 +214,22 @@ async function proxyRequest(req, res) {
     let transformed = false;
     let finalBody = upstreamText;
 
-    const parsed = safeJSONParse(upstreamText);
+    const upstreamBodyParsed = safeJSONParse(upstreamText);
+    
+    // Debug logging for upstream response parse
+    if (upstreamBodyParsed !== null) {
+      const upstreamBodyType = Array.isArray(upstreamBodyParsed) ? 'array' : typeof upstreamBodyParsed;
+      const upstreamTopKeys = (upstreamBodyParsed && typeof upstreamBodyParsed === 'object' && !Array.isArray(upstreamBodyParsed))
+        ? Object.keys(upstreamBodyParsed).slice(0, 5)
+        : null;
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        'proxy:dbg upstream bodyType': upstreamBodyType,
+        upstreamTopKeys
+      }));
+    }
+
+    const parsed = upstreamBodyParsed;
     if (parsed !== null) {
       // If it already looks like superjson wire object, keep as-is
       const looksLikeWire = parsed && typeof parsed === 'object' && ('json' in parsed) && ('meta' in parsed);
