@@ -168,8 +168,6 @@ console.log(JSON.stringify({tag:'server:trpc_dbg',ts:(new Date()).toISOString(),
   
 
 // --- BEGIN: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
-import { Buffer } from "buffer";
-
 app.use("/api/trpc", (req: any, res: any, next: any) => {
   // Only handle POST (bodies) - allow others to pass through quickly
   if (req.method !== "POST") return next();
@@ -237,7 +235,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
       } catch (err) {
         // swallow; proceed to next so server doesn't crash
         // eslint-disable-next-line no-console
-        console.error("server:dbg:reqBody_set: ERROR", err && (err.stack || err.message || String(err)));
+        console.error("server:dbg:reqBody_set: ERROR", err && (err && (err.stack || err.message) || String(err)));
       } finally {
         next();
       }
@@ -246,7 +244,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
     req.on("error", (err: any) => {
       // If there's an error reading the stream, log and continue.
       // eslint-disable-next-line no-console
-      console.error("server:dbg:reqBody_stream_error", err && (err.stack || err.message || String(err)));
+      console.error("server:dbg:reqBody_stream_error", err && (err && (err.stack || err.message) || String(err)));
       // ensure req.body is undefined and call next
       req.body = undefined;
       req._body = false;
@@ -281,7 +279,7 @@ app.use("/api/trpc", (req: any, res: any, next: any) => {
   } catch (err) {
     // If anything goes wrong, log and continue
     // eslint-disable-next-line no-console
-    console.error("server:dbg:reqBody_outer_error", err && (err.stack || err.message || String(err)));
+    console.error("server:dbg:reqBody_outer_error", err && (err && (err.stack || err.message) || String(err)));
     req.body = undefined;
     req._body = false;
     return next();
