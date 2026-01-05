@@ -36,6 +36,31 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Debug request body for tRPC (enabled when DEBUG_TRPC_REQ=true)
+  if (process.env.DEBUG_TRPC_REQ === 'true') {
+    // Ensure express.json() runs earlier in the file (it probably does already)
+    app.use('/api/trpc', (req, res, next) => {
+      try {
+        const preview = (() => {
+          try {
+            if (typeof req.body === 'object') return JSON.stringify(req.body).slice(0, 2000);
+            return String(req.body).slice(0, 2000);
+          } catch (e) { return '<unserializable body>'; }
+        })();
+        console.log(JSON.stringify({
+          tag: 'server:dbg:reqBody',
+          ts: new Date().toISOString(),
+          method: req.method,
+          url: req.originalUrl || req.url,
+          contentType: req.headers['content-type'],
+          bodyPreview: preview
+        }));
+      } catch (err) {
+        console.log('server:dbg:reqBody:error', String(err));
+      }
+      next();
+    });
+  }
   // tRPC API
   app.use(
     "/api/trpc",
