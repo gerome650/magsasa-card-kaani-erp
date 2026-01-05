@@ -64,7 +64,26 @@ function safeJSONParse(text){
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
-// --- Proxy: detect keyed httpBatchLink object and normalize to raw array ---
+// --- Proxy: normalize to structured tRPC batch items (path + input) ---
+function extractProcPath(url) {
+  // Extract procedure path from URL like /api/trpc/auth.demoLogin?batch=1
+  let path = url || '';
+  // Strip /api/trpc/ prefix if present
+  if (path.startsWith('/api/trpc/')) {
+    path = path.slice('/api/trpc/'.length);
+  } else if (path.startsWith('/api/trpc')) {
+    path = path.slice('/api/trpc'.length);
+  }
+  // Strip query string (everything after ?)
+  const qIdx = path.indexOf('?');
+  if (qIdx >= 0) {
+    path = path.slice(0, qIdx);
+  }
+  // Remove leading/trailing slashes
+  path = path.replace(/^\/+|\/+$/g, '');
+  return path || '';
+}
+
 function looksLikeKeyedBatchObject(obj){
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
   const keys = Object.keys(obj);
@@ -76,32 +95,50 @@ function looksLikeKeyedBatchObject(obj){
   });
 }
 
-function normalizeBatchBodyToRawArray(parsed) {
-  // If already an array, convert any {input: ...} items to raw item
+function looksLikeStructuredBatchItem(item) {
+  // Check if item already has both 'path' and 'input' fields
+  return item && typeof item === 'object' && 'path' in item && 'input' in item;
+}
+
+function normalizeBatchBodyToStructured(parsed, procPath) {
+  // If already an array of structured items [{path, input}, ...], leave as-is
   if (Array.isArray(parsed)) {
+    const allStructured = parsed.every(item => looksLikeStructuredBatchItem(item));
+    if (allStructured) {
+      return parsed; // Already structured, return as-is
+    }
+    // Transform each element to {path, input}
     return parsed.map(item => {
-      if (item && typeof item === 'object' && 'input' in item) return item.input;
-      return item;
+      if (looksLikeStructuredBatchItem(item)) {
+        return item; // Already structured
+      }
+      // Plain input object - wrap with path
+      return { path: procPath, input: item };
     });
   }
-  // keyed-object like { "0": {...}, "1": {...} } -> [{...}, {...}]
+  
+  // Keyed-object like { "0": {...}, "1": {...} } -> [{path, input}, ...]
   if (looksLikeKeyedBatchObject(parsed)) {
-    const out = Object.keys(parsed).map(k => {
+    const keys = Object.keys(parsed).sort((a, b) => +a - +b); // Numeric sort
+    return keys.map(k => {
       const v = parsed[k];
-      // If v is a tRPC envelope that includes { input: ... }, return v.input
-      if (v && typeof v === 'object' && 'input' in v) return v.input;
-      // Otherwise return v (the raw object)
-      return v;
+      // If v already has {input}, use it; otherwise wrap v as input
+      if (v && typeof v === 'object' && 'input' in v) {
+        return { path: procPath, input: v.input };
+      }
+      return { path: procPath, input: v };
     });
-    return out;
   }
-  // Single-call object: if it looks like an envelope { input: ... } -> send raw input
+  
+  // Single-call object: wrap as single batch item
   if (parsed && typeof parsed === 'object') {
-    if ('input' in parsed) return [parsed.input];
-    // If it already looks like a tRPC call object (has path/method/etc) we might pass as-is,
-    // but safer to wrap the raw object in an array for batch-mode upstream
-    return [parsed];
+    if ('input' in parsed) {
+      return [{ path: procPath, input: parsed.input }];
+    }
+    // Plain object - wrap as input
+    return [{ path: procPath, input: parsed }];
   }
+  
   // fallback: return parsed unchanged
   return parsed;
 }
@@ -141,7 +178,12 @@ async function proxyRequest(req, res) {
       if (contentType.includes('application/json')) {
         const parsed = safeJSONParse(rawBody);
         if (parsed !== null) {
-          normalized = normalizeBatchBodyToRawArray(parsed);
+          // Extract procedure path from URL
+          const procPath = extractProcPath(url);
+          
+          // Normalize to structured batch format
+          normalized = normalizeBatchBodyToStructured(parsed, procPath);
+          
           // Check if normalization changed the structure
           requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
           
@@ -149,14 +191,18 @@ async function proxyRequest(req, res) {
             bodyToSend = JSON.stringify(normalized);
           }
           
-          // Debug logging
+          // Detailed logging
+          const originalBodyType = Array.isArray(parsed) ? 'array' : typeof parsed;
+          const normalizedBodyType = Array.isArray(normalized) ? 'array' : typeof normalized;
+          const sampleNormalized = JSON.stringify(normalized).slice(0, 200);
+          
           console.log(JSON.stringify({
             ts: new Date().toISOString(),
-            'proxy:dbg request_normalized_to_raw_array': {
-              url: req.url,
-              normalizedIsArray: Array.isArray(normalized),
-              normalizedLength: Array.isArray(normalized) ? normalized.length : 0,
-              sample: JSON.stringify(Array.isArray(normalized) ? normalized[0] : normalized).slice(0, 200)
+            'proxy: request_normalized': {
+              procPath,
+              originalBodyType,
+              normalizedBodyType,
+              sampleNormalized
             }
           }));
         }
@@ -182,6 +228,16 @@ async function proxyRequest(req, res) {
     if (method !== 'GET' && method !== 'HEAD') {
       fetchOptions.body = bodyToSend;
     }
+
+    // Log sending upstream
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      'proxy: sending_upstream': {
+        url: upstreamUrl,
+        headers: Object.keys(upstreamHeaders),
+        bodyLength: bodyToSend ? Buffer.byteLength(bodyToSend) : 0
+      }
+    }));
 
     console.log(`proxy:req: ${method} ${url} -> upstream ${upstreamUrl}`);
     const upstreamResp = await fetch(upstreamUrl, fetchOptions);
