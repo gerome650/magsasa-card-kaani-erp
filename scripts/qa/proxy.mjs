@@ -15,6 +15,34 @@ const PROXY_PORT = Number(process.env.PORT || process.env.PROXY_PORT || 3007);
 const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT || 3012);
 const UPSTREAM_BASE = `http://localhost:${UPSTREAM_PORT}`;
 
+// --- DEBUG HOOK START ---
+const _origResEnd = http.ServerResponse.prototype.end;
+http.ServerResponse.prototype.end = function (chunk, encoding, cb) {
+  try {
+    const reqUrl = (this.req && (this.req.originalUrl || this.req.url)) || 'unknown-url';
+    const method = this.req && this.req.method;
+    const status = this.statusCode;
+    // prepare small preview
+    let preview = '';
+    if (chunk) {
+      if (typeof chunk === 'string') preview = chunk.slice(0, 2000);
+      else if (Buffer.isBuffer(chunk)) preview = chunk.toString('utf8', 0, 2000);
+      else try { preview = JSON.stringify(chunk).slice(0,2000); } catch(e){ preview = String(chunk).slice(0,2000); }
+    }
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      proxy_dbg_res_end: { url: reqUrl, method, status, preview_len: preview.length }
+    }));
+    if (reqUrl.includes('auth.demoLogin')) {
+      console.log('proxy:dbg_res_end_preview_auth.demoLogin:\n' + preview);
+    }
+  } catch(e) {
+    console.error('proxy:dbg_res_end_hook_error', e && (e.stack || e));
+  }
+  return _origResEnd.call(this, chunk, encoding, cb);
+};
+// --- DEBUG HOOK END ---
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -135,9 +163,26 @@ async function proxyRequest(req, res) {
     responseHeaders['content-type'] = 'application/json; charset=utf-8';
     responseHeaders['content-length'] = Buffer.byteLength(finalBody, 'utf8');
 
-    // Send response
-    // Set status code to upstream status
-    
+    // DEBUG: After transformation - inspect finalBody type and preview
+    try {
+      const finalPayload = safeJSONParse(finalBody);
+      const finalPayloadType = Array.isArray(finalPayload) ? 'array' : (typeof finalPayload);
+      const topKeys = (finalPayload && typeof finalPayload === 'object' && !Array.isArray(finalPayload)) ? Object.keys(finalPayload).slice(0,20) : null;
+      console.log(JSON.stringify({ 
+        ts: new Date().toISOString(), 
+        "proxy:dbg_after_transform": { 
+          url: upstreamUrl, 
+          status: statusCode, 
+          transformed, 
+          finalPayloadType,
+          topKeys 
+        } 
+      }));
+      console.log('proxy:dbg_finalBody_preview:' + finalBody.slice(0,2000));
+    } catch(e){ 
+      console.error('proxy:dbg_after_transform_error', e && (e.stack||e)); 
+    }
+
     // DEBUG: Inspect finalBody shape before sending
     try {
       const dbgObj = (() => {
