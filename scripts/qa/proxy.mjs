@@ -64,46 +64,48 @@ function safeJSONParse(text){
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
-// --- Proxy: normalize httpBatchLink keyed-object -> canonical batch array ---
+// --- Proxy: detect keyed httpBatchLink object and normalize to raw array ---
 function looksLikeKeyedBatchObject(obj){
-  // keyed batch object: plain object with numeric-like or string keys mapping to objects
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
   const keys = Object.keys(obj);
   if (keys.length === 0) return false;
-  // heuristic: keys are digits or include '0' style OR values are objects
+  // All values must be objects for a keyed batch (heuristic)
   return keys.every(k => {
     const v = obj[k];
-    return (typeof v === 'object' && v !== null);
+    return v && typeof v === 'object' && !Array.isArray(v);
   });
 }
 
-function normalizeBatchBody(parsed){
-  // If it's already an array, ensure items are tRPC items
+function normalizeBatchBodyToRawArray(parsed) {
+  // If already an array, convert any {input: ...} items to raw item
   if (Array.isArray(parsed)) {
     return parsed.map(item => {
-      if (item && typeof item === 'object' && !('input' in item)) return { input: item };
+      if (item && typeof item === 'object' && 'input' in item) return item.input;
       return item;
     });
   }
-  // keyed-object: convert to array
+  // keyed-object like { "0": {...}, "1": {...} } -> [{...}, {...}]
   if (looksLikeKeyedBatchObject(parsed)) {
     const out = Object.keys(parsed).map(k => {
       const v = parsed[k];
-      if (v && typeof v === 'object' && 'input' in v) return v;
-      return { input: v };
+      // If v is a tRPC envelope that includes { input: ... }, return v.input
+      if (v && typeof v === 'object' && 'input' in v) return v.input;
+      // Otherwise return v (the raw object)
+      return v;
     });
     return out;
   }
-  // fallback: if object but not keyed batch, maybe it's a non-batched call - wrap as single
+  // Single-call object: if it looks like an envelope { input: ... } -> send raw input
   if (parsed && typeof parsed === 'object') {
-    // If it already has "input", assume single call object
-    if ('input' in parsed || 'path' in parsed || 'method' in parsed) return [parsed];
-    return [{ input: parsed }];
+    if ('input' in parsed) return [parsed.input];
+    // If it already looks like a tRPC call object (has path/method/etc) we might pass as-is,
+    // but safer to wrap the raw object in an array for batch-mode upstream
+    return [parsed];
   }
-  // otherwise preserve
+  // fallback: return parsed unchanged
   return parsed;
 }
-// --- end normalize ---
+// --- end normalization ---
 
 function ensureWireFormatForPayload(payload){
   // Use superjson.serialize to obtain { json, meta }
@@ -139,40 +141,24 @@ async function proxyRequest(req, res) {
       if (contentType.includes('application/json')) {
         const parsed = safeJSONParse(rawBody);
         if (parsed !== null) {
-          normalized = normalizeBatchBody(parsed);
+          normalized = normalizeBatchBodyToRawArray(parsed);
           // Check if normalization changed the structure
           requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
-          bodyToSend = JSON.stringify(normalized);
+          
+          if (normalized && (Array.isArray(normalized) || typeof normalized === 'object')) {
+            bodyToSend = JSON.stringify(normalized);
+          }
           
           // Debug logging
-          const bodyType = Array.isArray(normalized) ? 'array' : typeof normalized;
-          const bodyLength = Array.isArray(normalized) ? normalized.length : 0;
-          const firstItemKeys = (Array.isArray(normalized) && normalized[0] && typeof normalized[0] === 'object') 
-            ? Object.keys(normalized[0]).slice(0, 5) 
-            : (normalized && typeof normalized === 'object' ? Object.keys(normalized).slice(0, 5) : null);
-          
           console.log(JSON.stringify({
             ts: new Date().toISOString(),
-            'proxy:dbg request_normalized': requestNormalized,
-            bodyType,
-            bodyLength,
-            firstItemKeys
+            'proxy:dbg request_normalized_to_raw_array': {
+              url: req.url,
+              normalizedIsArray: Array.isArray(normalized),
+              normalizedLength: Array.isArray(normalized) ? normalized.length : 0,
+              sample: JSON.stringify(Array.isArray(normalized) ? normalized[0] : normalized).slice(0, 200)
+            }
           }));
-          
-          console.log(`proxy:dbg sending_upstream_body_type ${bodyType} length ${bodyLength}`);
-          
-          // Additional debug for auth.demoLogin requests
-          if (url.includes('auth.demoLogin')) {
-            console.log(JSON.stringify({
-              ts: new Date().toISOString(),
-              'proxy:dbg auth.request preview': {
-                url,
-                method,
-                headersContentType: contentType,
-                bodyPreview: bodyToSend.slice(0, 200)
-              }
-            }));
-          }
         }
       }
     }
@@ -281,12 +267,11 @@ async function proxyRequest(req, res) {
       const topKeys = (finalPayload && typeof finalPayload === 'object' && !Array.isArray(finalPayload)) ? Object.keys(finalPayload).slice(0,20) : null;
       console.log(JSON.stringify({ 
         ts: new Date().toISOString(), 
-        "proxy:dbg_after_transform": { 
+        "proxy:dbg transformDecision": { 
           url: upstreamUrl, 
           status: statusCode, 
           transformed, 
-          finalPayloadType,
-          topKeys 
+          finalPayloadType: finalPayloadType || typeof finalBody
         } 
       }));
       console.log('proxy:dbg_finalBody_preview:' + finalBody.slice(0,2000));
