@@ -103,125 +103,100 @@ app.use('/api/trpc', (req, res, next) => {
   
   
 
+
 // --- BEGIN: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
-app.use("/api/trpc", (req: any, res: any, next: any) => {
-  // Only handle POST (bodies) - allow others to pass through quickly
-  if (req.method !== "POST") return next();
-
+/**
+ * This middleware fully reads the incoming request stream (async)
+ * and sets req.rawBody and req.body before calling next(), ensuring
+ * tRPC's adapter can read req.body synchronously from the Express request.
+ *
+ * Uses async iteration `for await (const chunk of req)` to collect chunks.
+ */
+app.use("/api/trpc", async (req: any, res: any, next: any) => {
   try {
-    // If req.body is already populated, just continue.
+    if (req.method !== "POST") return next();
+
+    // If already parsed, pass through
     if (typeof req.body !== "undefined") {
-      // mark as parsed
-      req._body = true;
       return next();
     }
 
-    // Collect the raw body synchronously (before passing to tRPC).
-    // We will collect UTF-8 text and set req.body directly.
-    const chunks: any[] = [];
-    let rawLen = 0;
-
-    // Ensure we don't change encoding for binary payloads; assume JSON here.
-    req.setEncoding && req.setEncoding("utf8");
-
-    // If the stream has already ended or is not readable, try to continue.
-    if (req.readableEnded) {
-      // nothing to do; let tRPC attempt to read (will be undefined)
+    // If stream already ended or not readable, continue.
+    if (req.readableEnded || !req.readable) {
       return next();
     }
 
-    req.on("data", (chunk: any) => {
-      try {
-        chunks.push(chunk);
-        rawLen += chunk.length || Buffer.byteLength(String(chunk), "utf8");
-      } catch (e) {
-        // ignore single chunk errors
+    // Collect raw body via async iterator (safe and avoids adding regular 'data' listeners)
+    let raw = "";
+    // If request encoding not set, try to set UTF-8 (we expect JSON mostly)
+    if (typeof req.setEncoding === "function") {
+      try { req.setEncoding("utf8"); } catch (_e) {}
+    }
+
+    // Use a timeout guard to avoid hanging forever
+    const TIMEOUT_MS = 5000;
+    let timedOut = false;
+    const to = setTimeout(() => { timedOut = true; }, TIMEOUT_MS);
+
+    try {
+      for await (const chunk of req) {
+        if (timedOut) break;
+        raw += chunk;
       }
-    });
-
-    req.on("end", () => {
-      try {
-        const raw = chunks.length ? chunks.join("") : "";
-        // Attach raw body for debug/diagnostics
-        req.rawBody = raw;
-        // Try to parse as JSON. If parsing fails, set the raw string instead.
-        try {
-          // If raw is empty string, set undefined so tRPC treats it as no body.
-          req.body = raw === "" ? undefined : JSON.parse(raw);
-        } catch (e) {
-          // Not JSON? Keep raw string
-          req.body = raw;
-        }
-        // Mark as already parsed so downstream parsers skip
-        req._body = true;
-
-        // Debug log so we can see this in server logs
-        try {
-          // eslint-disable-next-line no-console
-          console.log(JSON.stringify({
-            tag: "server:dbg:reqBody_set",
-            ts: new Date().toISOString(),
-            method: req.method,
-            url: req.originalUrl || req.url,
-            raw_len: raw.length,
-            body_preview: (raw || "").slice(0, 200)
-          }));
-        } catch (_) {}
-
-      } catch (err) {
-        // swallow; proceed to next so server doesn't crash
-        // eslint-disable-next-line no-console
-        console.error("server:dbg:reqBody_set: ERROR", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
-      } finally {
-        next();
-      }
-    });
-
-    req.on("error", (err: any) => {
-      // If there's an error reading the stream, log and continue.
+    } catch (err) {
+      // If reading fails, log and continue to next middleware.
       // eslint-disable-next-line no-console
-      console.error("server:dbg:reqBody_stream_error", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
-      // ensure req.body is undefined and call next
-      req.body = undefined;
-      req._body = false;
-      next();
-    });
+      console.error(JSON.stringify({
+        tag: "server:dbg:reqBody_read_error",
+        ts: new Date().toISOString(),
+        err: (err && (err.stack || err.message || String(err))) || String(err)
+      }));
+    } finally {
+      clearTimeout(to);
+    }
 
-    // Defensive timeout: if no 'end' fires within a short time, continue (prevent lock)
-    const timeoutMs = 5000;
-    const t = setTimeout(() => {
-      try {
-        if (typeof req.body === "undefined") {
-          // fall back to empty body
-          req.rawBody = "";
-          req.body = undefined;
-          req._body = false;
-          // eslint-disable-next-line no-console
-          console.warn(JSON.stringify({
-            tag: "server:dbg:reqBody_timeout",
-            ts: new Date().toISOString(),
-            method: req.method,
-            url: req.originalUrl || req.url
-          }));
-        }
-      } finally {
-        next();
-      }
-    }, timeoutMs);
+    // Attach raw body and parsed body (if JSON) so tRPC's incomingMessageToRequest can use it
+    req.rawBody = raw;
+    try {
+      req.body = raw === "" ? undefined : JSON.parse(raw);
+    } catch (e) {
+      // Not JSON — keep raw string
+      req.body = raw;
+    }
+    // Mark as parsed so other body parsers skip
+    req._body = true;
 
-    // Clear timeout once normal flow completes
-    req.on("end", () => clearTimeout(t));
+    // Debug log for verification
+    try {
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({
+        tag: "server:dbg:reqBody_set2",
+        ts: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl || req.url,
+        raw_len: (req.rawBody || "").length,
+        body_preview: ((req.rawBody || "").slice(0,200)),
+        body_type: typeof req.body
+      }));
+    } catch (_) {}
 
+    return next();
   } catch (err) {
-    // If anything goes wrong, log and continue
+    // If anything unexpected happens, log and continue
     // eslint-disable-next-line no-console
-    console.error("server:dbg:reqBody_outer_error", err && (err && ((err as any)?.stack || (err as any)?.message || String(err)) || String(err)));
+    console.error(JSON.stringify({
+      tag: "server:dbg:reqBody_unexpected",
+      ts: new Date().toISOString(),
+      err: (err && (err.stack || err.message || String(err))) || String(err)
+    }));
+    // Ensure req.body remains undefined to allow fallback behavior
     req.body = undefined;
     req._body = false;
     return next();
   }
 });
 // --- END: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
+
 
 // tRPC API
   app.use(
