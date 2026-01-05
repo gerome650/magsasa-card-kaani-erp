@@ -37,8 +37,21 @@ function safeJSONParse(text){
 }
 
 function ensureWireFormatForPayload(payload){
-  // We want to return a superjson wire object (superjson.serialize(payload))
-  // The client expects top-level { json: ..., meta: ... }
+  // Use superjson.serialize to obtain { json, meta }
+  const serialized = superjson.serialize(payload);
+
+  // Ensure meta is present (explicit null if missing)
+  if (!('meta' in serialized) || serialized.meta === undefined) {
+    serialized.meta = null;
+  }
+
+  // Construct final wrapper with both keys to be extra-safe
+  const finalWire = { json: serialized.json, meta: serialized.meta };
+
+  // Return JSON string for HTTP response
+  return JSON.stringify(finalWire);
+}
+
   const serialized = superjson.serialize(payload);
   // serialized is already an object { json, meta }
   return JSON.stringify(serialized);
@@ -129,6 +142,20 @@ async function proxyRequest(req, res) {
 
     // Send response
     // Set status code to upstream status
+    
+    // DEBUG: Inspect finalBody shape before sending
+    try {
+      const dbgObj = (() => {
+        try {
+          const parsed = JSON.parse(finalBody);
+          if (Array.isArray(parsed)) return { type: 'array', length: parsed.length };
+          return { type: 'object', keys: Object.keys(parsed).slice(0,10) };
+        } catch(e) { return { type: 'not-json' }; }
+      })();
+      console.log(`proxy:upstream: ${method} ${url} status=${statusCode} transformed=${transformed} dbg=${JSON.stringify(dbgObj)}`);
+    } catch (e) {
+      console.error('proxy: debug log failed', e && e.stack ? e.stack : e);
+    }
     res.writeHead(statusCode, responseHeaders);
     res.end(finalBody);
 
