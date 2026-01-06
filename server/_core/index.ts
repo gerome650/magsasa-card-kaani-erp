@@ -32,6 +32,82 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
 
+app.use('/api/trpc', (req, res, next) => {
+  try {
+    console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
+
+    // If body already present and not undefined, skip (but log)
+    if ('body' in req && req.body !== undefined) {
+      console.log('server:pre-trpc: req.body already present (skipping)', { url: req.url, type: typeof req.body });
+      return next();
+    }
+
+    const method = (req.method || '').toUpperCase();
+    const ct = (req.headers['content-type'] || '').toLowerCase();
+
+    // If not a JSON body POST/PUT/PATCH, still ensure 'body' prop exists
+    if (method === 'GET' || !ct.includes('application/json')) {
+      if (!('body' in req)) (req as any).body = undefined;
+      console.log('server:pre-trpc: not-json-or-get, body set undefined', { url: req.url, method, contentType: ct });
+      return next();
+    }
+
+    // Collect chunks synchronously
+    const chunks: Buffer[] = [];
+    let gotData = false;
+    req.on('data', (chunk: Buffer) => {
+      gotData = true;
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+
+    req.on('end', () => {
+      const rawBuf = Buffer.concat(chunks);
+      const rawStr = rawBuf.toString('utf8');
+      if (rawStr.length === 0) {
+        (req as any).body = undefined;
+        console.log('server:pre-trpc: end(empty) -> body undefined', { url: req.url });
+        return next();
+      }
+      try {
+        const parsed = JSON.parse(rawStr);
+        (req as any).body = parsed;
+        console.log('server:pre-trpc: body_set', {
+          url: req.url,
+          raw_len: rawBuf.length,
+          body_type: typeof parsed,
+          preview: (typeof parsed === 'string') ? parsed.slice(0,200) : JSON.stringify(parsed).slice(0,200)
+        });
+      } catch (err) {
+        // If JSON parse fails, keep raw string
+        (req as any).body = rawStr;
+        console.log('server:pre-trpc: body_set_string', { url: req.url, raw_len: rawBuf.length, preview: rawStr.slice(0,200) });
+      }
+      return next();
+    });
+
+    req.on('error', (err) => {
+      console.error('server:pre-trpc: request stream error', err);
+      (req as any).body = undefined;
+      next();
+    });
+
+    // Safety timeout: if no events fire, ensure body prop exists
+    setTimeout(() => {
+      if (!('body' in req)) {
+        (req as any).body = undefined;
+        console.log('server:pre-trpc: timeout set body undefined', { url: req.url });
+        next();
+      }
+    }, 250);
+  } catch (e) {
+    console.error('server:pre-trpc: unexpected error', e);
+    (req as any).body = undefined;
+    next();
+  }
+});
+
+
+
 // --- BEGIN: tRPC body handling change -----------------
 // Create JSON/urlencoded parser instances and only apply them for non-tRPC routes.
 // This allows tRPC's HTTP adapter to read the raw request stream for /api/trpc.
@@ -54,16 +130,9 @@ const urlencodedParser = express.urlencoded({
 
 // Apply parsers only to non-trpc routes. This avoids consuming the raw stream for /api/trpc.
 // If req.path starts with /api/trpc, skip these parsers and let tRPC handle body parsing.
-app.use((req: any, res: any, next: any) => {
-  if (req && (req.path || req.url) && String(req.path || req.url).startsWith('/api/trpc')) {
-    return next();
-  }
-  // run json parser
-  return jsonParser(req, res, () => {
-    // then urlencoded parser if needed (safe to call; it will detect content-type)
-    return urlencodedParser(req, res, next);
-  });
-});
+
+/* removed app.use(/api/trpc) duplicate block (backup in git) */
+
 // --- END: tRPC body handling change -------------------
 
 
@@ -279,81 +348,13 @@ try {
  * sets req.body (object or string) before tRPC's createBody runs.
  * Logs minimal diagnostics for debug.
  */
-app.use('/api/trpc', (req, res, next) => {
-  try {
-    console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
 
-    // If body already present and not undefined, skip (but log)
-    if ('body' in req && req.body !== undefined) {
-      console.log('server:pre-trpc: req.body already present (skipping)', { url: req.url, type: typeof req.body });
-      return next();
-    }
+/* removed app.use(/api/trpc) duplicate block (backup in git) */
 
-    const method = (req.method || '').toUpperCase();
-    const ct = (req.headers['content-type'] || '').toLowerCase();
 
-    // If not a JSON body POST/PUT/PATCH, still ensure 'body' prop exists
-    if (method === 'GET' || !ct.includes('application/json')) {
-      if (!('body' in req)) (req as any).body = undefined;
-      console.log('server:pre-trpc: not-json-or-get, body set undefined', { url: req.url, method, contentType: ct });
-      return next();
-    }
 
-    // Collect chunks synchronously
-    const chunks: Buffer[] = [];
-    let gotData = false;
-    req.on('data', (chunk: Buffer) => {
-      gotData = true;
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
+/* removed app.use(/api/trpc) duplicate block (backup in git) */
 
-    req.on('end', () => {
-      const rawBuf = Buffer.concat(chunks);
-      const rawStr = rawBuf.toString('utf8');
-      if (rawStr.length === 0) {
-        (req as any).body = undefined;
-        console.log('server:pre-trpc: end(empty) -> body undefined', { url: req.url });
-        return next();
-      }
-      try {
-        const parsed = JSON.parse(rawStr);
-        (req as any).body = parsed;
-        console.log('server:pre-trpc: body_set', {
-          url: req.url,
-          raw_len: rawBuf.length,
-          body_type: typeof parsed,
-          preview: (typeof parsed === 'string') ? parsed.slice(0,200) : JSON.stringify(parsed).slice(0,200)
-        });
-      } catch (err) {
-        // If JSON parse fails, keep raw string
-        (req as any).body = rawStr;
-        console.log('server:pre-trpc: body_set_string', { url: req.url, raw_len: rawBuf.length, preview: rawStr.slice(0,200) });
-      }
-      return next();
-    });
-
-    req.on('error', (err) => {
-      console.error('server:pre-trpc: request stream error', err);
-      (req as any).body = undefined;
-      next();
-    });
-
-    // Safety timeout: if no events fire, ensure body prop exists
-    setTimeout(() => {
-      if (!('body' in req)) {
-        (req as any).body = undefined;
-        console.log('server:pre-trpc: timeout set body undefined', { url: req.url });
-        next();
-      }
-    }, 250);
-  } catch (e) {
-    console.error('server:pre-trpc: unexpected error', e);
-    (req as any).body = undefined;
-    next();
-  }
-});
-
-app.use('/api/trpc', __ensure_body_and_call_trpc);
 } catch (e) {
   console.error('server:pre-trpc:top:error', e && (e.stack||e.message||String(e)));
 }
@@ -377,101 +378,16 @@ app.use('/api/trpc', __ensure_body_and_call_trpc);
  *
  * Uses async iteration `for await (const chunk of req)` to collect chunks.
  */
-app.use("/api/trpc", async (req: any, res: any, next: any) => {
-  try {
-    if (req.method !== "POST") return next();
 
-    // If already parsed, pass through
-    if (typeof req.body !== "undefined") {
-      return next();
-    }
+/* removed app.use(/api/trpc) duplicate block (backup in git) */
 
-    // If stream already ended or not readable, continue.
-    if (req.readableEnded || !req.readable) {
-      return next();
-    }
-
-    // Collect raw body via async iterator (safe and avoids adding regular 'data' listeners)
-    let raw = "";
-    // If request encoding not set, try to set UTF-8 (we expect JSON mostly)
-    if (typeof req.setEncoding === "function") {
-      try { req.setEncoding("utf8"); } catch (_e) {}
-    }
-
-    // Use a timeout guard to avoid hanging forever
-    const TIMEOUT_MS = 5000;
-    let timedOut = false;
-    const to = setTimeout(() => { timedOut = true; }, TIMEOUT_MS);
-
-    try {
-      for await (const chunk of req) {
-        if (timedOut) break;
-        raw += chunk;
-      }
-    } catch (err) {
-      // If reading fails, log and continue to next middleware.
-      // eslint-disable-next-line no-console
-      console.error(JSON.stringify({
-        tag: "server:dbg:reqBody_read_error",
-        ts: new Date().toISOString(),
-        err: (err && (err.stack || err.message || String(err))) || String(err)
-      }));
-    } finally {
-      clearTimeout(to);
-    }
-
-    // Attach raw body and parsed body (if JSON) so tRPC's incomingMessageToRequest can use it
-    req.rawBody = raw;
-    try {
-      req.body = raw === "" ? undefined : JSON.parse(raw);
-    } catch (e) {
-      // Not JSON — keep raw string
-      req.body = raw;
-    }
-    // Mark as parsed so other body parsers skip
-    req._body = true;
-
-    // Debug log for verification
-    try {
-      // eslint-disable-next-line no-console
-      console.log(JSON.stringify({
-        tag: "server:dbg:reqBody_set2",
-        ts: new Date().toISOString(),
-        method: req.method,
-        url: req.originalUrl || req.url,
-        raw_len: (req.rawBody || "").length,
-        body_preview: ((req.rawBody || "").slice(0,200)),
-        body_type: typeof req.body
-      }));
-    } catch (_) {}
-
-    return next();
-  } catch (err) {
-    // If anything unexpected happens, log and continue
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify({
-      tag: "server:dbg:reqBody_unexpected",
-      ts: new Date().toISOString(),
-      err: (err && (err.stack || err.message || String(err))) || String(err)
-    }));
-    // Ensure req.body remains undefined to allow fallback behavior
-    req.body = undefined;
-    req._body = false;
-    return next();
-  }
-});
 // --- END: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
 
 
 // tRPC API
-  app.use(
-    "/api/trpc",
-    
-  createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
+  
+/* removed app.use(/api/trpc) duplicate block (backup in git) */
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
