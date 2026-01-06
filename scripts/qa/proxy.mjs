@@ -100,43 +100,54 @@ function looksLikeStructuredBatchItem(item) {
   return item && typeof item === 'object' && 'path' in item && 'input' in item;
 }
 
-function normalizeBatchBodyToStructured(parsed, procPath) {
-  // If already an array of structured items [{path, input}, ...], leave as-is
-  if (Array.isArray(parsed)) {
-    const allStructured = parsed.every(item => looksLikeStructuredBatchItem(item));
-    if (allStructured) {
-      return parsed; // Already structured, return as-is
+function normalizeBatchBodyToKeyedObject(parsed) {
+  // tRPC expects keyed-object format: {"0": input0, "1": input1}
+  // NOT array format: [{path, input}]
+  
+  // If already a keyed-object with numeric keys, extract 'input' field if present
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed);
+    const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+    if (allNumeric) {
+      // Unwrap {input: ...} if present
+      const out = {};
+      for (const k of keys) {
+        const v = parsed[k];
+        if (v && typeof v === 'object' && 'input' in v) {
+          out[k] = v.input;
+        } else {
+          out[k] = v;
+        }
+      }
+      return out;
     }
-    // Transform each element to {path, input}
-    return parsed.map(item => {
-      if (looksLikeStructuredBatchItem(item)) {
-        return item; // Already structured
-      }
-      // Plain input object - wrap with path
-      return { path: procPath, input: item };
-    });
   }
   
-  // Keyed-object like { "0": {...}, "1": {...} } -> [{path, input}, ...]
-  if (looksLikeKeyedBatchObject(parsed)) {
-    const keys = Object.keys(parsed).sort((a, b) => +a - +b); // Numeric sort
-    return keys.map(k => {
-      const v = parsed[k];
-      // If v already has {input}, use it; otherwise wrap v as input
-      if (v && typeof v === 'object' && 'input' in v) {
-        return { path: procPath, input: v.input };
+  // If array -> convert to keyed object {"0": input0, "1": input1, ...}
+  if (Array.isArray(parsed)) {
+    const out = {};
+    for (let i = 0; i < parsed.length; i++) {
+      const el = parsed[i];
+      if (el && typeof el === 'object') {
+        // element may be {path, input} or {input} or raw input
+        if ('input' in el) {
+          out[String(i)] = el.input;
+        } else {
+          out[String(i)] = el;
+        }
+      } else {
+        out[String(i)] = el;
       }
-      return { path: procPath, input: v };
-    });
+    }
+    return out;
   }
   
-  // Single-call object: wrap as single batch item
+  // Single object -> wrap as {"0": input}
   if (parsed && typeof parsed === 'object') {
     if ('input' in parsed) {
-      return [{ path: procPath, input: parsed.input }];
+      return { "0": parsed.input };
     }
-    // Plain object - wrap as input
-    return [{ path: procPath, input: parsed }];
+    return { "0": parsed };
   }
   
   // fallback: return parsed unchanged
@@ -181,8 +192,8 @@ async function proxyRequest(req, res) {
           // Extract procedure path from URL
           const procPath = extractProcPath(url);
           
-          // Normalize to structured batch format
-          normalized = normalizeBatchBodyToStructured(parsed, procPath);
+          // Normalize to keyed-object format (tRPC expects {"0": input0, "1": input1})
+          normalized = normalizeBatchBodyToKeyedObject(parsed);
           
           // Check if normalization changed the structure
           requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
