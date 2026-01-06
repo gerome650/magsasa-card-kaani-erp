@@ -31,6 +31,48 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+
+
+app.use('/api/trpc', (req, res, next) => {
+  try {
+    console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
+
+    // If body already present and not undefined, skip (but log)
+    if ('body' in req && req.body !== undefined) {
+      console.log('server:pre-trpc: req.body already present (skipping)', { url: req.url, type: typeof req.body });
+      return next();
+    }
+
+    const method = (req.method || '').toUpperCase();
+    const ct = (req.headers['content-type'] || '').toLowerCase();
+
+    // If not a JSON body POST/PUT/PATCH, still ensure 'body' prop exists
+    if (method === 'GET' || !ct.includes('application/json')) {
+      if (!('body' in req)) (req as any).body = undefined;
+      console.log('server:pre-trpc: not-json-or-get, body set undefined', { url: req.url, method, contentType: ct });
+      return next();
+    }
+
+    // Collect chunks synchronously
+    const chunks: Buffer[] = [];
+    let gotData = false;
+    req.on('data', (chunk: Buffer) => {
+      gotData = true;
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+
+    req.on('end', () => {
+      const rawBuf = Buffer.concat(chunks);
+      const rawStr = rawBuf.toString('utf8');
+      if (rawStr.length === 0) {
+        (req as any).body = undefined;
+        console.log('server:pre-trpc: end(empty) -> body undefined', { url: req.url });
+        return next();
+      }
+      try {
+        const parsed = JSON.parse(rawStr);
+        (req as any).body = parsed;
+        console.log('server:pre-trpc: body_set', {
 // ---------- pre-trpc normalization middleware (auto-inserted) ----------
 app.use('/api/trpc', (req, res, next) => {
   try {
@@ -138,48 +180,6 @@ app.use('/api/trpc', (req, res, next) => {
   }
 });
 // ---------- end pre-trpc normalization middleware ----------
-
-
-app.use('/api/trpc', (req, res, next) => {
-  try {
-    console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
-
-    // If body already present and not undefined, skip (but log)
-    if ('body' in req && req.body !== undefined) {
-      console.log('server:pre-trpc: req.body already present (skipping)', { url: req.url, type: typeof req.body });
-      return next();
-    }
-
-    const method = (req.method || '').toUpperCase();
-    const ct = (req.headers['content-type'] || '').toLowerCase();
-
-    // If not a JSON body POST/PUT/PATCH, still ensure 'body' prop exists
-    if (method === 'GET' || !ct.includes('application/json')) {
-      if (!('body' in req)) (req as any).body = undefined;
-      console.log('server:pre-trpc: not-json-or-get, body set undefined', { url: req.url, method, contentType: ct });
-      return next();
-    }
-
-    // Collect chunks synchronously
-    const chunks: Buffer[] = [];
-    let gotData = false;
-    req.on('data', (chunk: Buffer) => {
-      gotData = true;
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
-
-    req.on('end', () => {
-      const rawBuf = Buffer.concat(chunks);
-      const rawStr = rawBuf.toString('utf8');
-      if (rawStr.length === 0) {
-        (req as any).body = undefined;
-        console.log('server:pre-trpc: end(empty) -> body undefined', { url: req.url });
-        return next();
-      }
-      try {
-        const parsed = JSON.parse(rawStr);
-        (req as any).body = parsed;
-        console.log('server:pre-trpc: body_set', {
           url: req.url,
           raw_len: rawBuf.length,
           body_type: typeof parsed,
