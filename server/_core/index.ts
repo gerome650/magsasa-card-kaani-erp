@@ -31,6 +31,114 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+// ---------- pre-trpc normalization middleware (auto-inserted) ----------
+app.use('/api/trpc', (req, res, next) => {
+  try {
+    // quick guard
+    const urlStr = (req.originalUrl || req.url || '');
+    const isBatch = /\bbatch=1\b/.test(urlStr);
+    if (!isBatch) {
+      return next();
+    }
+
+    // helper: get the procedure path from URL: /api/trpc/<procPath>
+    let procPath = '';
+    try {
+      const pathname = (req.originalUrl || req.url || '').split('?')[0];
+      const m = pathname.match(/\/api\/trpc\/(.+)/);
+      procPath = m ? decodeURIComponent(m[1]) : '';
+    } catch (e) {
+      procPath = '';
+    }
+
+    // read req.body (may be string or object)
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch (e) { /* leave as string */ }
+    }
+
+    let normalized = null;
+
+    function wrapWithPath(obj) {
+      return { path: procPath || '', input: obj };
+    }
+
+    if (Array.isArray(body)) {
+      // array input: raw input array or already structured
+      if (body.length > 0 && body.every(it => it && (it.path !== undefined || it.input !== undefined))) {
+        // looks already structured -> ensure each item has path/input
+        normalized = body.map(it => {
+          if (it.path === undefined && it.input === undefined) {
+            return wrapWithPath(it);
+          }
+          // if item has input but no path -> inject path
+          if (it.path === undefined && it.input !== undefined) {
+            return { path: procPath || '', input: it.input };
+          }
+          return it;
+        });
+      } else {
+        // raw input array -> map each to {path, input}
+        normalized = body.map(it => wrapWithPath(it));
+      }
+    } else if (body && typeof body === 'object') {
+      // keyed-object like {"0": {...}} or keyed structured {"0": {"path":..,"input":..}}
+      const keys = Object.keys(body);
+      // numeric keys?
+      const numericKeys = keys.filter(k => /^\d+$/.test(k)).sort((a,b) => Number(a)-Number(b));
+      if (numericKeys.length > 0) {
+        normalized = numericKeys.map(k => {
+          const v = body[k];
+          if (v && (v.path !== undefined || v.input !== undefined)) {
+            // keyed structured
+            if (v.path === undefined && v.input !== undefined) {
+              return { path: procPath || '', input: v.input };
+            }
+            return v;
+          }
+          return wrapWithPath(v);
+        });
+      } else {
+        // single object (not keyed). Possibly it already has path/input.
+        if (body.path !== undefined || body.input !== undefined) {
+          normalized = [ body ];
+        } else {
+          // fallback: treat as single raw input
+          normalized = [ wrapWithPath(body) ];
+        }
+      }
+    } else {
+      // body not present or not object/array -> leave unchanged
+    }
+
+    if (normalized) {
+      // set req.body to normalized array (object, not string).
+      req.body = normalized;
+      try {
+        // update content-length header for downstream middleware if required
+        const s = JSON.stringify(req.body);
+        if (req.headers && typeof req.headers === 'object') {
+          req.headers['content-length'] = Buffer.byteLength(s).toString();
+        }
+      } catch (e) {
+        // ignore
+      }
+      try {
+        console.log(JSON.stringify({
+          tag: 'server:pre-trpc:normalized',
+          procPath,
+          normalizedSample: JSON.stringify(req.body).slice(0,500)
+        }));
+      } catch (e) {}
+    }
+  } catch (err) {
+    try { console.error('server:pre-trpc:normalize:error', err && (err.stack || err.toString())); } catch(e){}
+  } finally {
+    return next();
+  }
+});
+// ---------- end pre-trpc normalization middleware ----------
+
 
 app.use('/api/trpc', (req, res, next) => {
   try {
