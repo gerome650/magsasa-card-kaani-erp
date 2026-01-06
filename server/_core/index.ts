@@ -384,6 +384,15 @@ try {
 // --- END: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
 
 
+
+// tRPC API
+app.use(
+  "/api/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
 // tRPC API
   
 /* removed app.use(/api/trpc) duplicate block (backup in git) */
