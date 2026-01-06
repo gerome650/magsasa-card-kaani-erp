@@ -1,0 +1,4 @@
+
+> magsasa-card-dashboard@1.0.0 check /Users/palawan/Documents/Development/MAGSASA-CARD-ERP/MAGSASA-CARD-ERP/magsasa-card-kaani-erp
+> tsc --noEmit
+

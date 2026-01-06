@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { Buffer } from "buffer";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -32,82 +31,6 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
 
-app.use('/api/trpc', (req, res, next) => {
-  try {
-    console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
-
-    // If body already present and not undefined, skip (but log)
-    if ('body' in req && req.body !== undefined) {
-      console.log('server:pre-trpc: req.body already present (skipping)', { url: req.url, type: typeof req.body });
-      return next();
-    }
-
-    const method = (req.method || '').toUpperCase();
-    const ct = (req.headers['content-type'] || '').toLowerCase();
-
-    // If not a JSON body POST/PUT/PATCH, still ensure 'body' prop exists
-    if (method === 'GET' || !ct.includes('application/json')) {
-      if (!('body' in req)) (req as any).body = undefined;
-      console.log('server:pre-trpc: not-json-or-get, body set undefined', { url: req.url, method, contentType: ct });
-      return next();
-    }
-
-    // Collect chunks synchronously
-    const chunks: Buffer[] = [];
-    let gotData = false;
-    req.on('data', (chunk: Buffer) => {
-      gotData = true;
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
-
-    req.on('end', () => {
-      const rawBuf = Buffer.concat(chunks);
-      const rawStr = rawBuf.toString('utf8');
-      if (rawStr.length === 0) {
-        (req as any).body = undefined;
-        console.log('server:pre-trpc: end(empty) -> body undefined', { url: req.url });
-        return next();
-      }
-      try {
-        const parsed = JSON.parse(rawStr);
-        (req as any).body = parsed;
-        console.log('server:pre-trpc: body_set', {
-          url: req.url,
-          raw_len: rawBuf.length,
-          body_type: typeof parsed,
-          preview: (typeof parsed === 'string') ? parsed.slice(0,200) : JSON.stringify(parsed).slice(0,200)
-        });
-      } catch (err) {
-        // If JSON parse fails, keep raw string
-        (req as any).body = rawStr;
-        console.log('server:pre-trpc: body_set_string', { url: req.url, raw_len: rawBuf.length, preview: rawStr.slice(0,200) });
-      }
-      return next();
-    });
-
-    req.on('error', (err) => {
-      console.error('server:pre-trpc: request stream error', err);
-      (req as any).body = undefined;
-      next();
-    });
-
-    // Safety timeout: if no events fire, ensure body prop exists
-    setTimeout(() => {
-      if (!('body' in req)) {
-        (req as any).body = undefined;
-        console.log('server:pre-trpc: timeout set body undefined', { url: req.url });
-        next();
-      }
-    }, 250);
-  } catch (e) {
-    console.error('server:pre-trpc: unexpected error', e);
-    (req as any).body = undefined;
-    next();
-  }
-});
-
-
-
 // --- BEGIN: tRPC body handling change -----------------
 // Create JSON/urlencoded parser instances and only apply them for non-tRPC routes.
 // This allows tRPC's HTTP adapter to read the raw request stream for /api/trpc.
@@ -130,9 +53,16 @@ const urlencodedParser = express.urlencoded({
 
 // Apply parsers only to non-trpc routes. This avoids consuming the raw stream for /api/trpc.
 // If req.path starts with /api/trpc, skip these parsers and let tRPC handle body parsing.
-
-/* removed app.use(/api/trpc) duplicate block (backup in git) */
-
+app.use((req: any, res: any, next: any) => {
+  if (req && (req.path || req.url) && String(req.path || req.url).startsWith('/api/trpc')) {
+    return next();
+  }
+  // run json parser
+  return jsonParser(req, res, () => {
+    // then urlencoded parser if needed (safe to call; it will detect content-type)
+    return urlencodedParser(req, res, next);
+  });
+});
 // --- END: tRPC body handling change -------------------
 
 
@@ -342,19 +272,7 @@ try {
   }
 
   // Register wrapper and ensure original is not left behind
-  
-/**
- * Pre-tRPC middleware: reads raw JSON body for /api/trpc requests,
- * sets req.body (object or string) before tRPC's createBody runs.
- * Logs minimal diagnostics for debug.
- */
-
-/* removed app.use(/api/trpc) duplicate block (backup in git) */
-
-
-
-/* removed app.use(/api/trpc) duplicate block (backup in git) */
-
+  app.use('/api/trpc', __ensure_body_and_call_trpc);
 } catch (e) {
   console.error('server:pre-trpc:top:error', e && (e.stack||e.message||String(e)));
 }
@@ -378,145 +296,101 @@ try {
  *
  * Uses async iteration `for await (const chunk of req)` to collect chunks.
  */
+app.use("/api/trpc", async (req: any, res: any, next: any) => {
+  try {
+    if (req.method !== "POST") return next();
 
-/* removed app.use(/api/trpc) duplicate block (backup in git) */
+    // If already parsed, pass through
+    if (typeof req.body !== "undefined") {
+      return next();
+    }
 
+    // If stream already ended or not readable, continue.
+    if (req.readableEnded || !req.readable) {
+      return next();
+    }
+
+    // Collect raw body via async iterator (safe and avoids adding regular 'data' listeners)
+    let raw = "";
+    // If request encoding not set, try to set UTF-8 (we expect JSON mostly)
+    if (typeof req.setEncoding === "function") {
+      try { req.setEncoding("utf8"); } catch (_e) {}
+    }
+
+    // Use a timeout guard to avoid hanging forever
+    const TIMEOUT_MS = 5000;
+    let timedOut = false;
+    const to = setTimeout(() => { timedOut = true; }, TIMEOUT_MS);
+
+    try {
+      for await (const chunk of req) {
+        if (timedOut) break;
+        raw += chunk;
+      }
+    } catch (err) {
+      // If reading fails, log and continue to next middleware.
+      // eslint-disable-next-line no-console
+      console.error(JSON.stringify({
+        tag: "server:dbg:reqBody_read_error",
+        ts: new Date().toISOString(),
+        err: (err && (err.stack || err.message || String(err))) || String(err)
+      }));
+    } finally {
+      clearTimeout(to);
+    }
+
+    // Attach raw body and parsed body (if JSON) so tRPC's incomingMessageToRequest can use it
+    req.rawBody = raw;
+    try {
+      req.body = raw === "" ? undefined : JSON.parse(raw);
+    } catch (e) {
+      // Not JSON — keep raw string
+      req.body = raw;
+    }
+    // Mark as parsed so other body parsers skip
+    req._body = true;
+
+    // Debug log for verification
+    try {
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify({
+        tag: "server:dbg:reqBody_set2",
+        ts: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl || req.url,
+        raw_len: (req.rawBody || "").length,
+        body_preview: ((req.rawBody || "").slice(0,200)),
+        body_type: typeof req.body
+      }));
+    } catch (_) {}
+
+    return next();
+  } catch (err) {
+    // If anything unexpected happens, log and continue
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify({
+      tag: "server:dbg:reqBody_unexpected",
+      ts: new Date().toISOString(),
+      err: (err && (err.stack || err.message || String(err))) || String(err)
+    }));
+    // Ensure req.body remains undefined to allow fallback behavior
+    req.body = undefined;
+    req._body = false;
+    return next();
+  }
+});
 // --- END: trpc raw-body capture middleware (fix/trpc-body-early-set) ---
 
 
-
 // tRPC API
-
-// ---------- pre-trpc normalization middleware (keyed-object format) ----------
-app.use('/api/trpc', (req: any, res: any, next: any) => {
-  try {
-    // Only run for batch requests (query param batch=1) or requests that look like a batch
-    const isBatchQ = /\b(batch=1)\b/.test(req.originalUrl || req.url || '') || (req.query && req.query.batch === '1');
-    if (!isBatchQ) {
-      next();
-      return;
-    }
-
-    // Ensure req.body is set (tRPC createBody expects req.body to exist)
-    if (typeof req.body === 'string') {
-      try { 
-        req.body = JSON.parse(req.body); 
-      } catch(e) { 
-        // leave as string 
-      }
-    }
-
-    // If no body yet, skip
-    if (typeof req.body === 'undefined' || req.body === null) {
-      next();
-      return;
-    }
-
-    // If body is string -> try parse
-    let body: any = req.body;
-    if (typeof body === 'string') {
-      try { 
-        body = JSON.parse(body); 
-      } catch (e) { 
-        // non-json body 
-      }
-    }
-
-    // If already a keyed-object with numeric keys (good), normalize wrapped {input} => raw input
-    if (body && typeof body === 'object' && !Array.isArray(body)) {
-      const keys = Object.keys(body);
-      const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
-      if (allNumeric) {
-        for (const k of keys) {
-          const v = body[k];
-          if (v && typeof v === 'object' && 'input' in v) {
-            body[k] = v.input;
-          }
-        }
-        req.body = body;
-        console.log(JSON.stringify({
-          tag: 'server:pre-trpc:normalized',
-          url: req.originalUrl || req.url,
-          normalizedType: 'keyed-object',
-          sample: JSON.stringify(Object.keys(body).slice(0, 10))
-        }));
-        next();
-        return;
-      }
-    }
-
-    // If body is array -> convert to keyed object { "0": input0, "1": input1, ... }
-    if (Array.isArray(body)) {
-      const out: any = {};
-      for (let i = 0; i < body.length; i++) {
-        const el = body[i];
-        if (el && typeof el === 'object') {
-          // element may be {path, input} or {input} or raw input
-          if ('input' in el) {
-            out[String(i)] = el.input;
-          } else {
-            out[String(i)] = el;
-          }
-        } else {
-          out[String(i)] = el;
-        }
-      }
-      req.body = out;
-      console.log(JSON.stringify({
-        tag: 'server:pre-trpc:normalized',
-        url: req.originalUrl || req.url,
-        normalizedType: 'array->keyed',
-        sample: JSON.stringify(out).slice(0, 200)
-      }));
-      next();
-      return;
-    }
-
-    // If keyed-object nested under numbers is present as a string or other wrapper, try best-effort
-    // For other shapes, do a shallow detection for an object with numeric property "0"
-    if (body && typeof body === 'object') {
-      if ('0' in body) {
-        // If body.0 is {input:...} extract
-        const keys = Object.keys(body).filter(k => /^\d+$/.test(k));
-        if (keys.length > 0) {
-          for (const k of keys) {
-            const v = body[k];
-            if (v && typeof v === 'object' && 'input' in v) {
-              body[k] = v.input;
-            }
-          }
-          req.body = body;
-          console.log(JSON.stringify({
-            tag: 'server:pre-trpc:normalized',
-            url: req.originalUrl || req.url,
-            normalizedType: 'kept-keyed-0',
-            sample: JSON.stringify(Object.keys(body).slice(0, 10))
-          }));
-          next();
-          return;
-        }
-      }
-    }
-
-    next();
-  } catch (err: any) {
-    console.log('server:pre-trpc:normalize:err', err && err.stack ? err.stack : err);
-    next();
-  }
-});
-// ---------- end pre-trpc normalization middleware ----------
-
-app.use(
-  "/api/trpc",
+  app.use(
+    "/api/trpc",
+    
   createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
-// tRPC API
-  
-/* removed app.use(/api/trpc) duplicate block (backup in git) */
-
+      router: appRouter,
+      createContext,
+    })
+  );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

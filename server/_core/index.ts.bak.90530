@@ -387,121 +387,108 @@ try {
 
 // tRPC API
 
-// ---------- pre-trpc normalization middleware (keyed-object format) ----------
+// ---------- pre-trpc normalization middleware ----------
 app.use('/api/trpc', (req: any, res: any, next: any) => {
   try {
-    // Only run for batch requests (query param batch=1) or requests that look like a batch
-    const isBatchQ = /\b(batch=1)\b/.test(req.originalUrl || req.url || '') || (req.query && req.query.batch === '1');
-    if (!isBatchQ) {
-      next();
-      return;
+    // Only process POST requests with JSON content-type
+    const method = (req.method || '').toUpperCase();
+    const contentType = (req.headers['content-type'] || '').toLowerCase();
+    if (method !== 'POST' || !contentType.includes('application/json')) {
+      return next();
     }
 
-    // Ensure req.body is set (tRPC createBody expects req.body to exist)
-    if (typeof req.body === 'string') {
-      try { 
-        req.body = JSON.parse(req.body); 
-      } catch(e) { 
-        // leave as string 
-      }
+    // Get procedure path from URL: /api/trpc/<procPath>
+    let procPath = '';
+    try {
+      const urlStr = req.originalUrl || req.url || '';
+      const pathname = urlStr.split('?')[0];
+      const match = pathname.match(/\/api\/trpc\/(.+)/);
+      procPath = match ? decodeURIComponent(match[1]) : '';
+    } catch (e) {
+      procPath = '';
     }
 
-    // If no body yet, skip
-    if (typeof req.body === 'undefined' || req.body === null) {
-      next();
-      return;
-    }
-
-    // If body is string -> try parse
-    let body: any = req.body;
+    // Read req.body (should already be set by body-reading middleware)
+    let body = req.body;
     if (typeof body === 'string') {
-      try { 
-        body = JSON.parse(body); 
-      } catch (e) { 
-        // non-json body 
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        // Leave as string if parse fails
       }
     }
 
-    // If already a keyed-object with numeric keys (good), normalize wrapped {input} => raw input
-    if (body && typeof body === 'object' && !Array.isArray(body)) {
-      const keys = Object.keys(body);
-      const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
-      if (allNumeric) {
-        for (const k of keys) {
+    // Detect batch: query param batch=1, or array body, or keyed numeric object
+    const urlStr = req.originalUrl || req.url || '';
+    const isBatchQuery = /\bbatch=1\b/.test(urlStr);
+    const isArrayBody = Array.isArray(body);
+    const isKeyedObject = body && typeof body === 'object' && !Array.isArray(body) && 
+      Object.keys(body).some(k => /^\d+$/.test(k));
+
+    const isBatch = isBatchQuery || isArrayBody || isKeyedObject;
+
+    let normalized: any = null;
+
+    if (isBatch) {
+      // Batch normalization
+      if (isKeyedObject) {
+        // Keyed object like {"0": {...}} -> [{path: "...", input: {...}}]
+        const keys = Object.keys(body).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
+        normalized = keys.map(k => {
           const v = body[k];
-          if (v && typeof v === 'object' && 'input' in v) {
-            body[k] = v.input;
+          if (v && typeof v === 'object' && ('path' in v || 'input' in v)) {
+            // Already structured, ensure path is set
+            if (!v.path && v.input) {
+              return { path: procPath, input: v.input };
+            }
+            return v;
           }
-        }
-        req.body = body;
-        console.log(JSON.stringify({
-          tag: 'server:pre-trpc:normalized',
-          url: req.originalUrl || req.url,
-          normalizedType: 'keyed-object',
-          sample: JSON.stringify(Object.keys(body).slice(0, 10))
-        }));
-        next();
-        return;
+          return { path: procPath, input: v };
+        });
+      } else if (isArrayBody) {
+        // Array body -> ensure each item has {path, input}
+        normalized = body.map((item: any) => {
+          if (item && typeof item === 'object' && ('path' in item || 'input' in item)) {
+            if (!item.path && item.input) {
+              return { path: procPath, input: item.input };
+            }
+            return item;
+          }
+          return { path: procPath, input: item };
+        });
+      } else {
+        // Single object in batch mode -> wrap
+        normalized = [{ path: procPath, input: body }];
+      }
+    } else {
+      // Non-batch: ensure body has {input: ...} structure
+      if (body && typeof body === 'object' && !('input' in body)) {
+        normalized = { input: body };
       }
     }
 
-    // If body is array -> convert to keyed object { "0": input0, "1": input1, ... }
-    if (Array.isArray(body)) {
-      const out: any = {};
-      for (let i = 0; i < body.length; i++) {
-        const el = body[i];
-        if (el && typeof el === 'object') {
-          // element may be {path, input} or {input} or raw input
-          if ('input' in el) {
-            out[String(i)] = el.input;
-          } else {
-            out[String(i)] = el;
-          }
-        } else {
-          out[String(i)] = el;
+    if (normalized !== null) {
+      req.body = normalized;
+      // Update content-length header
+      try {
+        const bodyStr = JSON.stringify(req.body);
+        if (req.headers && typeof req.headers === 'object') {
+          req.headers['content-length'] = Buffer.byteLength(bodyStr, 'utf8').toString();
         }
+      } catch (e) {
+        // Ignore
       }
-      req.body = out;
       console.log(JSON.stringify({
         tag: 'server:pre-trpc:normalized',
-        url: req.originalUrl || req.url,
-        normalizedType: 'array->keyed',
-        sample: JSON.stringify(out).slice(0, 200)
+        procPath,
+        isBatch,
+        normalizedSample: JSON.stringify(req.body).slice(0, 200)
       }));
-      next();
-      return;
     }
-
-    // If keyed-object nested under numbers is present as a string or other wrapper, try best-effort
-    // For other shapes, do a shallow detection for an object with numeric property "0"
-    if (body && typeof body === 'object') {
-      if ('0' in body) {
-        // If body.0 is {input:...} extract
-        const keys = Object.keys(body).filter(k => /^\d+$/.test(k));
-        if (keys.length > 0) {
-          for (const k of keys) {
-            const v = body[k];
-            if (v && typeof v === 'object' && 'input' in v) {
-              body[k] = v.input;
-            }
-          }
-          req.body = body;
-          console.log(JSON.stringify({
-            tag: 'server:pre-trpc:normalized',
-            url: req.originalUrl || req.url,
-            normalizedType: 'kept-keyed-0',
-            sample: JSON.stringify(Object.keys(body).slice(0, 10))
-          }));
-          next();
-          return;
-        }
-      }
-    }
-
-    next();
   } catch (err: any) {
-    console.log('server:pre-trpc:normalize:err', err && err.stack ? err.stack : err);
-    next();
+    console.error('server:pre-trpc:normalize:error', err && (err.stack || err.message || String(err)));
+  } finally {
+    return next();
   }
 });
 // ---------- end pre-trpc normalization middleware ----------
