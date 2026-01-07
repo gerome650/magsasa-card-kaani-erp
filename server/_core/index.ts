@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Buffer } from "buffer";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -10,7 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 // superjson transformer removed - not supported in current tRPC version
 
-function isPortAvailable(port: number): Promise<boolean> {
+const isPortAvailable = function (port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
     server.listen(port, () => {
@@ -20,7 +20,7 @@ function isPortAvailable(port: number): Promise<boolean> {
   });
 }
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
+const findAvailablePort = async function (startPort: number = 3000): Promise<number> {
   for (let port = startPort; port < startPort + 20; port++) {
     if (await isPortAvailable(port)) {
       return port;
@@ -29,10 +29,10 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
+const startServer = async function () {
   const app = express();
 
-app.use('/api/trpc', (req, res, next) => {
+app.use('/api/trpc', (req: any, res: any, next: any) => {
   try {
     console.log('server:pre-trpc: enter', { url: req.url, method: req.method });
 
@@ -77,6 +77,100 @@ app.use('/api/trpc', (req, res, next) => {
           body_type: typeof parsed,
           preview: (typeof parsed === 'string') ? parsed.slice(0,200) : JSON.stringify(parsed).slice(0,200)
         });
+        
+        // === NORMALIZATION: Convert to keyed-object format for batch requests ===
+        const isBatchQ = /\b(batch=1)\b/.test(req.originalUrl || req.url || '') || (req.query && req.query.batch === '1');
+
+        if (isBatchQ && parsed) {
+          // Convert { "input": {...} } -> { "0": {...} } for batch requests
+          if (!Array.isArray(parsed) && typeof parsed === 'object' && Object.prototype.hasOwnProperty.call(parsed, 'input') && Object.keys(parsed).length === 1) {
+            (req as any).body = { '0': parsed.input };
+            console.log(JSON.stringify({
+              tag: 'server:pre-trpc:normalized',
+              url: req.originalUrl || req.url,
+              normalizedType: 'input->keyed-for-batch',
+              sample: JSON.stringify((req as any).body).slice(0, 200)
+            }));
+            return next();
+          }
+        }
+
+        if (isBatchQ && parsed) {
+          let body: any = parsed;
+          
+          // If already a keyed-object with numeric keys, unwrap {input} if present
+          if (body && typeof body === 'object' && !Array.isArray(body)) {
+            const keys = Object.keys(body);
+            const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+            if (allNumeric) {
+              for (const k of keys) {
+                const v = body[k];
+                if (v && typeof v === 'object' && 'input' in v) {
+                  body[k] = v.input;
+                }
+              }
+              (req as any).body = body;
+              // Body already set, tRPC will read from req.body directly
+              console.log(JSON.stringify({
+                tag: 'server:pre-trpc:normalized',
+                url: req.originalUrl || req.url,
+                normalizedType: 'keyed-object',
+                sample: JSON.stringify(Object.keys(body).slice(0, 10))
+              }));
+              return next();
+            }
+          }
+          
+          // If array -> convert to keyed object
+          if (Array.isArray(body)) {
+            const out: any = {};
+            for (let i = 0; i < body.length; i++) {
+              const el = body[i];
+              if (el && typeof el === 'object') {
+                if ('input' in el) {
+                  out[String(i)] = el.input;
+                } else {
+                  out[String(i)] = el;
+                }
+              } else {
+                out[String(i)] = el;
+              }
+            }
+            (req as any).body = out;
+            // Body already set, tRPC will read from req.body directly
+            console.log(JSON.stringify({
+              tag: 'server:pre-trpc:normalized',
+              url: req.originalUrl || req.url,
+              normalizedType: 'array->keyed',
+              sample: JSON.stringify(out).slice(0, 200)
+            }));
+            return next();
+          }
+          
+          // If object with '0' key, unwrap {input} if present
+          if (body && typeof body === 'object' && '0' in body) {
+            const keys = Object.keys(body).filter(k => /^\d+$/.test(k));
+            if (keys.length > 0) {
+              for (const k of keys) {
+                const v = body[k];
+                if (v && typeof v === 'object' && 'input' in v) {
+                  body[k] = v.input;
+                }
+              }
+              (req as any).body = body;
+              // Body already set, tRPC will read from req.body directly
+              console.log(JSON.stringify({
+                tag: 'server:pre-trpc:normalized',
+                url: req.originalUrl || req.url,
+                normalizedType: 'kept-keyed-0',
+                sample: JSON.stringify(Object.keys(body).slice(0, 10))
+              }));
+              return next();
+            }
+          }
+        }
+        // === END NORMALIZATION ===
+        
       } catch (err) {
         // If JSON parse fails, keep raw string
         (req as any).body = rawStr;
@@ -85,7 +179,7 @@ app.use('/api/trpc', (req, res, next) => {
       return next();
     });
 
-    req.on('error', (err) => {
+    req.on('error', (err: any) => {
       console.error('server:pre-trpc: request stream error', err);
       (req as any).body = undefined;
       next();
@@ -95,7 +189,7 @@ app.use('/api/trpc', (req, res, next) => {
     setTimeout(() => {
       if (!('body' in req)) {
         (req as any).body = undefined;
-        console.log('server:pre-trpc: timeout set body undefined', { url: req.url });
+        console.log('server:pre-trpc: timeout set body undefined', { url: (req as any).url });
         next();
       }
     }, 250);
@@ -154,7 +248,7 @@ try {
   // capture the original middleware call result into a variable
   const __trpc_mw_creator = (function() {
     // replicate the original call expression by returning the created middleware function
-    return (req, res, next) => {
+    return (req: any, res: any, next: any) => {
       try {
         const preview = (() => {
           try {
@@ -205,7 +299,7 @@ try {
           "content-length": (req && req.headers && (req.headers['content-length']||req.headers['Content-Length'])) || null
         }
       }));
-    } catch (e) {
+    } catch (e: any) {
       console.error("server:pre-trpc:error", e && (e.stack||e.message||String(e)));
     }
     // call the real tRPC middleware
@@ -231,7 +325,7 @@ try {
 
   const __trpc_mw = __trpc_middleware_factory;
 
-  function __ensure_body_and_call_trpc(req, res, next) {
+  const __ensure_body_and_call_trpc = function(req: any, res: any, next: any) {
     try {
       // If req.body already present, just proceed
       if (Object.prototype.hasOwnProperty.call(req, 'body') && typeof req.body !== 'undefined') {
@@ -281,7 +375,7 @@ try {
       if (typeof req.setEncoding === 'function') req.setEncoding('utf8');
 
       let handled = false;
-      function done(err) {
+      const done = function (err) {
         if (handled) return;
         handled = true;
         if (err) return next(err);
@@ -387,124 +481,30 @@ try {
 
 // tRPC API
 
-// ---------- pre-trpc normalization middleware (keyed-object format) ----------
-app.use('/api/trpc', (req: any, res: any, next: any) => {
-  try {
-    // Only run for batch requests (query param batch=1) or requests that look like a batch
-    const isBatchQ = /\b(batch=1)\b/.test(req.originalUrl || req.url || '') || (req.query && req.query.batch === '1');
-    if (!isBatchQ) {
-      next();
-      return;
-    }
+// Normalization middleware removed - logic moved into body-reading middleware's req.on('end') callback
+// This ensures normalization runs AFTER the body is parsed, not before
 
-    // Ensure req.body is set (tRPC createBody expects req.body to exist)
-    if (typeof req.body === 'string') {
-      try { 
-        req.body = JSON.parse(req.body); 
-      } catch(e) { 
-        // leave as string 
+// === server:pre-trpc router-stack diagnostics (inserted by Cursor Agent) ===
+try {
+  // Print whether app._router exists and basic summary of stack entries.
+  // @ts-ignore - runtime debug
+  const stack = (app as any)?._router?.stack || [];
+  const trpcUses = [];
+  for (let i = 0; i < stack.length; i++) {
+    const m = stack[i];
+    try {
+      // route.path for route handlers; for app.use middleware route is undefined
+      const routePath = m.route ? (m.route.path || JSON.stringify(m.route)) : (m?.name || (m?.handle && m.handle.name) || (m.regexp && m.regexp.toString()));
+      if (routePath && routePath.toString().includes("/api/trpc")) {
+        trpcUses.push({ index: i, path: routePath, name: m.name || (m.handle && m.handle.name) || null });
       }
-    }
-
-    // If no body yet, skip
-    if (typeof req.body === 'undefined' || req.body === null) {
-      next();
-      return;
-    }
-
-    // If body is string -> try parse
-    let body: any = req.body;
-    if (typeof body === 'string') {
-      try { 
-        body = JSON.parse(body); 
-      } catch (e) { 
-        // non-json body 
-      }
-    }
-
-    // If already a keyed-object with numeric keys (good), normalize wrapped {input} => raw input
-    if (body && typeof body === 'object' && !Array.isArray(body)) {
-      const keys = Object.keys(body);
-      const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
-      if (allNumeric) {
-        for (const k of keys) {
-          const v = body[k];
-          if (v && typeof v === 'object' && 'input' in v) {
-            body[k] = v.input;
-          }
-        }
-        req.body = body;
-        console.log(JSON.stringify({
-          tag: 'server:pre-trpc:normalized',
-          url: req.originalUrl || req.url,
-          normalizedType: 'keyed-object',
-          sample: JSON.stringify(Object.keys(body).slice(0, 10))
-        }));
-        next();
-        return;
-      }
-    }
-
-    // If body is array -> convert to keyed object { "0": input0, "1": input1, ... }
-    if (Array.isArray(body)) {
-      const out: any = {};
-      for (let i = 0; i < body.length; i++) {
-        const el = body[i];
-        if (el && typeof el === 'object') {
-          // element may be {path, input} or {input} or raw input
-          if ('input' in el) {
-            out[String(i)] = el.input;
-          } else {
-            out[String(i)] = el;
-          }
-        } else {
-          out[String(i)] = el;
-        }
-      }
-      req.body = out;
-      console.log(JSON.stringify({
-        tag: 'server:pre-trpc:normalized',
-        url: req.originalUrl || req.url,
-        normalizedType: 'array->keyed',
-        sample: JSON.stringify(out).slice(0, 200)
-      }));
-      next();
-      return;
-    }
-
-    // If keyed-object nested under numbers is present as a string or other wrapper, try best-effort
-    // For other shapes, do a shallow detection for an object with numeric property "0"
-    if (body && typeof body === 'object') {
-      if ('0' in body) {
-        // If body.0 is {input:...} extract
-        const keys = Object.keys(body).filter(k => /^\d+$/.test(k));
-        if (keys.length > 0) {
-          for (const k of keys) {
-            const v = body[k];
-            if (v && typeof v === 'object' && 'input' in v) {
-              body[k] = v.input;
-            }
-          }
-          req.body = body;
-          console.log(JSON.stringify({
-            tag: 'server:pre-trpc:normalized',
-            url: req.originalUrl || req.url,
-            normalizedType: 'kept-keyed-0',
-            sample: JSON.stringify(Object.keys(body).slice(0, 10))
-          }));
-          next();
-          return;
-        }
-      }
-    }
-
-    next();
-  } catch (err: any) {
-    console.log('server:pre-trpc:normalize:err', err && err.stack ? err.stack : err);
-    next();
+    } catch (e) {}
   }
-});
-// ---------- end pre-trpc normalization middleware ----------
+  console.log(JSON.stringify({ tag: "server:pre-trpc:router-stack", count: stack.length, trpcCount: trpcUses.length, trpcUses }, null, 0));
+} catch (e) {
+  console.error(JSON.stringify({ tag: "server:pre-trpc:router-stack:error", error: (e && (e as any).stack) ? (e as any).stack : String(e) }));
+}
+// === end debug snippet ===
 
 app.use(
   "/api/trpc",
