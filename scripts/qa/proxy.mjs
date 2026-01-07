@@ -104,6 +104,15 @@ function normalizeBatchBodyToKeyedObject(parsed) {
   // tRPC expects keyed-object format: {"0": input0, "1": input1}
   // NOT array format: [{path, input}]
   
+  // PRESERVE: If the body is exactly {"input": {...}}, keep it as-is
+  // This preserves the tRPC input format for single requests
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed);
+    if (keys.length === 1 && keys[0] === 'input' && Object.prototype.hasOwnProperty.call(parsed, 'input')) {
+      return parsed; // Preserve {"input": {...}} format
+    }
+  }
+  
   // If already a keyed-object with numeric keys, extract 'input' field if present
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const keys = Object.keys(parsed);
@@ -194,6 +203,17 @@ async function proxyRequest(req, res) {
           
           // Normalize to keyed-object format (tRPC expects {"0": input0, "1": input1})
           normalized = normalizeBatchBodyToKeyedObject(parsed);
+          
+          // Log if we preserved {"input": {...}} format
+          if (normalized === parsed && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'input' in parsed) {
+            console.log(JSON.stringify({
+              ts: new Date().toISOString(),
+              'proxy:preserve-input': {
+                url: url || req.originalUrl,
+                sample: JSON.stringify(parsed).slice(0, 200)
+              }
+            }));
+          }
           
           // Check if normalization changed the structure
           requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
