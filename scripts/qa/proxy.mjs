@@ -15,6 +15,34 @@ const PROXY_PORT = Number(process.env.PORT || process.env.PROXY_PORT || 3007);
 const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT || 3012);
 const UPSTREAM_BASE = `http://localhost:${UPSTREAM_PORT}`;
 
+// --- DEBUG HOOK START ---
+const _origResEnd = http.ServerResponse.prototype.end;
+http.ServerResponse.prototype.end = function (chunk, encoding, cb) {
+  try {
+    const reqUrl = (this.req && (this.req.originalUrl || this.req.url)) || 'unknown-url';
+    const method = this.req && this.req.method;
+    const status = this.statusCode;
+    // prepare small preview
+    let preview = '';
+    if (chunk) {
+      if (typeof chunk === 'string') preview = chunk.slice(0, 2000);
+      else if (Buffer.isBuffer(chunk)) preview = chunk.toString('utf8', 0, 2000);
+      else try { preview = JSON.stringify(chunk).slice(0,2000); } catch(e){ preview = String(chunk).slice(0,2000); }
+    }
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      proxy_dbg_res_end: { url: reqUrl, method, status, preview_len: preview.length }
+    }));
+    if (reqUrl.includes('auth.demoLogin')) {
+      console.log('proxy:dbg_res_end_preview_auth.demoLogin:\n' + preview);
+    }
+  } catch(e) {
+    console.error('proxy:dbg_res_end_hook_error', e && (e.stack || e));
+  }
+  return _origResEnd.call(this, chunk, encoding, cb);
+};
+// --- DEBUG HOOK END ---
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -36,12 +64,135 @@ function safeJSONParse(text){
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
+// --- Proxy: normalize to structured tRPC batch items (path + input) ---
+function extractProcPath(url) {
+  // Extract procedure path from URL like /api/trpc/auth.demoLogin?batch=1
+  let path = url || '';
+  // Strip /api/trpc/ prefix if present
+  if (path.startsWith('/api/trpc/')) {
+    path = path.slice('/api/trpc/'.length);
+  } else if (path.startsWith('/api/trpc')) {
+    path = path.slice('/api/trpc'.length);
+  }
+  // Strip query string (everything after ?)
+  const qIdx = path.indexOf('?');
+  if (qIdx >= 0) {
+    path = path.slice(0, qIdx);
+  }
+  // Remove leading/trailing slashes
+  path = path.replace(/^\/+|\/+$/g, '');
+  return path || '';
+}
+
+function looksLikeKeyedBatchObject(obj){
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  const keys = Object.keys(obj);
+  if (keys.length === 0) return false;
+  // All values must be objects for a keyed batch (heuristic)
+  return keys.every(k => {
+    const v = obj[k];
+    return v && typeof v === 'object' && !Array.isArray(v);
+  });
+}
+
+function looksLikeStructuredBatchItem(item) {
+  // Check if item already has both 'path' and 'input' fields
+  return item && typeof item === 'object' && 'path' in item && 'input' in item;
+}
+
+function normalizeBatchBodyToKeyedObject(parsed) {
+  // tRPC expects keyed-object format: {"0": input0, "1": input1}
+  // NOT array format: [{path, input}]
+  
+  // PRESERVE: If the body is exactly {"input": {...}}, keep it as-is
+  // This preserves the tRPC input format for single requests
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed);
+    if (keys.length === 1 && keys[0] === 'input' && Object.prototype.hasOwnProperty.call(parsed, 'input')) {
+      return parsed; // Preserve {"input": {...}} format
+    }
+  }
+  
+  // If already a keyed-object with numeric keys, extract 'input' field if present
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const keys = Object.keys(parsed);
+    const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+    if (allNumeric) {
+      // Unwrap {input: ...} if present
+      const out = {};
+      for (const k of keys) {
+        const v = parsed[k];
+        if (v && typeof v === 'object' && 'input' in v) {
+          out[k] = v.input;
+        } else {
+          out[k] = v;
+        }
+      }
+      return out;
+    }
+  }
+  
+  // If array -> convert to keyed object {"0": input0, "1": input1, ...}
+  if (Array.isArray(parsed)) {
+    const out = {};
+    for (let i = 0; i < parsed.length; i++) {
+      const el = parsed[i];
+      if (el && typeof el === 'object') {
+        // element may be {path, input} or {input} or raw input
+        if ('input' in el) {
+          out[String(i)] = el.input;
+        } else {
+          out[String(i)] = el;
+        }
+      } else {
+        out[String(i)] = el;
+      }
+    }
+    return out;
+  }
+  
+  // Single object -> wrap as {"0": input}
+  if (parsed && typeof parsed === 'object') {
+    if ('input' in parsed) {
+      return { "0": parsed.input };
+    }
+    return { "0": parsed };
+  }
+  
+  // fallback: return parsed unchanged
+  return parsed;
+}
+// --- end normalization ---
+
 function ensureWireFormatForPayload(payload){
-  // We want to return a superjson wire object (superjson.serialize(payload))
-  // The client expects top-level { json: ..., meta: ... }
+  // Use superjson.serialize to obtain { json, meta }
   const serialized = superjson.serialize(payload);
-  // serialized is already an object { json, meta }
-  return JSON.stringify(serialized);
+
+  // Ensure meta is present (explicit null if missing)
+  if (!('meta' in serialized) || serialized.meta === undefined) {
+    serialized.meta = null;
+  }
+
+  // Construct final wrapper with both keys to be extra-safe
+  const finalWire = { json: serialized.json, meta: serialized.meta };
+
+  // Return JSON string for HTTP response
+  return JSON.stringify(finalWire);
+}
+
+function looksLikeTRPCPlainError(obj) {
+  // Check if object looks like { error: { message: ..., code: ..., ... } } without superjson wire format
+  return obj && typeof obj === 'object' && 
+         obj.error && typeof obj.error === 'object' &&
+         !obj.error.json; // if error.json exists, it's already in wire format
+}
+
+function looksLikeTRPCPlainResultObject(obj) {
+  // Check if object looks like { result: { data: {...} } } without superjson wire format
+  return obj && typeof obj === 'object' &&
+         obj.result && typeof obj.result === 'object' &&
+         obj.result.data && typeof obj.result.data === 'object' &&
+         !obj.result.data.json; // if result.data.json exists, it's already in wire format
 }
 
 async function proxyRequest(req, res) {
@@ -51,6 +202,59 @@ async function proxyRequest(req, res) {
 
   try {
     const rawBody = await readBody(req);
+    
+    // Normalize request body for POST requests with JSON content-type
+    let bodyToSend = rawBody;
+    let normalized = null;
+    let requestNormalized = false;
+    
+    if (method !== 'GET' && method !== 'HEAD' && rawBody) {
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('application/json')) {
+        const parsed = safeJSONParse(rawBody);
+        if (parsed !== null) {
+          // Extract procedure path from URL
+          const procPath = extractProcPath(url);
+          
+          // Normalize to keyed-object format (tRPC expects {"0": input0, "1": input1})
+          normalized = normalizeBatchBodyToKeyedObject(parsed);
+          
+          // Log if we preserved {"input": {...}} format
+          if (normalized === parsed && parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'input' in parsed) {
+            console.log(JSON.stringify({
+              ts: new Date().toISOString(),
+              'proxy:preserve-input': {
+                url: url || req.originalUrl,
+                sample: JSON.stringify(parsed).slice(0, 200)
+              }
+            }));
+          }
+          
+          // Check if normalization changed the structure
+          requestNormalized = JSON.stringify(parsed) !== JSON.stringify(normalized);
+          
+          if (normalized && (Array.isArray(normalized) || typeof normalized === 'object')) {
+            bodyToSend = JSON.stringify(normalized);
+          }
+          
+          // Detailed logging
+          const originalBodyType = Array.isArray(parsed) ? 'array' : typeof parsed;
+          const normalizedBodyType = Array.isArray(normalized) ? 'array' : typeof normalized;
+          const sampleNormalized = JSON.stringify(normalized).slice(0, 200);
+          
+          console.log(JSON.stringify({
+            ts: new Date().toISOString(),
+            'proxy: request_normalized': {
+              procPath,
+              originalBodyType,
+              normalizedBodyType,
+              sampleNormalized
+            }
+          }));
+        }
+      }
+    }
+    
     // Build headers for upstream, copy most headers but let fetch set host/connection
     const upstreamHeaders = {};
     for (const [k,v] of Object.entries(req.headers)) {
@@ -58,12 +262,28 @@ async function proxyRequest(req, res) {
       if (['host','connection','keep-alive','transfer-encoding'].includes(k)) continue;
       upstreamHeaders[k] = v;
     }
+    
+    // Set content-type and content-length for normalized body
+    if (bodyToSend !== rawBody) {
+      upstreamHeaders['content-type'] = 'application/json';
+      upstreamHeaders['content-length'] = Buffer.byteLength(bodyToSend).toString();
+    }
 
     // Forward request to upstream
     const fetchOptions = { method, headers: upstreamHeaders };
     if (method !== 'GET' && method !== 'HEAD') {
-      fetchOptions.body = rawBody;
+      fetchOptions.body = bodyToSend;
     }
+
+    // Log sending upstream
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      'proxy: sending_upstream': {
+        url: upstreamUrl,
+        headers: Object.keys(upstreamHeaders),
+        bodyLength: bodyToSend ? Buffer.byteLength(bodyToSend) : 0
+      }
+    }));
 
     console.log(`proxy:req: ${method} ${url} -> upstream ${upstreamUrl}`);
     const upstreamResp = await fetch(upstreamUrl, fetchOptions);
@@ -82,41 +302,56 @@ async function proxyRequest(req, res) {
     let transformed = false;
     let finalBody = upstreamText;
 
-    const parsed = safeJSONParse(upstreamText);
+    const upstreamBodyParsed = safeJSONParse(upstreamText);
+    
+    // Debug logging for upstream response parse
+    if (upstreamBodyParsed !== null) {
+      const upstreamBodyType = Array.isArray(upstreamBodyParsed) ? 'array' : typeof upstreamBodyParsed;
+      const upstreamTopKeys = (upstreamBodyParsed && typeof upstreamBodyParsed === 'object' && !Array.isArray(upstreamBodyParsed))
+        ? Object.keys(upstreamBodyParsed).slice(0, 5)
+        : null;
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        'proxy:dbg upstream bodyType': upstreamBodyType,
+        upstreamTopKeys
+      }));
+    }
+
+    // decide final body:
+    //  - If the upstream parsed value is a top-level array (batch), forward the array unchanged.
+    //    @trpc/client expects a raw array for batch responses — DO NOT wrap it in superjson wire format.
+    //  - Otherwise, preserve existing transformation logic for objects/errors.
+    const parsed = upstreamBodyParsed;
     if (parsed !== null) {
       // If it already looks like superjson wire object, keep as-is
       const looksLikeWire = parsed && typeof parsed === 'object' && ('json' in parsed) && ('meta' in parsed);
       if (!looksLikeWire) {
         try {
-          // If batch array (tRPC batch), wrap as top-level payload
           if (Array.isArray(parsed)) {
-            // tRPC batch: keep array as payload
-            finalBody = ensureWireFormatForPayload(parsed);
-            transformed = true;
+            // PASS THROUGH: top-level batch array — forward unchanged
+            finalBody = JSON.stringify(parsed);
+            transformed = false;
+            console.log(`proxy:dbg transformDecision: ${upstreamUrl} -> pass-through top-level batch array`);
           } else if (parsed && typeof parsed === 'object') {
-            // tRPC single entry - often { error: { json: {...} } } or { result: { json: ... } }
-            // If it already has error.json or result.json, we should wrap it as batch [parsed]
-            if (parsed.error && parsed.error.json) {
-              finalBody = ensureWireFormatForPayload([parsed]);
+            // For objects, continue to handle tRPC plain error shapes
+            if (looksLikeTRPCPlainError(parsed) || looksLikeTRPCPlainResultObject(parsed)) {
+              const serialized = superjson.serialize(parsed);
+              // ensure canonical superjson wire format keys exist when we intentionally serialize
+              finalBody = JSON.stringify({
+                json: serialized.json,
+                meta: serialized.meta ?? null
+              });
               transformed = true;
-            } else if (parsed.result && parsed.result.json) {
-              finalBody = ensureWireFormatForPayload([parsed]);
-              transformed = true;
-            } else if ('json' in parsed && !('meta' in parsed)) {
-              // parsed has 'json' but lacks 'meta' (partial serialization); ensure top-level meta
-              // We'll treat parsed.json as the payload
-              finalBody = ensureWireFormatForPayload(parsed.json);
-              transformed = true;
+              console.log(`proxy:dbg transformDecision: ${upstreamUrl} -> transformed to superjson keys=${Object.keys(JSON.parse(finalBody))}`);
             } else {
-              // Generic fallback: serialize the parsed payload into wire format {json:..., meta:...}
-              finalBody = ensureWireFormatForPayload(parsed);
-              transformed = true;
+              finalBody = JSON.stringify(parsed);
+              transformed = false;
             }
           }
         } catch (e) {
-          console.error('proxy: superjson serialization error', e && e.stack ? e.stack : e);
+          finalBody = upstreamText;
           transformed = false;
-          finalBody = upstreamText; // fallback to original
+          console.error("proxy:dbg transform error", String(e));
         }
       } // end not looksLikeWire
     } // end parsed !== null
@@ -127,8 +362,38 @@ async function proxyRequest(req, res) {
     responseHeaders['content-type'] = 'application/json; charset=utf-8';
     responseHeaders['content-length'] = Buffer.byteLength(finalBody, 'utf8');
 
-    // Send response
-    // Set status code to upstream status
+    // DEBUG: After transformation - inspect finalBody type and preview
+    try {
+      const finalPayload = safeJSONParse(finalBody);
+      const finalPayloadType = Array.isArray(finalPayload) ? 'array' : (typeof finalPayload);
+      const topKeys = (finalPayload && typeof finalPayload === 'object' && !Array.isArray(finalPayload)) ? Object.keys(finalPayload).slice(0,20) : null;
+      console.log(JSON.stringify({ 
+        ts: new Date().toISOString(), 
+        "proxy:dbg transformDecision": { 
+          url: upstreamUrl, 
+          status: statusCode, 
+          transformed, 
+          finalPayloadType: finalPayloadType || typeof finalBody
+        } 
+      }));
+      console.log('proxy:dbg_finalBody_preview:' + finalBody.slice(0,2000));
+    } catch(e){ 
+      console.error('proxy:dbg_after_transform_error', e && (e.stack||e)); 
+    }
+
+    // DEBUG: Inspect finalBody shape before sending
+    try {
+      const dbgObj = (() => {
+        try {
+          const parsed = JSON.parse(finalBody);
+          if (Array.isArray(parsed)) return { type: 'array', length: parsed.length };
+          return { type: 'object', keys: Object.keys(parsed).slice(0,10) };
+        } catch(e) { return { type: 'not-json' }; }
+      })();
+      console.log(`proxy:upstream: ${method} ${url} status=${statusCode} transformed=${transformed} dbg=${JSON.stringify(dbgObj)}`);
+    } catch (e) {
+      console.error('proxy: debug log failed', e && e.stack ? e.stack : e);
+    }
     res.writeHead(statusCode, responseHeaders);
     res.end(finalBody);
 
