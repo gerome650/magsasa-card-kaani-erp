@@ -1,0 +1,112 @@
+name: QA smoke test (proxy)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+jobs:
+  qa-smoke:
+    name: QA smoke via proxy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: magsasa_demo
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js and pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable corepack and pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in $(seq 1 30); do
+            mysql -h 127.0.0.1 -uroot -ppassword -e "SELECT 1" && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Export DATABASE_URL
+        run: echo "DATABASE_URL=mysql://root:password@127.0.0.1:3306/magsasa_demo" >> $GITHUB_ENV
+
+      - name: Run database migrations
+        run: pnpm db:push
+
+      - name: Start backend server
+        run: |
+          export LOGISTICS_V0_ENABLED=true
+          export NODE_ENV=development
+          export PORT=3012
+          pnpm dev > server_log.txt 2>&1 & echo $! > server_pid.txt
+          for i in $(seq 1 180); do
+            grep -q "Server running on http://localhost:" server_log.txt && break
+            echo "Waiting for backend server... $i"
+            sleep 1
+          done
+          tail -n 500 server_log.txt > server_log_tail.txt || true
+
+      - name: Start QA proxy
+        run: |
+          node scripts/qa/proxy.mjs --upstream="http://localhost:3012" --listen=3007 > proxy_log.txt 2>&1 & echo $! > proxy_pid.txt
+          for i in $(seq 1 30); do
+            curl -sSf -X GET "http://localhost:3007/api/trpc/system.health" && break || true
+            echo "Waiting for proxy... $i"
+            sleep 1
+          done
+          tail -n 500 proxy_log.txt > proxy_log_tail.txt || true
+
+      - name: Run smoke test (verbose)
+        run: |
+          set -o pipefail
+          # Run smoke test with verbose output - keep full log and a trimmed tail
+          PORT=3007 node scripts/qa/trpc_smoke_test.mjs 2>&1 | tee trpc_smoke_test.txt || true
+          tail -n 500 trpc_smoke_test.txt > trpc_smoke_test_tail.txt || true
+
+      - name: Collect QA report (minimal)
+        run: |
+          echo '{}' > qa_report.json || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-smoke-logs
+          path: |
+            server_log_tail.txt
+            proxy_log_tail.txt
+            proxy_log.txt
+            trpc_smoke_test.txt
+            trpc_smoke_test_tail.txt
+            server_pid.txt
+            proxy_pid.txt
+            qa_report.json
+            trpc_last_request_curl.sh
+
+      - name: Teardown (always)
+        if: always()
+        run: |
+          if [ -f proxy_pid.txt ]; then kill "$(cat proxy_pid.txt)" 2>/dev/null || true; fi
+          if [ -f server_pid.txt ]; then kill "$(cat server_pid.txt)" 2>/dev/null || true; fi

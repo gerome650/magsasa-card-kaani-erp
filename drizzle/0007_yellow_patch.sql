@@ -30,7 +30,7 @@ CREATE TABLE `identity_links` (
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `identity_links_id` PRIMARY KEY(`id`),
-	CONSTRAINT `identity_links_farmer_profile_id_partner_partner_farmer_ref_unique` UNIQUE(`farmer_profile_id`,`partner`,`partner_farmer_ref`)
+	CONSTRAINT `id_links_farmer_profile_partner_farmer_ref_uniq` UNIQUE(`farmer_profile_id`,`partner`,`partner_farmer_ref`)
 );
 --> statement-breakpoint
 CREATE TABLE `kaani_recommendations` (
