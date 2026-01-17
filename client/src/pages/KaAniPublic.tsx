@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { KaAniAudienceToggle } from "@/features/kaani/components/KaAniAudienceToggle";
@@ -19,6 +20,7 @@ import { KaAniLoanOfficerSummary } from "@/features/kaani/components/KaAniLoanOf
 import { KaAniLoanPacket } from "@/features/kaani/components/KaAniLoanPacket";
 import { KaAniLoanSuggestion } from "@/features/kaani/components/KaAniLoanSuggestion";
 import type { KaAniArtifactBundle } from "@/features/kaani/types";
+import { IS_LITE_MODE } from "@/const";
 
 const SESSION_TOKEN_KEY = 'kaani_session_token_v1';
 
@@ -29,6 +31,7 @@ interface Message {
 }
 
 export default function KaAniPublic() {
+  const [, setLocation] = useLocation();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -238,7 +241,15 @@ export default function KaAniPublic() {
           <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
             <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
             <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(IS_LITE_MODE ? '/kaani' : '/')}
+              >
+                <Home className="w-4 h-4 mr-2" />
+                {IS_LITE_MODE ? 'Home' : 'Back'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

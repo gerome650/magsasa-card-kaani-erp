@@ -16,6 +16,7 @@ import { KaAniAudience, KaAniDialect, KaAniUiMessage } from "../types";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
+import { useAuth } from "@/contexts/AuthContext";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
@@ -32,6 +33,7 @@ interface Conversation {
 
 export function KaAniChat() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<KaAniUiMessage[]>([]);
@@ -39,8 +41,12 @@ export function KaAniChat() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [audience, setAudience] = useState<KaAniAudience>("loan_officer");
+  // Force "farmer" audience for farmers, allow toggle for others
+  const isFarmer = user?.role === 'farmer';
+  const [audience, setAudience] = useState<KaAniAudience>(isFarmer ? "farmer" : "loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
+  // Ensure audience is always "farmer" for farmers
+  const effectiveAudience: KaAniAudience = isFarmer ? "farmer" : audience;
   const [flowState, setFlowState] = useState<{
     flowId: string;
     nextStepId: string | null;
@@ -420,8 +426,8 @@ Next Step:
     setIsLoading(true);
 
     try {
-      // Normalize audience to ensure valid enum value
-      const normalizedAudience = normalizeAudience(audience);
+      // Normalize audience to ensure valid enum value (use effectiveAudience for farmers)
+      const normalizedAudience = normalizeAudience(effectiveAudience);
       if (import.meta.env.DEV) {
         console.log("[KaAni] audience normalized:", normalizedAudience);
       }
@@ -453,8 +459,8 @@ Next Step:
       // Refresh artifacts after successful message send
       if (conversationId) {
         try {
-          // Normalize audience for artifacts query
-          const normalizedAudience = normalizeAudience(audience);
+          // Normalize audience for artifacts query (use effectiveAudience for farmers)
+          const normalizedAudience = normalizeAudience(effectiveAudience);
           // Use trpcClient directly since we need to pass dynamic conversationId
           const artifactsRes = await (trpcClient.kaani as any).getArtifacts.query({
             conversationId,
@@ -548,7 +554,7 @@ Next Step:
     }
   };
 
-  const starterPrompts = getStarterPrompts(audience);
+  const starterPrompts = getStarterPrompts(effectiveAudience);
 
   if (isLoadingConversations) {
     return (
@@ -563,7 +569,9 @@ Next Step:
       {/* Top bar: Audience + Dialect + Back/Home button */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
-          <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+          {!isFarmer && (
+            <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+          )}
           <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
           <div className="ml-auto flex items-center gap-2">
             {import.meta.env.DEV && (
@@ -577,7 +585,7 @@ Next Step:
               onClick={() => setLocation(IS_LITE_MODE ? '/kaani' : '/')}
             >
               <Home className="w-4 h-4 mr-2" />
-              {IS_LITE_MODE ? 'Home' : 'Back to Dashboard'}
+              {IS_LITE_MODE ? 'Home' : 'Back'}
             </Button>
           </div>
         </div>
@@ -759,7 +767,7 @@ Next Step:
 
             {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
             {artifactBundle && artifactBundle.readiness !== "draft" && (
-              <KaAniLoanPacket bundle={artifactBundle} audience={audience} />
+              <KaAniLoanPacket bundle={artifactBundle} audience={effectiveAudience} />
             )}
 
             {/* Prompt Chips Area */}
