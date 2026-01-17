@@ -67,6 +67,17 @@ export function KaAniChat() {
     scrollToBottom();
   }, [messages]);
 
+  // Normalize audience to backend enum values (defensive fix for Zod errors)
+  function normalizeAudience(a: unknown): "loan_officer" | "farmer" {
+    const s = String(a ?? "").trim().toLowerCase();
+    if (s === "loan_officer" || s === "loan officer") return "loan_officer";
+    if (s === "farmer") return "farmer";
+    // also allow "loanofficer" just in case:
+    if (s === "loanofficer") return "loan_officer";
+    // default conservative:
+    return "loan_officer";
+  }
+
   // Load AO metadata from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('kaaniAoMetadata');
@@ -409,11 +420,17 @@ Next Step:
     setIsLoading(true);
 
     try {
+      // Normalize audience to ensure valid enum value
+      const normalizedAudience = normalizeAudience(audience);
+      if (import.meta.env.DEV) {
+        console.log("[KaAni] audience normalized:", normalizedAudience);
+      }
+
       // Call guided message endpoint
       const result = await (trpcClient.kaani as any).sendGuidedMessage.mutate({
         conversationId: conversationId!,
         message: textToSend,
-        audience,
+        audience: normalizedAudience,
         dialect,
       });
 
@@ -436,10 +453,12 @@ Next Step:
       // Refresh artifacts after successful message send
       if (conversationId) {
         try {
+          // Normalize audience for artifacts query
+          const normalizedAudience = normalizeAudience(audience);
           // Use trpcClient directly since we need to pass dynamic conversationId
           const artifactsRes = await (trpcClient.kaani as any).getArtifacts.query({
             conversationId,
-            audience,
+            audience: normalizedAudience,
             dialect,
           });
           if (artifactsRes?.bundle) {
