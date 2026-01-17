@@ -271,8 +271,69 @@ export function KaAniChat() {
     }
   };
 
-  const handlePromptClick = (message: string) => {
-    handleSend(message);
+  const handlePromptClick = async (message: string) => {
+    const textToSend = normalizeUserText(message);
+    if (!textToSend || isLoading) return;
+
+    // Add user message to UI immediately
+    const userMessage: KaAniUiMessage = {
+      role: "user",
+      content: textToSend,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Use kaani.sendMessage for starter prompts - it only requires { message: string }
+      // This avoids Zod errors from undefined conversationId/audience
+      const result = await trpcClient.kaani.sendMessage.mutate({
+        message: textToSend,
+      });
+
+      // Add assistant reply to UI
+      const assistantMessage: KaAniUiMessage = {
+        role: "assistant",
+        content: result.response,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // Ensure we have a conversation for future messages
+      if (!activeConversationId) {
+        try {
+          const newConvo = await trpcClient.conversations.create.mutate({
+            title: "New Conversation",
+          });
+          const conversation = newConvo as any;
+          const conversationId = conversation.conversationId;
+          setActiveConversationId(conversationId);
+          setConversations((prev) => [
+            {
+              id: conversationId,
+              title: "New Conversation",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            ...prev,
+          ]);
+        } catch (error) {
+          console.warn("Failed to create conversation after starter prompt:", error);
+          // Don't fail the message send if conversation creation fails
+        }
+      }
+    } catch (error: any) {
+      console.error("Error sending starter prompt:", error);
+      
+      // Show user-friendly error
+      const errorMessage = error?.message || "Failed to send message. Please try again.";
+      toast.error(errorMessage);
+
+      // Remove user message from UI on error
+      setMessages((prev) => prev.filter((msg, idx) => idx < prev.length - 1));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const starterPrompts = getStarterPrompts(audience);
