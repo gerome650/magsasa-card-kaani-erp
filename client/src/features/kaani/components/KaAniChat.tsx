@@ -17,6 +17,7 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizeRole } from "@/const";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
@@ -42,7 +43,9 @@ export function KaAniChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Force "farmer" audience for farmers, allow toggle for others
-  const isFarmer = user?.role === 'farmer';
+  // Use normalized role for defensive role checking
+  const normalizedRole = normalizeRole(user);
+  const isFarmer = normalizedRole === "farmer";
   const [audience, setAudience] = useState<KaAniAudience>(isFarmer ? "farmer" : "loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
   // Ensure audience is always "farmer" for farmers
