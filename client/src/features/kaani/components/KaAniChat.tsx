@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send, ShoppingCart, Copy, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, ShoppingCart, Copy, ChevronDown, ChevronUp, Home } from "lucide-react";
+import { IS_LITE_MODE } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -540,11 +541,22 @@ Next Step:
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar: Audience + Dialect */}
+      {/* Top bar: Audience + Dialect + Back to Dashboard */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
           <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
           <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
+          {!IS_LITE_MODE && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation('/')}
+              className="ml-auto"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          )}
         </div>
       </div>
 
