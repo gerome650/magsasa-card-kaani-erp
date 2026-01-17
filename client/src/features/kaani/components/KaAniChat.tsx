@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { KaAniAudienceToggle } from "./KaAniAudienceToggle";
@@ -27,6 +28,7 @@ interface Conversation {
 }
 
 export function KaAniChat() {
+  const [, setLocation] = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<KaAniUiMessage[]>([]);
@@ -55,6 +57,37 @@ export function KaAniChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Extract budget amount from message content (optional, for demo)
+  const extractBudgetFromMessage = (content: string): string | null => {
+    // Look for patterns like "₱30,000", "PHP 50000", "30,000 pesos", etc.
+    const patterns = [
+      /₱\s*([\d,]+)/i,
+      /PHP\s*([\d,]+)/i,
+      /([\d,]+)\s*pesos?/i,
+      /amount[:\s]+₱?\s*([\d,]+)/i,
+      /loan[:\s]+₱?\s*([\d,]+)/i,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match && match[1]) {
+        return match[1].replace(/,/g, '');
+      }
+    }
+    return null;
+  };
+
+  const handleApproveAndProceed = (messageContent: string) => {
+    // Extract and store budget if found
+    const budget = extractBudgetFromMessage(messageContent);
+    if (budget) {
+      localStorage.setItem('kaaniApprovedBudget', budget);
+    }
+    
+    // Route to order calculator
+    setLocation('/order-calculator');
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -388,19 +421,33 @@ export function KaAniChat() {
                 </div>
               ) : (
                 messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
+                  <div key={idx}>
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                        msg.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      <MarkdownMessage content={msg.content} />
+                      <div
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                          msg.role === "user"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-900"
+                        }`}
+                      >
+                        <MarkdownMessage content={msg.content} />
+                      </div>
                     </div>
+                    {/* Demo CTA: Show "Approve & Proceed to Inputs" button after assistant messages */}
+                    {msg.role === "assistant" && (
+                      <div className="flex justify-start mt-2 mb-4">
+                        <Button
+                          onClick={() => handleApproveAndProceed(msg.content)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Approve & Proceed to Inputs
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
