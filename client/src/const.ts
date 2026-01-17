@@ -18,6 +18,31 @@ export type NormalizedRole = "farmer" | "staff";
  * @returns "farmer" if user is a farmer, "staff" otherwise
  */
 export function normalizeRole(user: any): NormalizedRole {
+  // Check localStorage demo role override first (for demo account switching)
+  try {
+    const override = localStorage.getItem("demo_role_override");
+    if (override) {
+      const overrideLower = override.trim().toLowerCase();
+      // If override includes "farmer", treat as farmer
+      if (overrideLower.includes("farmer")) {
+        if (import.meta.env.DEV) {
+          console.log("[auth] demo_role_override=", override, "normalized=farmer");
+        }
+        return "farmer";
+      }
+      // If override exists (officer/manager), treat as staff
+      if (import.meta.env.DEV) {
+        console.log("[auth] demo_role_override=", override, "normalized=staff");
+      }
+      return "staff";
+    }
+  } catch (e) {
+    // localStorage may not be available (SSR, private mode, etc.)
+    if (import.meta.env.DEV) {
+      console.warn("[auth] localStorage not available for demo_role_override check");
+    }
+  }
+
   if (!user) return "staff";
 
   // Extract candidate role strings from likely fields

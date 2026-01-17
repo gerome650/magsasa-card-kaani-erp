@@ -246,6 +246,22 @@ export default function Layout({ children }: LayoutProps) {
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
+            {/* Dev-only demo role indicator */}
+            {import.meta.env.DEV && (() => {
+              try {
+                const override = localStorage.getItem("demo_role_override");
+                if (override) {
+                  return (
+                    <div className="mt-2 text-xs text-gray-500 text-center">
+                      Demo Role: {override}
+                    </div>
+                  );
+                }
+              } catch (e) {
+                // localStorage not available
+              }
+              return null;
+            })()}
           </div>
         </div>
       </div>
