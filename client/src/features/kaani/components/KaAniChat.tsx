@@ -541,22 +541,26 @@ Next Step:
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar: Audience + Dialect + Back to Dashboard */}
+      {/* Top bar: Audience + Dialect + Back/Home button */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
           <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
           <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
-          {!IS_LITE_MODE && (
+          <div className="ml-auto flex items-center gap-2">
+            {import.meta.env.DEV && (
+              <span className="text-xs text-gray-400 mr-2">
+                Mode: {IS_LITE_MODE ? 'Lite' : 'Full'}
+              </span>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLocation('/')}
-              className="ml-auto"
+              onClick={() => setLocation(IS_LITE_MODE ? '/kaani' : '/')}
             >
               <Home className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              {IS_LITE_MODE ? 'Home' : 'Back to Dashboard'}
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
