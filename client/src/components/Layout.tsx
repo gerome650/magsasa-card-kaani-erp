@@ -1,5 +1,6 @@
 import { useState, ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
+import { IS_LITE_MODE } from '@/const';
 import {
   LayoutDashboard,
   Users,
@@ -64,7 +65,16 @@ export default function Layout({ children }: LayoutProps) {
       .slice(0, 2);
   };
 
-  const navigation = [
+  // Lite Mode navigation - reduced set for Account Officers
+  const liteNavigation = [
+    { name: 'Ask KaAni AI', href: '/kaani', icon: MessageCircle, roles: undefined },
+    { name: 'Inputs Marketplace', href: '/order-calculator', icon: ShoppingCart, roles: undefined },
+    { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: undefined },
+    { name: 'Map View', href: '/map', icon: Map, roles: undefined },
+  ];
+
+  // Full navigation - all items
+  const fullNavigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['manager', 'field_officer'] },
     { name: 'Map View', href: '/map', icon: Map, roles: ['manager', 'field_officer'] },
@@ -84,6 +94,8 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Order History', href: '/orders', icon: Package, roles: ['farmer'] },
     { name: 'Ask KaAni', href: '/kaani', icon: MessageCircle },
   ];
+
+  const navigation = IS_LITE_MODE ? liteNavigation : fullNavigation;
 
   const isActive = (href: string) => {
     if (href === '/') return location === '/';
