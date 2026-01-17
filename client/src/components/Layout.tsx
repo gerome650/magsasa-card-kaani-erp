@@ -79,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat, roles: ['manager', 'field_officer'] },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart, roles: ['farmer', 'manager', 'field_officer'] },
-    { name: 'Batch Orders', href: '/batch-orders', icon: Package, roles: ['manager', 'field_officer'] },
+    ...(import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' ? [{ name: 'Batch Orders', href: '/batch-orders', icon: Package, roles: ['manager', 'field_officer'] }] : []),
     { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart, roles: ['farmer'] },
     { name: 'Order History', href: '/orders', icon: Package, roles: ['farmer'] },
     { name: 'Ask KaAni', href: '/kaani', icon: MessageCircle },
