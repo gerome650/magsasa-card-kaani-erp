@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send, ShoppingCart } from "lucide-react";
+import { Send, ShoppingCart, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { KaAniAudienceToggle } from "./KaAniAudienceToggle";
 import { KaAniDialectToggle } from "./KaAniDialectToggle";
 import { KaAniPromptChips } from "./KaAniPromptChips";
@@ -47,6 +49,12 @@ export function KaAniChat() {
     loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
   } | null>(null);
   const [artifactBundle, setArtifactBundle] = useState<KaAniArtifactBundle | null>(null);
+  const [showUnderwritingSummary, setShowUnderwritingSummary] = useState(true);
+  const [aoMetadata, setAoMetadata] = useState({
+    branch: "",
+    center: "",
+    memberName: "",
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,6 +65,23 @@ export function KaAniChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load AO metadata from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('kaaniAoMetadata');
+    if (saved) {
+      try {
+        setAoMetadata(JSON.parse(saved));
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Save AO metadata to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('kaaniAoMetadata', JSON.stringify(aoMetadata));
+  }, [aoMetadata]);
 
   // Extract budget amount from message content (optional, for demo)
   const extractBudgetFromMessage = (content: string): string | null => {
@@ -76,6 +101,140 @@ export function KaAniChat() {
       }
     }
     return null;
+  };
+
+  // Extract field from text using multiple patterns (best-effort)
+  const extractField = (text: string, patterns: RegExp[]): string | null => {
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    return null;
+  };
+
+  // Extract peso amount (formatted)
+  const extractPesoAmount = (text: string): string => {
+    const amount = extractBudgetFromMessage(text);
+    if (amount) {
+      return `₱${parseInt(amount).toLocaleString()}`;
+    }
+    return "TBD (AO to confirm)";
+  };
+
+  // Build underwriting summary from messages and AO metadata
+  const buildUnderwritingSummary = (): string => {
+    const now = new Date();
+    const dateTime = now.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Get latest assistant message
+    const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    const assistantContent = latestAssistant?.content || "";
+
+    // Get last 3 user messages for context
+    const recentUserMessages = messages
+      .filter(m => m.role === 'user')
+      .slice(-3)
+      .map(m => m.content)
+      .join(' ');
+
+    const combinedText = `${assistantContent} ${recentUserMessages}`;
+
+    // Extract fields (best-effort)
+    const loanAmount = extractPesoAmount(assistantContent);
+    const crop = extractField(combinedText, [
+      /crop[:\s]+([^,\n.]+)/i,
+      /(rice|corn|vegetables|sugarcane|coconut|banana|cassava)/i,
+    ]) || "—";
+    
+    const farmSize = extractField(combinedText, [
+      /(\d+(?:\.\d+)?)\s*hectares?/i,
+      /(\d+(?:\.\d+)?)\s*ha/i,
+      /farm\s*size[:\s]+(\d+(?:\.\d+)?)/i,
+    ]) || "—";
+    
+    const location = extractField(combinedText, [
+      /location[:\s]+([^,\n.]+)/i,
+      /(bacolod|laguna|municipality[:\s]+[^,\n.]+)/i,
+    ]) || "—";
+    
+    const cropCycle = extractField(combinedText, [
+      /crop\s*cycle[:\s]+([^,\n.]+)/i,
+      /term[:\s]+(\d+\s*(?:months?|days?))/i,
+    ]) || "—";
+
+    // Extract key points from messages (bullet list)
+    const keyPoints: string[] = [];
+    const recentMessages = messages.slice(-5);
+    recentMessages.forEach(msg => {
+      if (msg.role === 'user') {
+        // Extract meaningful phrases from user messages
+        const sentences = msg.content.split(/[.!?]/).filter(s => s.trim().length > 20);
+        sentences.slice(0, 2).forEach(s => {
+          const trimmed = s.trim().substring(0, 100);
+          if (trimmed) keyPoints.push(trimmed);
+        });
+      }
+    });
+    if (keyPoints.length === 0) {
+      keyPoints.push("—");
+    }
+
+    // Extract KaAni rationale (excerpt from assistant message)
+    const rationale = assistantContent
+      .replace(/\n+/g, ' ')
+      .substring(0, 400)
+      .trim() || "—";
+
+    // Build summary text
+    return `CARD MRI – UNDERWRITING HANDOFF (AO)
+Date/Time: ${dateTime}
+Account Officer (AO): ${aoMetadata.memberName || "—"}
+Branch: ${aoMetadata.branch || "—"}
+Center: ${aoMetadata.center || "—"}
+Member/Client: ${aoMetadata.memberName || "—"}
+
+Loan Purpose: Crop Production Inputs
+Crop / Activity: ${crop}
+Farm Size (ha): ${farmSize}
+Location: ${location}
+Crop Cycle / Term: ${cropCycle}
+
+Recommended Loan Amount: ${loanAmount} (KaAni)
+AO Proposed Amount: ₱__________
+Underwriting Approved Amount: ₱__________
+
+Basis / Key Inputs (from AO + client interview):
+${keyPoints.map(p => `- ${p}`).join('\n')}
+
+Assumptions:
+- ${flowState?.loanOfficerSummary?.assumptions?.[0] || "—"}
+
+Flags / Missing Evidence:
+- ${flowState?.loanOfficerSummary?.missingCritical?.[0] || "—"}
+
+KaAni Rationale (excerpt):
+"${rationale}"
+
+Next Step:
+- For approval / verification by Underwriting.`;
+  };
+
+  const handleCopySummary = async () => {
+    try {
+      const summary = buildUnderwritingSummary();
+      await navigator.clipboard.writeText(summary);
+      toast.success("Underwriting summary copied.");
+    } catch (error) {
+      toast.error("Copy failed. Please try again.");
+    }
   };
 
   const handleApproveAndProceed = (messageContent: string) => {
@@ -462,6 +621,85 @@ export function KaAniChat() {
 
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Underwriting Summary Panel */}
+            {messages.some(m => m.role === 'assistant') && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">
+                        Underwriting Summary (AO Copy/Paste)
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowUnderwritingSummary(!showUnderwritingSummary)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {showUnderwritingSummary ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {showUnderwritingSummary && (
+                    <CardContent className="space-y-4">
+                      {/* AO Metadata Inputs */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Branch (optional)</label>
+                          <Input
+                            value={aoMetadata.branch}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, branch: e.target.value })}
+                            placeholder="Branch"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Center (optional)</label>
+                          <Input
+                            value={aoMetadata.center}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, center: e.target.value })}
+                            placeholder="Center"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Member/Client Name (optional)</label>
+                          <Input
+                            value={aoMetadata.memberName}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, memberName: e.target.value })}
+                            placeholder="Member/Client Name"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Summary Preview */}
+                      <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Summary Preview:</label>
+                        <pre className="bg-white border border-gray-200 rounded p-3 text-xs font-mono overflow-auto max-h-64">
+                          {buildUnderwritingSummary()}
+                        </pre>
+                      </div>
+
+                      {/* Copy Button */}
+                      <Button
+                        onClick={handleCopySummary}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy Summary
+                      </Button>
+                    </CardContent>
+                  )}
+                </Card>
+              </div>
+            )}
 
             {/* What We Know Panel */}
             {flowState && flowState.whatWeKnow.length > 0 && (
