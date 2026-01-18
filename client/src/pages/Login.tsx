@@ -31,52 +31,26 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // First try demo login (creates server session cookie)
+      // Determine role from username (server will use this to set JWT role)
+      let role: 'farmer' | 'field_officer' | 'manager' | undefined;
+      if (username === 'farmer') {
+        role = 'farmer';
+      } else if (username === 'officer') {
+        role = 'field_officer';
+      } else if (username === 'manager') {
+        role = 'manager';
+      }
+
+      // First try demo login (creates server session cookie with role embedded in JWT)
       const demoResult = await demoLoginMutation.mutateAsync({
         username,
         password,
+        role, // Send role explicitly - server will embed it in JWT
       });
 
       if (demoResult.success) {
-        // Get current override to detect role change
-        const currentOverride = localStorage.getItem("demo_role_override");
-        let newOverride: string | null = null;
-        
-        // Determine new override from username
-        if (username === 'farmer') {
-          newOverride = "farmer";
-        } else if (username === 'officer') {
-          newOverride = "field_officer";
-        } else if (username === 'manager') {
-          newOverride = "manager";
-        }
-        
-        // Set new override
-        if (newOverride) {
-          localStorage.setItem("demo_role_override", newOverride);
-          
-          // If role changed, start role switch window
-          if (currentOverride && currentOverride !== newOverride) {
-            const roleSwitchEnd = Date.now() + 2000; // 2 second role switch window
-            try {
-              localStorage.setItem('demo_role_switch_end', roleSwitchEnd.toString());
-              if (import.meta.env.DEV) {
-                console.log("[Login] DEV: Role override changed -> starting role switch window until", new Date(roleSwitchEnd).toISOString());
-              }
-            } catch (e) {
-              // localStorage not available
-            }
-          }
-        } else if (!currentOverride) {
-          // If no override set, try to infer from username
-          if (username === 'farmer') {
-            localStorage.setItem("demo_role_override", "farmer");
-          } else if (username === 'officer') {
-            localStorage.setItem("demo_role_override", "field_officer");
-          } else if (username === 'manager') {
-            localStorage.setItem("demo_role_override", "manager");
-          }
-        }
+        // NO MORE localStorage role override - role is now server-driven via JWT
+        // auth.me will return the correct role from JWT payload
         
         // Force refetch auth.me to ensure user state is updated before navigating
         // This prevents flicker/redirect loops when switching accounts
@@ -193,12 +167,12 @@ export default function Login() {
   };
 
   const demoCredentials = [
-    { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz', roleKey: 'farmer' },
-    { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos', roleKey: 'field_officer' },
-    { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia', roleKey: 'manager' }
+    { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz', roleKey: 'farmer' as const },
+    { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos', roleKey: 'field_officer' as const },
+    { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia', roleKey: 'manager' as const }
   ];
 
-  const fillDemoCredentials = (user: string, pass: string, roleKey: string) => {
+  const fillDemoCredentials = (user: string, pass: string, roleKey: 'farmer' | 'field_officer' | 'manager') => {
     // DEV-ONLY: Start demo transition SYNCHRONOUSLY at the very top, BEFORE any other operations
     // This prevents flicker by blocking UI rendering immediately on click (no delay)
     if (import.meta.env.DEV) {
@@ -209,23 +183,7 @@ export default function Login() {
     setPassword(pass);
     setError('');
     
-    // Persist demo role override for role-based UI gating
-    try {
-      const currentOverride = localStorage.getItem("demo_role_override");
-      localStorage.setItem("demo_role_override", roleKey);
-      
-      // If role changed, start role switch window (DEV only)
-      if (import.meta.env.DEV && currentOverride && currentOverride !== roleKey) {
-        const roleSwitchEnd = Date.now() + 2000; // 2 second role switch window
-        localStorage.setItem('demo_role_switch_end', roleSwitchEnd.toString());
-        if (import.meta.env.DEV) {
-          console.log("[Login] DEV: Role override changed in fillDemoCredentials -> starting role switch window until", new Date(roleSwitchEnd).toISOString());
-        }
-      }
-    } catch (e) {
-      // localStorage may not be available
-      console.warn("Failed to set demo_role_override:", e);
-    }
+    // NO MORE localStorage role override - role is now server-driven via JWT
   };
 
   return (

@@ -12,43 +12,25 @@ interface ProtectedRouteProps {
 }
 
 /**
- * Maps server role ('user' | 'admin') to client role for demo accounts.
- * Uses localStorage demo_role_override if available (for demo account switching).
+ * Get user role directly from user object.
+ * For demo users, role is embedded in JWT and returned by auth.me directly (farmer, field_officer, manager, supplier).
+ * No client-side mapping or localStorage overrides needed.
  */
-function getClientRole(user: any): UserRole | null {
-  if (!user) return null;
+function getUserRole(user: any): UserRole | null {
+  if (!user || !user.role) return null;
   
-  // Check localStorage demo role override first (for demo account switching)
-  try {
-    const override = localStorage.getItem("demo_role_override");
-    if (override) {
-      const overrideLower = override.trim().toLowerCase();
-      if (overrideLower.includes("farmer")) return "farmer";
-      if (overrideLower.includes("field_officer") || overrideLower.includes("officer")) return "field_officer";
-      if (overrideLower.includes("manager")) return "manager";
-      if (overrideLower.includes("supplier")) return "supplier";
-      if (overrideLower.includes("admin")) return "admin";
-    }
-  } catch (e) {
-    // localStorage may not be available
+  // Role is now server-driven via JWT - use it directly
+  const role = String(user.role).toLowerCase();
+  
+  // Validate against known client roles
+  if (role === "farmer" || role === "field_officer" || role === "manager" || role === "supplier" || role === "admin") {
+    return role as UserRole;
   }
   
-  // Map server role to client role
-  // Server has 'user' | 'admin', client has 'farmer' | 'manager' | 'field_officer' | 'supplier' | 'admin'
-  const serverRole = user.role?.toLowerCase();
-  if (serverRole === "admin") return "manager"; // admin maps to manager
-  if (serverRole === "user") {
-    // For 'user', check email or other hints to determine if farmer or field_officer
-    // Default to field_officer for staff users
-    return "field_officer";
-  }
-  
-  // Fallback: try to extract from user object directly
-  const roleStr = String(user.role || "").toLowerCase();
-  if (roleStr.includes("farmer")) return "farmer";
-  if (roleStr.includes("manager") || roleStr.includes("admin")) return "manager";
-  if (roleStr.includes("officer")) return "field_officer";
-  if (roleStr.includes("supplier")) return "supplier";
+  // Fallback: try to map legacy server roles (user/admin) if present
+  // This should not happen for demo users, but keep for backward compatibility
+  if (role === "admin") return "manager";
+  if (role === "user") return "field_officer"; // Default for legacy "user" role
   
   return null;
 }
@@ -206,10 +188,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   }
 
   // Role-based access control
-  // DEV-only: Bypass allowedRoles check if demo session is present (demo-safe)
-  const clientRole = useMemo(() => getClientRole(user), [user]);
-  if (allowedRoles && clientRole) {
-    const hasAccess = allowedRoles.includes(clientRole);
+  // Use role directly from user object (server-driven via JWT for demo users)
+  const userRole = useMemo(() => getUserRole(user), [user]);
+  if (allowedRoles && userRole) {
+    const hasAccess = allowedRoles.includes(userRole);
     
     // DEV-only: Never show Access Denied if demo session is present or during transition
     const demoBypass = import.meta.env.DEV && (hasDemoSession || isInDemoTransition);

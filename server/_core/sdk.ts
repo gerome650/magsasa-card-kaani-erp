@@ -27,7 +27,9 @@ export type SessionPayload = {
   name: string;
   // Demo auth extensions (optional, only present for demo users)
   email?: string;
-  role?: "user" | "admin";
+  // For demo users, role is the client role directly (farmer, field_officer, manager, supplier)
+  // For production users, role is server role (user, admin)
+  role?: "user" | "admin" | "farmer" | "field_officer" | "manager" | "supplier";
   loginMethod?: string;
 };
 
@@ -241,10 +243,19 @@ class SDKServer {
         return null;
       }
 
+      // Validate role: can be server role (user/admin) or client role (farmer/field_officer/manager/supplier)
+      const validRole = role && (
+        role === "user" || role === "admin" ||
+        role === "farmer" || role === "field_officer" || role === "manager" || role === "supplier"
+      ) ? role as SessionPayload["role"] : undefined;
+
       return {
         openId,
         appId,
         name,
+        ...(email && isNonEmptyString(email) ? { email } : {}),
+        ...(validRole ? { role: validRole } : {}),
+        ...(loginMethod && isNonEmptyString(loginMethod) ? { loginMethod } : {}),
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));

@@ -292,6 +292,7 @@ export const appRouter = router({
       .input(z.object({
         username: z.string(),
         password: z.string(),
+        role: z.enum(["farmer", "field_officer", "manager", "supplier"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Only allow in development mode
@@ -300,13 +301,10 @@ export const appRouter = router({
         }
 
         // Demo user credentials (matches client-side demoUsers)
-        // Note: Database only supports "user" and "admin" roles, so we map:
-        // - farmer, field_officer -> "user"
-        // - manager -> "admin"
         const demoUsers = [
-          { username: "farmer", password: "demo123", openId: "demo-farmer", name: "Juan dela Cruz", email: "juan.delacruz@example.com", role: "user" as const },
-          { username: "officer", password: "demo123", openId: "demo-officer", name: "Maria Santos", email: "maria.santos@magsasa.org", role: "user" as const },
-          { username: "manager", password: "demo123", openId: "demo-manager", name: "Roberto Garcia", email: "roberto.garcia@magsasa.org", role: "admin" as const },
+          { username: "farmer", password: "demo123", openId: "demo-farmer", name: "Juan dela Cruz", email: "juan.delacruz@example.com", defaultRole: "farmer" as const },
+          { username: "officer", password: "demo123", openId: "demo-officer", name: "Maria Santos", email: "maria.santos@magsasa.org", defaultRole: "field_officer" as const },
+          { username: "manager", password: "demo123", openId: "demo-manager", name: "Roberto Garcia", email: "roberto.garcia@magsasa.org", defaultRole: "manager" as const },
         ];
 
         const demoUser = demoUsers.find(
@@ -317,32 +315,41 @@ export const appRouter = router({
           throw new Error("Invalid username or password");
         }
 
+        // Use explicit role from input, or fall back to default role for username
+        // This allows client to specify role explicitly, eliminating client-side overrides
+        const clientRole = input.role || demoUser.defaultRole;
+
         // DEMO AUTH: Create session token with user data embedded (no DB required)
         // This allows demo login to work even when DATABASE_URL is not set
+        // Role is stored as client role directly (farmer, field_officer, manager, supplier)
         const sessionToken = await sdk.signSession({
           openId: demoUser.openId,
           appId: ENV.appId || "demo-app",
           name: demoUser.name,
           email: demoUser.email,
-          role: demoUser.role,
+          role: clientRole, // Client role directly (not mapped to user/admin)
           loginMethod: "demo",
         }, {
           expiresInMs: ONE_YEAR_MS,
         });
 
         // Try to sync user to database if available (optional, non-blocking)
+        // Note: For demo users, we store client role in JWT, not DB
+        // DB may still have "user"/"admin" roles, but JWT role takes precedence
         let user: { id: number; openId: string; name: string | null; email: string | null; role: "user" | "admin"; loginMethod: string | null; createdAt: string; updatedAt: string; lastSignedIn: string } | null = null;
         if (ENV.databaseUrl) {
           try {
             user = (await db.getUserByOpenId(demoUser.openId)) || null;
             if (!user) {
               // Create demo user in database
+              // Map client role to DB role for storage (but JWT role takes precedence)
+              const dbRole: "user" | "admin" = (clientRole === "manager" ? "admin" : "user");
               await db.upsertUser({
                 openId: demoUser.openId,
                 name: demoUser.name,
                 email: demoUser.email,
                 loginMethod: "demo",
-                role: demoUser.role, // "user" or "admin"
+                role: dbRole, // Map to DB role for storage
                 lastSignedIn: new Date().toISOString(),
               });
               user = (await db.getUserByOpenId(demoUser.openId)) || null;

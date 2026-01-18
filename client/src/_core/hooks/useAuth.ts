@@ -320,12 +320,13 @@ export function useAuth(options?: UseAuthOptions) {
       JSON.stringify(meQuery.data)
     );
     
-    // DEV-only: If demo session marker exists or in grace/role switch window, treat as authenticated
+    // DEV-only: If demo session marker exists or in grace window, treat as authenticated
     // This prevents flicker during account switching
     // Note: placeholderData keeps user from becoming undefined during refetch
     // Don't treat as authenticated during initial load (wait for first result)
+    // NO MORE role switch window - role is server-driven via JWT
     const isAuthenticatedDev = import.meta.env.DEV && 
-      (demoSessionPresent || isInDemoGraceWindow || isInRoleSwitchWindow) && 
+      (demoSessionPresent || isInDemoGraceWindow) && 
       !meQuery.isLoading && hasCompletedFirstAuth;
     
     // In DEV: authenticated if user exists OR demo marker/grace window active
@@ -398,23 +399,9 @@ export function useAuth(options?: UseAuthOptions) {
         })()
       : false;
     
-    const isInRoleSwitchWindowFallback = import.meta.env.DEV && typeof window !== "undefined"
-      ? (() => {
-          try {
-            const stored = localStorage.getItem('demo_role_switch_end');
-            if (stored) {
-              return Date.now() < parseInt(stored, 10);
-            }
-          } catch (e) {
-            // localStorage not available
-          }
-          return false;
-        })()
-      : false;
-    
+    // NO MORE role switch window fallback - role is server-driven via JWT
     const hasDemoProtection = demoSessionPresent || demoSessionPresentFallback || 
-                               isInDemoGraceWindow || isInDemoGraceWindowFallback ||
-                               isInRoleSwitchWindow || isInRoleSwitchWindowFallback;
+                               isInDemoGraceWindow || isInDemoGraceWindowFallback;
     
     if (import.meta.env.DEV && hasDemoProtection) {
       if (import.meta.env.DEV) {
