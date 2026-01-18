@@ -127,6 +127,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return () => clearInterval(interval);
   }, []);
 
+  // DEV-ONLY: During demo transitions, show loader (never redirect, never Access Denied)
+  const isInDemoTransition = import.meta.env.DEV && isDemoTransitionActive();
+  if (isInDemoTransition) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   // Auth readiness gate: NEVER redirect while auth is still resolving
   // This prevents flicker/redirect loops when switching demo accounts
   // Note: loading already includes isRefetching from useAuth hook
@@ -164,6 +174,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   // 5. Not in grace window (DEV only)
   // 6. Not in role switch window (DEV only)
   // 7. Not just logged in (DEV only)
+  // 8. Not in demo transition (DEV only)
   // This prevents flicker during demo account switching
   const shouldRedirect = isAuthReady && 
     !loading &&
@@ -171,7 +182,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     !hasDemoSession && 
     !isInDemoGraceWindow &&
     !inRoleSwitchWindow &&
-    !(import.meta.env.DEV && justLoggedIn);
+    !(import.meta.env.DEV && justLoggedIn) &&
+    !isInDemoTransition;
 
   if (shouldRedirect) {
     return <Redirect to="/login" />;
@@ -183,11 +195,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   if (allowedRoles && clientRole) {
     const hasAccess = allowedRoles.includes(clientRole);
     
-    // DEV-only: Never show Access Denied if demo session is present
-    const demoBypass = import.meta.env.DEV && hasDemoSession;
+    // DEV-only: Never show Access Denied if demo session is present or during transition
+    const demoBypass = import.meta.env.DEV && (hasDemoSession || isInDemoTransition);
     
-    // During role switch window, show loader instead of Access Denied
-    if (!hasAccess && inRoleSwitchWindow) {
+    // During role switch window or demo transition, show loader instead of Access Denied
+    if (!hasAccess && (inRoleSwitchWindow || isInDemoTransition)) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -195,7 +207,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
       );
     }
     
-    // DEV-only: Bypass role check if demo session is present
+    // DEV-only: Bypass role check if demo session is present or during transition
     if (!hasAccess && !demoBypass) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">

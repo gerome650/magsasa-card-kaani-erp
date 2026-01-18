@@ -4,8 +4,15 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
 import { IS_LITE_MODE } from "@/const";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AuthGate } from "./components/AuthGate";
+import { isDemoTransitionActive } from "./_core/demo/demoTransition";
+import { Loader2 } from "lucide-react";
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
@@ -28,14 +35,6 @@ function DashboardRoute() {
   // For staff (manager, field_officer, etc.), show the global FarmList dashboard
   return <FarmList />;
 }
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
-import { CartProvider } from "./contexts/CartContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { AuthGate } from "./components/AuthGate";
-import { isDemoTransitionActive } from "./_core/demo/demoTransition";
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
