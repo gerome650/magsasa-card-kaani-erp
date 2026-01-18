@@ -1,6 +1,6 @@
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo, useEffect, useState, useRef } from 'react';
 import React from 'react';
-import { Redirect } from 'wouter';
+import { Redirect, useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { UserRole } from '@/data/usersData';
 import { Loader2 } from 'lucide-react';
@@ -36,6 +36,7 @@ function getUserRole(user: any): UserRole | null {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const [location] = useLocation();
   const { 
     user, 
     loading, 
@@ -46,6 +47,91 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     isInDemoGraceWindow,
     isInRoleSwitchWindow
   } = useAuth();
+  
+  // Debounced redirect state: track when unauthenticated state started
+  const [unauthSince, setUnauthSince] = useState<number | null>(null);
+  const [redirectNow, setRedirectNow] = useState(false);
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounce redirect: wait 800-1500ms in DEV, 200ms in PROD before redirecting
+  const debounceDelay = import.meta.env.DEV ? 1200 : 200;
+  
+  // Effect to handle debounced redirect logic
+  useEffect(() => {
+    // Clear any existing timer
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+    
+    // Conditions for starting redirect debounce:
+    // - Auth is ready
+    // - Not loading
+    // - Not fetching
+    // - Not authenticated
+    // - No demo session markers (DEV only)
+    // - Not in grace/role switch windows (DEV only)
+    const shouldStartDebounce = isAuthReady && 
+      !loading && 
+      !isFetching && 
+      !isAuthenticated && 
+      !demoSessionPresent && 
+      !isInDemoGraceWindow && 
+      !isInRoleSwitchWindow &&
+      !(import.meta.env.DEV && isDemoTransitionActive());
+    
+    if (shouldStartDebounce) {
+      // Start debounce timer
+      const now = Date.now();
+      if (unauthSince === null) {
+        setUnauthSince(now);
+      }
+      
+      // Set timer to trigger redirect after debounce delay
+      redirectTimerRef.current = setTimeout(() => {
+        // Double-check conditions before redirecting
+        if (isAuthReady && !loading && !isFetching && !isAuthenticated) {
+          // DEV-only: Log redirect with context
+          if (import.meta.env.DEV) {
+            const userRole = getUserRole(user);
+            console.warn("[Auth] Redirecting to /login (debounced)", {
+              isAuthReady,
+              loading,
+              isFetching,
+              isAuthenticated,
+              role: userRole,
+              path: location,
+            });
+          }
+          setRedirectNow(true);
+        }
+      }, debounceDelay);
+    } else {
+      // Auth state changed - cancel debounce and reset state
+      setUnauthSince(null);
+      setRedirectNow(false);
+    }
+    
+    // Cleanup: clear timer on unmount or when conditions change
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, [
+    isAuthReady,
+    loading,
+    isFetching,
+    isAuthenticated,
+    demoSessionPresent,
+    isInDemoGraceWindow,
+    isInRoleSwitchWindow,
+    unauthSince,
+    debounceDelay,
+    location,
+    user,
+  ]);
   
   // DEV-only: Check localStorage directly as fallback
   const demoSessionPresentFallback = typeof window !== "undefined" && import.meta.env.DEV
@@ -150,54 +236,30 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     );
   }
 
-  // Only redirect to login if ALL of these are true:
-  // 1. Auth is ready
-  // 2. Loading is false
-  // 3. NOT fetching (isFetching is false) - CRITICAL: never redirect while fetching
-  // 4. User is not authenticated
-  // 5. No demo session marker exists (DEV only)
-  // 6. Not in grace window (DEV only)
-  // 7. Not in role switch window (DEV only)
-  // 8. Not just logged in (DEV only)
-  // 8. Not in demo transition (DEV only)
-  // This prevents flicker during demo account switching
-  const shouldRedirect = isAuthReady && 
-    !loading &&
-    !isFetching && // CRITICAL: Never redirect while auth.me is fetching
-    !isAuthenticated && 
-    !hasDemoSession && 
-    !isInDemoGraceWindow &&
-    !inRoleSwitchWindow &&
-    !(import.meta.env.DEV && justLoggedIn) &&
-    !isInDemoTransition;
-
-  if (shouldRedirect) {
-    // DEV-ONLY: Log redirect to /login with stack trace for debugging
-    if (import.meta.env.DEV) {
-      const stack = new Error().stack;
-      console.warn("[DEMO] Redirect to /login detected", {
-        isAuthReady,
-        loading,
-        isAuthenticated,
-        hasDemoSession,
-        isInDemoGraceWindow,
-        inRoleSwitchWindow,
-        justLoggedIn: import.meta.env.DEV && justLoggedIn,
-        isInDemoTransition,
-        stack: stack?.split('\n').slice(0, 10).join('\n'), // First 10 lines of stack
-      });
-    }
+  // Debounced redirect: only redirect after debounce timer fires
+  // During debounce window, show loader instead of redirecting
+  if (redirectNow) {
     return <Redirect to="/login" />;
+  }
+  
+  // If debounce is active (unauthSince is set but redirectNow is false), show loader
+  if (unauthSince !== null && !redirectNow) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Role-based access control
   // Use role directly from user object (server-driven via JWT for demo users)
+  // CRITICAL: Only show "Access Denied" when auth is stable (not loading/fetching)
   const userRole = useMemo(() => getUserRole(user), [user]);
   if (allowedRoles && userRole) {
     const hasAccess = allowedRoles.includes(userRole);
     
-    // CRITICAL: If fetching, show loader instead of Access Denied (prevents flicker during refetches)
-    if (!hasAccess && isFetching) {
+    // CRITICAL: If loading/fetching, show loader instead of Access Denied (prevents flicker during refetches)
+    if (!hasAccess && (loading || isFetching)) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -217,14 +279,23 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
       );
     }
     
-    // DEV-only: Bypass role check if demo session is present or during transition
-    if (!hasAccess && !demoBypass) {
+    // Only show "Access Denied" when auth is stable: isAuthReady && !loading && !isFetching && isAuthenticated === true
+    if (!hasAccess && !demoBypass && isAuthReady && !loading && !isFetching && isAuthenticated) {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
             <p className="text-gray-600">You don't have permission to access this page.</p>
           </div>
+        </div>
+      );
+    }
+    
+    // If no access but still loading/fetching, show loader (handled above, but keep as fallback)
+    if (!hasAccess && (loading || isFetching)) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       );
     }

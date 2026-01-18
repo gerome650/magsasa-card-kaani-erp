@@ -343,11 +343,11 @@ export function useAuth(options?: UseAuthOptions) {
     
     return {
       user: meQuery.data ?? null,
-      // Include isRefetching in loading state to prevent flicker during refetches
+      // Include isRefetching and isFetching in loading state to prevent flicker during refetches
       // Also include demo transition state (DEV only)
       // CRITICAL: Include isFetching (not just isRefetching) to prevent redirects during ANY fetch
       // This ensures ProtectedRoute never redirects while auth.me is fetching (initial load OR refetch)
-      loading: meQuery.isLoading || meQuery.isFetching || logoutMutation.isPending || isInDemoTransition,
+      loading: meQuery.isLoading || meQuery.isFetching || meQuery.isRefetching || logoutMutation.isPending || isInDemoTransition,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated,
     };
