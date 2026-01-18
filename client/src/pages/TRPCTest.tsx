@@ -1,7 +1,11 @@
-import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
+/**
+ * DEV-ONLY: tRPC connection test page.
+ * Uses the unified useAuth hook (not direct trpc.auth.me.useQuery) for consistency.
+ */
 export default function TRPCTest() {
-  const { data: user, isLoading, error } = trpc.auth.me.useQuery();
+  const { user, loading: isLoading, error } = useAuth();
 
   return (
     <div className="container mx-auto p-8">
