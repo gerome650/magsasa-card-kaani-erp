@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 // Note: Login.tsx uses trpc.auth.demoLogin mutation directly, no useAuth hook needed
 import { trpc } from '@/lib/trpc';
+import { startDemoTransition, clearDemoTransition } from '@/_core/demo/demoTransition';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

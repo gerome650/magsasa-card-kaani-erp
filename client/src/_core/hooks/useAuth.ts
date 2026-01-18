@@ -2,6 +2,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { isDemoTransitionActive } from "@/_core/demo/demoTransition";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -333,10 +334,14 @@ export function useAuth(options?: UseAuthOptions) {
       ? (Boolean(meQuery.data) || isAuthenticatedDev)
       : Boolean(meQuery.data);
     
+    // DEV-ONLY: During demo transitions, treat as loading to prevent Access Denied flashes
+    const isInDemoTransition = import.meta.env.DEV && isDemoTransitionActive();
+    
     return {
       user: meQuery.data ?? null,
       // Include isRefetching in loading state to prevent flicker during refetches
-      loading: meQuery.isLoading || meQuery.isRefetching || logoutMutation.isPending,
+      // Also include demo transition state (DEV only)
+      loading: meQuery.isLoading || meQuery.isRefetching || logoutMutation.isPending || isInDemoTransition,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated,
     };

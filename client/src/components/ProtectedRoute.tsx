@@ -4,6 +4,7 @@ import { Redirect } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { UserRole } from '@/data/usersData';
 import { Loader2 } from 'lucide-react';
+import { isDemoTransitionActive } from '@/_core/demo/demoTransition';
 
 interface ProtectedRouteProps {
   children: ReactNode;
