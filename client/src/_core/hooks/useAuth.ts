@@ -1,7 +1,7 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -17,6 +17,10 @@ export function useAuth(options?: UseAuthOptions) {
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  // Auth readiness: true after first auth.me attempt completes (success or failure)
+  // Use a simple check: if not loading, we've attempted the query
+  const isAuthReady = !meQuery.isLoading && (meQuery.data !== undefined || meQuery.error !== undefined);
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -49,6 +53,28 @@ export function useAuth(options?: UseAuthOptions) {
     const cookies = document.cookie.split(';').map(c => c.trim());
     return cookies.some(c => c.startsWith('app_session_id='));
   }, []);
+
+  // Grace window: after demo login, prevent redirects for 2 seconds
+  const [graceWindowEnd, setGraceWindowEnd] = useState<number | null>(null);
+  
+  useEffect(() => {
+    if (hasSessionCookie && !meQuery.data && isAuthReady) {
+      // If cookie exists but auth.me hasn't returned user yet, extend grace window
+      const now = Date.now();
+      if (!graceWindowEnd || now < graceWindowEnd) {
+        const newEnd = now + 2000; // 2 second grace window
+        if (!graceWindowEnd || newEnd > graceWindowEnd) {
+          setGraceWindowEnd(newEnd);
+        }
+      }
+    }
+  }, [hasSessionCookie, meQuery.data, isAuthReady, graceWindowEnd]);
+
+  const isInGraceWindow = useMemo(() => {
+    if (!import.meta.env.DEV) return false;
+    if (!graceWindowEnd) return false;
+    return Date.now() < graceWindowEnd;
+  }, [graceWindowEnd]);
 
   // DEV-only: Log auth state changes
   useEffect(() => {
@@ -91,33 +117,24 @@ export function useAuth(options?: UseAuthOptions) {
     hasSessionCookie,
   ]);
 
-  // DEV-only: Check for demo session cookie before redirecting
-  const hasDemoSessionCookie = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    if (import.meta.env.PROD) return false; // Only in dev mode
-    
-    // Check for session cookie (app_session_id)
-    const cookies = document.cookie.split(';').map(c => c.trim());
-    const hasSessionCookie = cookies.some(c => c.startsWith('app_session_id='));
-    
-    if (import.meta.env.DEV && hasSessionCookie) {
-      console.log("[Auth] DEV mode: Session cookie detected, preventing redirect");
-    }
-    
-    return hasSessionCookie;
-  }, []);
-
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    // NEVER redirect while auth is still resolving
+    if (!isAuthReady) {
+      if (import.meta.env.DEV) {
+        console.log("[Auth] DEV: Waiting for auth readiness before redirect check");
+      }
+      return;
+    }
+    if (logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
     
-    // DEV-only: Don't redirect if demo session cookie exists
-    if (import.meta.env.DEV && hasDemoSessionCookie) {
+    // DEV-only: Don't redirect if demo session cookie exists or in grace window
+    if (import.meta.env.DEV && (hasSessionCookie || isInGraceWindow)) {
       if (import.meta.env.DEV) {
-        console.log("[Auth] DEV mode: Keeping route despite missing user (session cookie present)");
+        console.log("[Auth] DEV: Keeping route - cookie present or in grace window");
       }
       return;
     }
@@ -130,13 +147,15 @@ export function useAuth(options?: UseAuthOptions) {
     redirectOnUnauthenticated,
     redirectPath,
     logoutMutation.isPending,
-    meQuery.isLoading,
+    isAuthReady,
     state.user,
-    hasDemoSessionCookie,
+    hasSessionCookie,
+    isInGraceWindow,
   ]);
 
   return {
     ...state,
+    isAuthReady, // Expose readiness state for route guards
     refresh: () => meQuery.refetch(),
     logout,
   };

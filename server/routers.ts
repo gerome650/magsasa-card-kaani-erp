@@ -372,6 +372,11 @@ export const appRouter = router({
           ...cookieOptions,
           maxAge: ONE_YEAR_MS,
         });
+        
+        // DEV-only: Log cookie setting
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Auth] DEV: Set-Cookie app_session_id present (demo login)");
+        }
 
         return {
           success: true,

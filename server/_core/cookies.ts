@@ -38,5 +38,7 @@ export function getSessionCookieOptions(
     path: "/",
     sameSite,
     secure,
+    // Don't set domain for localhost (browser handles it automatically)
+    // Explicitly undefined ensures no domain is set
   };
 }

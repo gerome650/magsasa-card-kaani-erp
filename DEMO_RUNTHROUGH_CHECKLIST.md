@@ -20,6 +20,8 @@
 - When `demoLogin` succeeds, server sets session cookie (`app_session_id`)
 - Client auth checks for this cookie in DEV mode before redirecting
 - If cookie exists but `auth.me` query fails/slow, app stays authenticated (prevents flicker)
+- Auth readiness gate: App waits for first `auth.me` attempt to complete before redirecting (prevents flicker)
+- If auth is loading, app shows loading instead of redirecting (no flicker during account switches)
 - To debug auth issues: Check browser console for `[Auth] DEV:` logs showing cookie presence and `auth.me` status
 
 **Lite Mode (AO Demo):**

@@ -23,6 +23,7 @@ export default function Login() {
   const redirectTo = searchParams.get('redirect') || '/';
 
   const demoLoginMutation = trpc.auth.demoLogin.useMutation();
+  const utils = trpc.useUtils();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +38,6 @@ export default function Login() {
       });
 
       if (demoResult.success) {
-        // Also update client-side auth state
-        await login(username, password);
         // Ensure demo role override persists after successful login
         const override = localStorage.getItem("demo_role_override");
         if (!override) {
@@ -51,7 +50,28 @@ export default function Login() {
             localStorage.setItem("demo_role_override", "manager");
           }
         }
-        setLocation(redirectTo);
+        
+        // Force refetch auth.me to ensure user state is updated before navigating
+        // This prevents flicker/redirect loops when switching accounts
+        try {
+          await utils.auth.me.invalidate();
+          await utils.auth.me.refetch();
+          
+          // Wait a small delay for cookie to propagate and auth.me to complete
+          // Grace window in useAuth will handle any temporary auth gaps
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Navigate - grace window in useAuth will prevent redirect loops
+          setLocation(redirectTo);
+        } catch (error) {
+          // If refetch fails but cookie exists, navigate anyway (grace window will handle it)
+          if (document.cookie.includes('app_session_id=')) {
+            setLocation(redirectTo);
+          } else {
+            console.warn("[Login] auth.me refetch failed, but proceeding with navigation");
+            setLocation(redirectTo);
+          }
+        }
         return;
       }
     } catch (demoError: any) {
