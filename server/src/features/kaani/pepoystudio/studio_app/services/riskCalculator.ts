@@ -792,7 +792,7 @@ function parseHarvestTrigger(triggerText?: string): Partial<{
   // ---------- free-form hints for farming system/variety ----------
   if (!out.systemOrVariety) {
     // Get unique, non-"All" systems from the benchmark data
-    const allSystems = [...new Set(CROP_BENCHMARKS.map(b => b.farmingSystemOrVariety))]
+    const allSystems = Array.from(new Set(CROP_BENCHMARKS.map(b => b.farmingSystemOrVariety)))
         .filter(s => s.toLowerCase() !== 'all')
         .sort((a, b) => b.length - a.length); // Sort by length descending to match longer phrases first
 
