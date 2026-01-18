@@ -4,7 +4,7 @@ import { Redirect } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { UserRole } from '@/data/usersData';
 import { Loader2 } from 'lucide-react';
-import { isDemoTransitionActive } from '@/_core/demo/demoTransition';
+import { isDemoTransitionActive } from '@/_core/demo/demoTransitionStore';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -128,6 +128,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   }, []);
 
   // DEV-ONLY: During demo transitions, show loader (never redirect, never Access Denied)
+  // Check this FIRST before any auth/role evaluation to prevent flicker
   const isInDemoTransition = import.meta.env.DEV && isDemoTransitionActive();
   if (isInDemoTransition) {
     return (

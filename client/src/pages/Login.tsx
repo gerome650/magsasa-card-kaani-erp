@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 // Note: Login.tsx uses trpc.auth.demoLogin mutation directly, no useAuth hook needed
 import { trpc } from '@/lib/trpc';
-import { startDemoTransition, clearDemoTransition } from '@/_core/demo/demoTransition';
+import { startDemoTransition, clearDemoTransition } from '@/_core/demo/demoTransitionStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,6 +107,12 @@ export default function Login() {
           await utils.auth.me.invalidate();
           await utils.auth.me.refetch();
           
+          // DEV-ONLY: Clear demo transition after auth.me has settled
+          // Do this BEFORE checking user data to ensure transition is cleared synchronously
+          if (import.meta.env.DEV) {
+            clearDemoTransition();
+          }
+          
           // After refetch, check if we have user data and optimistically update cache
           // This prevents any flicker during the transition
           const currentUser = utils.auth.me.getData();
@@ -159,7 +165,7 @@ export default function Login() {
           // Timeout reached - wait a bit more for state propagation, then navigate
           // AuthGate will hold UI steady, grace window is active, so ProtectedRoute won't redirect
           if (import.meta.env.DEV) {
-            console.log("[Login] DEV: Timeout reached, waiting for state propagation before navigating");
+            console.log("[Login] DEV: Timeout reached, navigating");
           }
           await new Promise(resolve => setTimeout(resolve, 100));
           setLocation(redirectTo);
@@ -193,15 +199,15 @@ export default function Login() {
   ];
 
   const fillDemoCredentials = (user: string, pass: string, roleKey: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setError('');
-    
-    // DEV-ONLY: Start demo transition BEFORE setting role override
-    // This prevents flicker by blocking UI rendering during the switch
+    // DEV-ONLY: Start demo transition SYNCHRONOUSLY at the very top, BEFORE any other operations
+    // This prevents flicker by blocking UI rendering immediately on click (no delay)
     if (import.meta.env.DEV) {
       startDemoTransition(2000); // 2 second transition window
     }
+    
+    setUsername(user);
+    setPassword(pass);
+    setError('');
     
     // Persist demo role override for role-based UI gating
     try {

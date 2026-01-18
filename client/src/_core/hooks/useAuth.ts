@@ -2,7 +2,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { isDemoTransitionActive } from "@/_core/demo/demoTransition";
+import { isDemoTransitionActive } from "@/_core/demo/demoTransitionStore";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;

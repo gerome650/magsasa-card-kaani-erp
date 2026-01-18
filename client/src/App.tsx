@@ -11,8 +11,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./components/AuthGate";
-import { isDemoTransitionActive } from "./_core/demo/demoTransition";
+import { isDemoTransitionActive, subscribeDemoTransition, getRemainingTransitionTime } from "./_core/demo/demoTransitionStore";
 import { Loader2 } from "lucide-react";
+import { useSyncExternalStore } from "react";
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
