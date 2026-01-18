@@ -16,6 +16,12 @@
 - `OAUTH_SERVER_URL` and `DATABASE_URL` are optional in dev mode - demo auth works without them
 - No `.env` file required for demo (all env vars have safe fallbacks)
 
+**Demo Cookie Behavior (DEV only):**
+- When `demoLogin` succeeds, server sets session cookie (`app_session_id`)
+- Client auth checks for this cookie in DEV mode before redirecting
+- If cookie exists but `auth.me` query fails/slow, app stays authenticated (prevents flicker)
+- To debug auth issues: Check browser console for `[Auth] DEV:` logs showing cookie presence and `auth.me` status
+
 **Lite Mode (AO Demo):**
 ```bash
 pnpm run dev:lite
