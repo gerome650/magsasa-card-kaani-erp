@@ -15,6 +15,7 @@ import { isDemoTransitionActive, subscribeDemoTransition, getRemainingTransition
 import { Loader2 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { DevAuthOverlay } from "./components/DevAuthOverlay";
+import { DevAutoLogin } from "./_core/dev/DevAutoLogin";
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
@@ -434,6 +435,8 @@ function App() {
           <CartProvider>
             <TooltipProvider>
               <Toaster />
+              {/* DEV-only: Auto-login bypass (runs before ProtectedRoute redirects) */}
+              {import.meta.env.DEV && <DevAutoLogin />}
               {/* DEV-only: Auth debugging overlay (mounted inside providers for access to useAuth) */}
               {import.meta.env.DEV && <DevAuthOverlay />}
               <AuthGate>

@@ -40,6 +40,17 @@ pnpm run dev:full
 - Full navigation menu
 - Full dashboard access
 
+**Auto-Login Bypass (DEV-only, bypasses login UI):**
+```bash
+pnpm run dev:full:manager    # Auto-login as Manager
+pnpm run dev:full:officer    # Auto-login as Field Officer
+pnpm run dev:full:farmer     # Auto-login as Farmer
+```
+- Sets `VITE_DEMO_AUTO_ROLE` env var
+- Automatically logs in and navigates to `/dashboard`
+- No login page interaction required
+- Alternative: Use URL param `?demo_role=manager` (or `field_officer`, `farmer`)
+
 **Verify Mode:**
 - Check sidebar footer (DEV only): Should show "App Mode: Lite" or "App Mode: Full"
 - Console (DEV only): `[App] Lite Mode: ACTIVE/INACTIVE`
@@ -97,11 +108,17 @@ pnpm run dev:full
 
 ## 2. Manager Demo (Full Mode)
 
-### Setup
+### Setup (Option A: Manual Login)
 - [ ] Start server: `pnpm run dev:full`
 - [ ] Navigate to: `http://localhost:5173`
 - [ ] Login: Select "Manager - Roberto Garcia" demo account
 - [ ] **Verify:** `localStorage.demo_role_override === "manager"` (DevTools)
+
+### Setup (Option B: Auto-Login Bypass - DEV only)
+- [ ] Start server: `pnpm run dev:full:manager`
+- [ ] Navigate to: `http://localhost:5173`
+- [ ] **Expected:** Automatically logged in as Manager, redirected to `/dashboard`
+- [ ] **Verify:** No login page shown, session active
 
 ### Happy Path Flow
 - [ ] **Step 1: Dashboard**
@@ -153,11 +170,17 @@ pnpm run dev:full
 
 ## 3. Farmer Demo (Full Mode)
 
-### Setup
+### Setup (Option A: Manual Login)
 - [ ] Start server: `pnpm run dev:full`
 - [ ] **Logout** if logged in as Manager
 - [ ] Login: Select "Farmer - Juan dela Cruz" demo account
 - [ ] **Verify:** `localStorage.demo_role_override === "farmer"` (DevTools)
+
+### Setup (Option B: Auto-Login Bypass - DEV only)
+- [ ] Start server: `pnpm run dev:full:farmer`
+- [ ] Navigate to: `http://localhost:5173`
+- [ ] **Expected:** Automatically logged in as Farmer, redirected to `/dashboard`
+- [ ] **Verify:** No login page shown, session active
 
 ### Happy Path Flow
 - [ ] **Step 1: Farmer Dashboard**
@@ -327,15 +350,19 @@ pnpm run dev:lite  # Should set VITE_APP_MODE=lite
 
 ```bash
 # Start servers (use 'pnpm run' for colon-separated script names)
-pnpm run dev:lite    # Lite Mode (AO demo)
-pnpm run dev:full    # Full Mode (Manager/Farmer demo)
+pnpm run dev:lite         # Lite Mode (AO demo)
+pnpm run dev:full         # Full Mode (Manager/Farmer demo - manual login)
+pnpm run dev:full:manager # Auto-login as Manager (bypasses login UI)
+pnpm run dev:full:officer # Auto-login as Field Officer (bypasses login UI)
+pnpm run dev:full:farmer  # Auto-login as Farmer (bypasses login UI)
 
 # Verification
 pnpm check       # TypeScript compilation
 git status       # Check uncommitted changes
 
 # Clear demo state (if needed)
-localStorage.clear()  # In browser DevTools Console
+localStorage.clear()      # In browser DevTools Console
+sessionStorage.clear()    # Clear auto-login flag if needed
 ```
 
 ---
