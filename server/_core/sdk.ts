@@ -368,19 +368,23 @@ class SDKServer {
         user = (await db.getUserByOpenId(userInfo.openId)) || null;
       } catch (error) {
         // OAuth sync failed - if demo user, return demo user object
-        if (isDemoUser) {
+        if (isDemoUser && session.role) {
+          const clientRole = session.role;
           const demoUser: User = {
             id: 0,
             openId: session.openId,
             name: session.name || null,
             email: session.email || null,
             loginMethod: session.loginMethod || "demo",
-            role: session.role || "user",
+            // Map client role to DB role type for type compatibility
+            role: (clientRole === "manager" ? "admin" : "user") as "user" | "admin",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastSignedIn: signedInAt,
           };
-          return demoUser;
+          // Override role with client role from JWT (bypass DB schema type)
+          (demoUser as any).role = clientRole;
+          return demoUser as User;
         }
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
