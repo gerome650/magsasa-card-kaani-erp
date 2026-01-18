@@ -187,6 +187,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     !isInDemoTransition;
 
   if (shouldRedirect) {
+    // DEV-ONLY: Log redirect to /login with stack trace for debugging
+    if (import.meta.env.DEV) {
+      const stack = new Error().stack;
+      console.warn("[DEMO] Redirect to /login detected", {
+        isAuthReady,
+        loading,
+        isAuthenticated,
+        hasDemoSession,
+        isInDemoGraceWindow,
+        inRoleSwitchWindow,
+        justLoggedIn: import.meta.env.DEV && justLoggedIn,
+        isInDemoTransition,
+        stack: stack?.split('\n').slice(0, 10).join('\n'), // First 10 lines of stack
+      });
+    }
     return <Redirect to="/login" />;
   }
 
