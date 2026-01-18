@@ -14,6 +14,7 @@ import { AuthGate } from "./components/AuthGate";
 import { isDemoTransitionActive, subscribeDemoTransition, getRemainingTransitionTime } from "./_core/demo/demoTransitionStore";
 import { Loader2 } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { DevAuthOverlay } from "./components/DevAuthOverlay";
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
@@ -433,6 +434,8 @@ function App() {
           <CartProvider>
             <TooltipProvider>
               <Toaster />
+              {/* DEV-only: Auth debugging overlay (mounted inside providers for access to useAuth) */}
+              {import.meta.env.DEV && <DevAuthOverlay />}
               <AuthGate>
                 <Router />
               </AuthGate>

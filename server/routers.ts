@@ -278,7 +278,23 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async opts => {
+      // DEV-only: Log auth.me query with cookie and role info
+      if (process.env.NODE_ENV === "development") {
+        const { parse: parseCookie } = await import("cookie");
+        const cookies = parseCookie(opts.ctx.req.headers.cookie || "");
+        const hasCookie = !!cookies[COOKIE_NAME];
+        const user = opts.ctx.user;
+        console.log("[Auth] DEV: auth.me query", {
+          hasCookie,
+          userRole: user?.role || null,
+          userId: user?.id || null,
+          userEmail: user?.email || null,
+          loginMethod: user?.loginMethod || null,
+        });
+      }
+      return opts.ctx.user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -383,9 +399,15 @@ export const appRouter = router({
           maxAge: ONE_YEAR_MS,
         });
         
-        // DEV-only: Log cookie setting
+        // DEV-only: Log cookie setting with role and loginMethod
         if (process.env.NODE_ENV === "development") {
-          console.log("[Auth] DEV: Set-Cookie app_session_id present (demo login)");
+          console.log("[Auth] DEV: demoLogin - Setting cookie", {
+            role: clientRole,
+            loginMethod: "demo",
+            username: input.username,
+            hasSetCookie: true,
+            cookieName: COOKIE_NAME,
+          });
         }
 
         // Return user payload identical to auth.me query shape (full user object)
