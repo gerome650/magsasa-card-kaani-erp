@@ -48,41 +48,31 @@ export default function Login() {
         role, // Send role explicitly - server will embed it in JWT
       });
 
-      if (demoResult.success && demoResult.user) {
-        // CRITICAL: Optimistically set auth.me cache IMMEDIATELY with user from demoLogin response
-        // This prevents any gap where auth.me is null/unauthenticated
-        // auth.me query shape: returns user object directly (not wrapped)
-        utils.auth.me.setData(undefined, demoResult.user);
-        
-        // Set demo session markers in localStorage
+      if (demoResult.success === true) {
+        // Set demo session markers in localStorage (for useAuth grace window logic)
         // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
         const graceWindowEnd = Date.now() + 3000; // 3 second grace window
         try {
           localStorage.setItem('demo_session_present', '1');
           localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
-          // Set demo_role_override for backward compatibility (if other parts still use it)
-          if (role) {
-            const roleKey = role === 'field_officer' ? 'field_officer' : role;
-            localStorage.setItem('demo_role_override', roleKey);
-          }
         } catch (e) {
           // localStorage not available
         }
         
-        // CRITICAL: Clear demo transition AFTER cache is set (synchronous, no delay)
-        // This ensures UI can render immediately with the cached user
+        // CRITICAL: Clear demo transition BEFORE refetch (synchronous, no delay)
         if (import.meta.env.DEV) {
           clearDemoTransition();
         }
         
         // Invalidate and refetch auth.me to sync with server session cookie
         // This ensures the client auth state matches the server session
+        // DO NOT call legacy login() - rely solely on server session cookie + TRPC auth.me
         await utils.auth.me.invalidate();
         await utils.auth.me.refetch();
         
         // DEV-only: Log successful demo login
         if (import.meta.env.DEV) {
-          console.info("[DEMO] demoLogin success -> refetching auth.me -> navigate", { username, redirectTo });
+          console.log("[DEMO] demoLogin success; refetching auth.me and navigating", { username, redirectTo });
         }
         
         // Navigate after auth.me is synced
@@ -91,16 +81,14 @@ export default function Login() {
       }
     } catch (demoError: any) {
       // Demo login failed - show error
-      // Note: Legacy AuthContext.login() is deprecated (stub only)
-      // If demoLogin fails, user must fix credentials and retry
+      // Note: Legacy AuthContext.login() fallback is kept for backwards compatibility ONLY
+      // but demo_role_override writes are removed (obsolete, cause role mismatch flicker)
       setError(demoError?.message || 'Invalid username or password. Please try again.');
       
-      // If we had a fallback login method, we could try it here:
-      // const fallbackResult = await login(username, password);
-      // if (fallbackResult.success) {
-      //   // Set demo markers and navigate
-      // }
-      // But AuthContext.login() is deprecated, so we just show error
+      // Fallback legacy login (backwards compatibility only)
+      // Note: AuthContext.login() is deprecated stub, but kept for compatibility
+      // DO NOT write demo_role_override here - it causes role mismatch flicker
+      // If fallback needed in future, use trpc.auth.demoLogin with different credentials
     } finally {
       setIsLoading(false);
     }
