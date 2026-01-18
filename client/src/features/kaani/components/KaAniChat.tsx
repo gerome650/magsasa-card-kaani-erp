@@ -17,7 +17,7 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
 import { useAuth } from "@/contexts/AuthContext";
-import { normalizeRole } from "@/const";
+import { normalizeRole, normalizeAudience } from "@/const";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
@@ -48,8 +48,8 @@ export function KaAniChat() {
   const isFarmer = normalizedRole === "farmer";
   const [audience, setAudience] = useState<KaAniAudience>(isFarmer ? "farmer" : "loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
-  // Ensure audience is always "farmer" for farmers
-  const effectiveAudience: KaAniAudience = isFarmer ? "farmer" : audience;
+  // Ensure audience is always normalized and "farmer" for farmers
+  const effectiveAudience: KaAniAudience = isFarmer ? "farmer" : normalizeAudience(audience);
   const [flowState, setFlowState] = useState<{
     flowId: string;
     nextStepId: string | null;
@@ -75,17 +75,6 @@ export function KaAniChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Normalize audience to backend enum values (defensive fix for Zod errors)
-  function normalizeAudience(a: unknown): "loan_officer" | "farmer" {
-    const s = String(a ?? "").trim().toLowerCase();
-    if (s === "loan_officer" || s === "loan officer") return "loan_officer";
-    if (s === "farmer") return "farmer";
-    // also allow "loanofficer" just in case:
-    if (s === "loanofficer") return "loan_officer";
-    // default conservative:
-    return "loan_officer";
-  }
 
   // Load AO metadata from localStorage on mount
   useEffect(() => {
@@ -753,7 +742,7 @@ Next Step:
             )}
 
             {/* Loan Officer Summary */}
-            {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
+            {flowState && flowState.loanOfficerSummary && effectiveAudience === 'loan_officer' && (
               <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
             )}
 

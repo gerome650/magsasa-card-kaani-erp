@@ -84,6 +84,24 @@ export function normalizeRole(user: any): NormalizedRole {
   return "staff";
 }
 
+/**
+ * Normalizes audience value to backend enum values (snake_case).
+ * Defensive fix for Zod validation errors.
+ * 
+ * @param value - Audience value (can be any format)
+ * @returns "loan_officer" | "farmer" (snake_case)
+ */
+export function normalizeAudience(value: unknown): "loan_officer" | "farmer" {
+  const s = String(value ?? "").trim().toLowerCase();
+  // Handle snake_case
+  if (s === "loan_officer" || s === "loanofficer") return "loan_officer";
+  if (s === "farmer") return "farmer";
+  // Handle space-separated
+  if (s === "loan officer" || s.includes("loan") && s.includes("officer")) return "loan_officer";
+  // Default conservative: loan_officer
+  return "loan_officer";
+}
+
 // Generate login URL at runtime so redirect URI reflects the current origin.
 export const getLoginUrl = () => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
