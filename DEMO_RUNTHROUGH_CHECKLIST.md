@@ -11,7 +11,10 @@
 
 **Note:** Use `pnpm run dev:lite` (not `pnpm dev:lite`) because pnpm shorthand can fail with colon-separated script names.
 
-**Env Var Fallbacks:** `VITE_APP_TITLE` and `VITE_APP_LOGO` have safe defaults (`MAGSASA-CARD` and `/sunray-logo.png`) if not set. No `.env` file required for demo.
+**Env Var Fallbacks:** 
+- `VITE_APP_TITLE` and `VITE_APP_LOGO` have safe defaults (`MAGSASA-CARD` and `/sunray-logo.png`) if not set
+- `OAUTH_SERVER_URL` and `DATABASE_URL` are optional in dev mode - demo auth works without them
+- No `.env` file required for demo (all env vars have safe fallbacks)
 
 **Lite Mode (AO Demo):**
 ```bash

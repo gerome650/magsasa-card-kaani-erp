@@ -317,30 +317,54 @@ export const appRouter = router({
           throw new Error("Invalid username or password");
         }
 
-        // Ensure user exists in database
-        let user = await db.getUserByOpenId(demoUser.openId);
-        if (!user) {
-          // Create demo user in database
-          await db.upsertUser({
-            openId: demoUser.openId,
-            name: demoUser.name,
-            email: demoUser.email,
-            loginMethod: "demo",
-            role: demoUser.role, // "user" or "admin"
-            lastSignedIn: new Date().toISOString(),
-          });
-          user = await db.getUserByOpenId(demoUser.openId);
-        }
-
-        if (!user) {
-          throw new Error("Failed to create user");
-        }
-
-        // Create session token
-        const sessionToken = await sdk.createSessionToken(demoUser.openId, {
+        // DEMO AUTH: Create session token with user data embedded (no DB required)
+        // This allows demo login to work even when DATABASE_URL is not set
+        const sessionToken = await sdk.signSession({
+          openId: demoUser.openId,
+          appId: ENV.appId || "demo-app",
           name: demoUser.name,
+          email: demoUser.email,
+          role: demoUser.role,
+          loginMethod: "demo",
+        }, {
           expiresInMs: ONE_YEAR_MS,
         });
+
+        // Try to sync user to database if available (optional, non-blocking)
+        let user: { id: number; openId: string; name: string | null; email: string | null; role: "user" | "admin"; loginMethod: string | null; createdAt: string; updatedAt: string; lastSignedIn: string } | null = null;
+        if (ENV.databaseUrl) {
+          try {
+            user = (await db.getUserByOpenId(demoUser.openId)) || null;
+            if (!user) {
+              // Create demo user in database
+              await db.upsertUser({
+                openId: demoUser.openId,
+                name: demoUser.name,
+                email: demoUser.email,
+                loginMethod: "demo",
+                role: demoUser.role, // "user" or "admin"
+                lastSignedIn: new Date().toISOString(),
+              });
+              user = (await db.getUserByOpenId(demoUser.openId)) || null;
+            }
+          } catch (dbError) {
+            // Database unavailable - that's ok, we have the session token
+            console.log("[Auth] Database unavailable, using demo session token only");
+          }
+        }
+
+        // Create user object for response (from DB if available, otherwise from demo data)
+        const userResponse = user || {
+          id: 0,
+          openId: demoUser.openId,
+          name: demoUser.name,
+          email: demoUser.email,
+          role: demoUser.role,
+          loginMethod: "demo",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          lastSignedIn: new Date().toISOString(),
+        };
 
         // Set session cookie
         const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -352,11 +376,11 @@ export const appRouter = router({
         return {
           success: true,
           user: {
-            id: user.id,
-            openId: user.openId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
+            id: userResponse.id,
+            openId: userResponse.openId,
+            name: userResponse.name,
+            email: userResponse.email,
+            role: userResponse.role,
           },
         };
     }),

@@ -25,6 +25,10 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  // Demo auth extensions (optional, only present for demo users)
+  email?: string;
+  role?: "user" | "admin";
+  loginMethod?: string;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -34,10 +38,13 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
+    // Only log error in production; in dev mode, demo auth will be used
+    if (!ENV.oAuthServerUrl && ENV.isProduction) {
       console.error(
         "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
       );
+    } else if (!ENV.oAuthServerUrl) {
+      console.log("[OAuth] OAUTH_SERVER_URL not set - demo auth fallback will be used");
     }
   }
 
@@ -190,11 +197,18 @@ class SDKServer {
     const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
     const secretKey = this.getSessionSecret();
 
-    return new SignJWT({
+    const jwtPayload: Record<string, unknown> = {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
-    })
+    };
+    
+    // Include demo auth extensions if present
+    if (payload.email) jwtPayload.email = payload.email;
+    if (payload.role) jwtPayload.role = payload.role;
+    if (payload.loginMethod) jwtPayload.loginMethod = payload.loginMethod;
+
+    return new SignJWT(jwtPayload)
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
@@ -202,9 +216,12 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  ): Promise<SessionPayload | null> {
     if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
+      // Only warn in production; in dev, demo auth fallback will handle it
+      if (ENV.isProduction) {
+        console.warn("[Auth] Missing session cookie");
+      }
       return null;
     }
 
@@ -213,7 +230,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, email, role, loginMethod } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -266,39 +283,60 @@ class SDKServer {
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
-      // DEV-ONLY FALLBACK: In development, allow demo users without session cookie
-      // This is a safety net if cookie setting fails for any reason
-      if (process.env.NODE_ENV === "development" || !ENV.isProduction) {
-        const demoOpenId = "demo-manager"; // Default to manager for dev fallback
-        let user = await db.getUserByOpenId(demoOpenId);
-        
-        if (!user) {
-          // Create demo manager user if it doesn't exist
-          await db.upsertUser({
-            openId: demoOpenId,
-            name: "Demo Manager",
-            email: "demo@magsasa.com",
-            loginMethod: "demo",
-            lastSignedIn: new Date().toISOString(),
-          });
-          user = await db.getUserByOpenId(demoOpenId);
-        }
-        
-        if (user) {
-          console.warn("[Auth] Using dev fallback: authenticated as demo manager (no session cookie)");
-          return user;
-        }
-      }
-      
       throw ForbiddenError("Invalid session cookie");
     }
 
     const sessionUserId = session.openId;
     const signedInAt = new Date().toISOString();
-    let user = await db.getUserByOpenId(sessionUserId);
+    
+    // DEMO AUTH FALLBACK: If session contains demo user data (email, role, loginMethod),
+    // and database is unavailable, create User object from JWT payload
+    const isDemoUser = session.email && session.role && session.loginMethod === "demo";
+    const isDatabaseAvailable = !!ENV.databaseUrl;
+    
+    if (isDemoUser && !isDatabaseAvailable) {
+      // Create User object from JWT payload (no DB required)
+      const demoUser: User = {
+        id: 0, // Placeholder ID for demo users
+        openId: session.openId,
+        name: session.name || null,
+        email: session.email || null,
+        loginMethod: session.loginMethod || "demo",
+        role: session.role || "user",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSignedIn: signedInAt,
+      };
+      return demoUser;
+    }
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
+    // Try to get user from database (if available)
+    let user: User | null = null;
+    if (isDatabaseAvailable) {
+      try {
+        user = (await db.getUserByOpenId(sessionUserId)) || null;
+      } catch (error) {
+        // Database error - fall back to demo user if available
+        if (isDemoUser) {
+          const demoUser: User = {
+            id: 0,
+            openId: session.openId,
+            name: session.name || null,
+            email: session.email || null,
+            loginMethod: session.loginMethod || "demo",
+            role: session.role || "user",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastSignedIn: signedInAt,
+          };
+          return demoUser;
+        }
+        throw error;
+      }
+    }
+
+    // If user not in DB and we have OAuth server, sync from OAuth server automatically
+    if (!user && isDatabaseAvailable && ENV.oAuthServerUrl) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
         await db.upsertUser({
@@ -308,23 +346,46 @@ class SDKServer {
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
         });
-        user = await db.getUserByOpenId(userInfo.openId);
+        user = (await db.getUserByOpenId(userInfo.openId)) || null;
       } catch (error) {
+        // OAuth sync failed - if demo user, return demo user object
+        if (isDemoUser) {
+          const demoUser: User = {
+            id: 0,
+            openId: session.openId,
+            name: session.name || null,
+            email: session.email || null,
+            loginMethod: session.loginMethod || "demo",
+            role: session.role || "user",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastSignedIn: signedInAt,
+          };
+          return demoUser;
+        }
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
       }
     }
 
-    if (!user) {
+    // If still no user and not demo, throw error
+    if (!user && !isDemoUser) {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt,
-    });
+    // Update lastSignedIn if database is available
+    if (user && isDatabaseAvailable) {
+      try {
+        await db.upsertUser({
+          openId: user.openId,
+          lastSignedIn: signedInAt,
+        });
+      } catch (error) {
+        // Ignore DB errors for lastSignedIn update
+      }
+    }
 
-    return user;
+    return user!;
   }
 }
 
