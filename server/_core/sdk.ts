@@ -305,20 +305,24 @@ class SDKServer {
     const isDemoUser = session.email && session.role && session.loginMethod === "demo";
     const isDatabaseAvailable = !!ENV.databaseUrl;
     
-    if (isDemoUser && !isDatabaseAvailable) {
+    if (isDemoUser && !isDatabaseAvailable && session.role) {
       // Create User object from JWT payload (no DB required)
+      const clientRole = session.role;
       const demoUser: User = {
         id: 0, // Placeholder ID for demo users
         openId: session.openId,
         name: session.name || null,
         email: session.email || null,
         loginMethod: session.loginMethod || "demo",
-        role: session.role || "user",
+        // Map client role to DB role type for type compatibility
+        role: (clientRole === "manager" ? "admin" : "user") as "user" | "admin",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         lastSignedIn: signedInAt,
       };
-      return demoUser;
+      // Override role with client role (bypass DB schema type)
+      (demoUser as any).role = clientRole;
+      return demoUser as User;
     }
 
     // Try to get user from database (if available)
@@ -328,19 +332,23 @@ class SDKServer {
         user = (await db.getUserByOpenId(sessionUserId)) || null;
       } catch (error) {
         // Database error - fall back to demo user if available
-        if (isDemoUser) {
+        if (isDemoUser && session.role) {
+          const clientRole = session.role;
           const demoUser: User = {
             id: 0,
             openId: session.openId,
             name: session.name || null,
             email: session.email || null,
             loginMethod: session.loginMethod || "demo",
-            role: session.role || "user",
+            // Map client role to DB role type for type compatibility
+            role: (clientRole === "manager" ? "admin" : "user") as "user" | "admin",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastSignedIn: signedInAt,
           };
-          return demoUser;
+          // Override role with client role from JWT (bypass DB schema type)
+          (demoUser as any).role = clientRole;
+          return demoUser as User;
         }
         throw error;
       }
