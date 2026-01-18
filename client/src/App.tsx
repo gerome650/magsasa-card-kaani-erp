@@ -386,6 +386,46 @@ function Router() {
 }
 
 function App() {
+  // DEV-ONLY: Reactive demo transition gate - prevents UI rendering during account switches
+  // Uses useSyncExternalStore for immediate synchronous updates (no polling delay)
+  const isInDemoTransition = useSyncExternalStore(
+    subscribeDemoTransition,
+    () => {
+      if (import.meta.env.PROD) return false;
+      return isDemoTransitionActive();
+    },
+    () => false // Server-side fallback
+  );
+
+  // DEV-ONLY: Set timeout to re-render when transition expires (since no polling)
+  useEffect(() => {
+    if (import.meta.env.PROD || !isInDemoTransition) return;
+
+    const remaining = getRemainingTransitionTime();
+    if (remaining > 0) {
+      // Schedule re-render when transition expires (add 10ms buffer)
+      const timeoutId = setTimeout(() => {
+        // Force re-check by triggering subscription update
+        // The store's isDemoTransitionActive() will auto-cleanup expired transitions
+        subscribeDemoTransition(() => {})(); // Trigger notification
+      }, remaining + 10);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isInDemoTransition]);
+
+  // DEV-ONLY: Show full-screen loader during demo transitions
+  if (import.meta.env.DEV && isInDemoTransition) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Switching demo account...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
