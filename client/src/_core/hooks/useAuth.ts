@@ -17,8 +17,10 @@ export function useAuth(options?: UseAuthOptions) {
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
-    staleTime: 5000, // Keep data fresh for 5 seconds
-    placeholderData: (prev) => prev, // Preserve previous data during refetch to prevent flicker
+    refetchOnReconnect: false,
+    staleTime: 30000, // Keep data fresh for 30 seconds
+    gcTime: 300000, // Keep in cache for 5 minutes
+    placeholderData: (prev) => prev, // CRITICAL: Preserve previous user data during refetches to prevent flicker
   });
 
   // Auth readiness: true after FIRST auth.me attempt completes (success or failure)
@@ -222,8 +224,8 @@ export function useAuth(options?: UseAuthOptions) {
             }
             
             // Trigger auth.me refetch to get updated user
-            utils.auth.me.invalidate();
-            utils.auth.me.refetch();
+            // Use refetch() instead of invalidate() to avoid clearing cache temporarily
+            void utils.auth.me.refetch();
           } catch (e) {
             // localStorage not available
           }
@@ -331,6 +333,7 @@ export function useAuth(options?: UseAuthOptions) {
     
     // In DEV: authenticated if user exists OR demo marker/grace window active
     // In PROD: authenticated only if user exists
+    // IMPORTANT: meQuery.data is the user object directly (from auth.me query)
     const isAuthenticated = import.meta.env.DEV 
       ? (Boolean(meQuery.data) || isAuthenticatedDev)
       : Boolean(meQuery.data);
@@ -342,7 +345,9 @@ export function useAuth(options?: UseAuthOptions) {
       user: meQuery.data ?? null,
       // Include isRefetching in loading state to prevent flicker during refetches
       // Also include demo transition state (DEV only)
-      loading: meQuery.isLoading || meQuery.isRefetching || logoutMutation.isPending || isInDemoTransition,
+      // CRITICAL: Include isFetching (not just isRefetching) to prevent redirects during ANY fetch
+      // This ensures ProtectedRoute never redirects while auth.me is fetching (initial load OR refetch)
+      loading: meQuery.isLoading || meQuery.isFetching || logoutMutation.isPending || isInDemoTransition,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated,
     };
@@ -350,6 +355,7 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
+    meQuery.isFetching, // Include isFetching in deps to react to all fetch states
     meQuery.isRefetching,
     logoutMutation.error,
     logoutMutation.isPending,
@@ -435,6 +441,7 @@ export function useAuth(options?: UseAuthOptions) {
   return {
     ...state,
     isAuthReady, // Expose readiness state for route guards
+    isFetching: meQuery.isFetching, // Expose isFetching so ProtectedRoute can check it
     demoSessionPresent: import.meta.env.DEV ? demoSessionPresent : false, // DEV only (replaces hasSessionCookie)
     isInDemoGraceWindow: import.meta.env.DEV ? isInDemoGraceWindow : false, // DEV only
     isInRoleSwitchWindow: import.meta.env.DEV ? isInRoleSwitchWindow : false, // DEV only

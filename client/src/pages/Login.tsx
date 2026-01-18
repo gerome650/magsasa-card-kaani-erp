@@ -48,114 +48,49 @@ export default function Login() {
         role, // Send role explicitly - server will embed it in JWT
       });
 
-      if (demoResult.success) {
-        // NO MORE localStorage role override - role is now server-driven via JWT
-        // auth.me will return the correct role from JWT payload
+      if (demoResult.success && demoResult.user) {
+        // CRITICAL: Optimistically set auth.me cache IMMEDIATELY with user from demoLogin response
+        // This prevents any gap where auth.me is null/unauthenticated
+        // auth.me query shape: returns user object directly (not wrapped)
+        utils.auth.me.setData(undefined, demoResult.user);
         
-        // Force refetch auth.me to ensure user state is updated before navigating
-        // This prevents flicker/redirect loops when switching accounts
-        try {
-          // Set demo session marker and grace window in localStorage (useAuth will read them)
-          // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
-          // Increased grace window to 3000ms for more stability
-          const graceWindowEnd = Date.now() + 3000; // 3 second grace window
-          try {
-            localStorage.setItem('demo_session_present', '1');
-            localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
-            if (import.meta.env.DEV) {
-              console.log("[Login] DEV: Demo session marker set, grace window until", new Date(graceWindowEnd).toISOString());
-            }
-          } catch (e) {
-            // localStorage not available
-          }
-          
-          // CRITICAL: Wait for state to propagate before navigating
-          // This ensures AuthGate and ProtectedRoute see the demo session marker
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
-          // Small delay to ensure cookie is set by server
-          await new Promise(resolve => setTimeout(resolve, 50));
-          
-          // Invalidate and refetch auth.me
-          // placeholderData will preserve previous user data during refetch
-          await utils.auth.me.invalidate();
-          await utils.auth.me.refetch();
-          
-          // DEV-ONLY: Clear demo transition after auth.me has settled
-          // Do this BEFORE checking user data to ensure transition is cleared synchronously
-          if (import.meta.env.DEV) {
-            clearDemoTransition();
-          }
-          
-          // After refetch, check if we have user data and optimistically update cache
-          // This prevents any flicker during the transition
-          const currentUser = utils.auth.me.getData();
-          if (currentUser) {
-            utils.auth.me.setData(undefined, currentUser);
-          }
-          
-          // Wait for auth.me to return a user OR timeout (1500ms)
-          // AuthGate will hold UI steady during this transition
-          const maxWait = 1500; // 1.5 second max wait
-          const startTime = Date.now();
-          
-          while (Date.now() - startTime < maxWait) {
-            // Check current auth.me data from query cache (refetch updates the cache)
-            // placeholderData ensures this won't be undefined during refetch
-            const currentUser = utils.auth.me.getData();
-            
-            // If we have a user, wait a bit more for state to propagate, then navigate
-            if (currentUser) {
-              if (import.meta.env.DEV) {
-                console.log("[Login] DEV: User confirmed, waiting for state propagation before navigating");
-              }
-              // Small delay to ensure all reactive state has updated
-              await new Promise(resolve => setTimeout(resolve, 100));
-              setLocation(redirectTo);
-              return;
-            }
-            
-            // Wait a bit and check again
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Try refetching again and check cache
-            try {
-              await utils.auth.me.refetch();
-              const retryUser = utils.auth.me.getData();
-              if (retryUser) {
-                if (import.meta.env.DEV) {
-                  console.log("[Login] DEV: auth.me returned user after retry, waiting for state propagation before navigating");
-                }
-                // Small delay to ensure all reactive state has updated
-                await new Promise(resolve => setTimeout(resolve, 100));
-                setLocation(redirectTo);
-                return;
-              }
-            } catch (e) {
-              // Ignore refetch errors, continue checking
-            }
-          }
-          
-          // Timeout reached - wait a bit more for state propagation, then navigate
-          // AuthGate will hold UI steady, grace window is active, so ProtectedRoute won't redirect
-          if (import.meta.env.DEV) {
-            console.log("[Login] DEV: Timeout reached, navigating");
-          }
-          await new Promise(resolve => setTimeout(resolve, 100));
-          setLocation(redirectTo);
-        } catch (error) {
-          // If refetch fails but demo marker exists, navigate anyway (AuthGate will handle stability)
-          const hasDemoMarker = localStorage.getItem('demo_session_present') === '1';
-          if (hasDemoMarker) {
-            if (import.meta.env.DEV) {
-              console.log("[Login] DEV: Demo session marker present, navigating despite refetch error");
-            }
-            setLocation(redirectTo);
-          } else {
-            console.error("[Login] auth.me refetch failed and no demo session marker found", error);
-            setError("Login succeeded but could not verify session. Please try again.");
-          }
+        if (import.meta.env.DEV) {
+          console.log("[Login] DEV: Optimistically set auth.me cache with user from demoLogin");
         }
+        
+        // Set demo session marker and grace window in localStorage (useAuth will read them)
+        // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
+        const graceWindowEnd = Date.now() + 3000; // 3 second grace window
+        try {
+          localStorage.setItem('demo_session_present', '1');
+          localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
+          if (import.meta.env.DEV) {
+            console.log("[Login] DEV: Demo session marker set, grace window until", new Date(graceWindowEnd).toISOString());
+          }
+        } catch (e) {
+          // localStorage not available
+        }
+        
+        // CRITICAL: Clear demo transition AFTER cache is set (synchronous, no delay)
+        // This ensures UI can render immediately with the cached user
+        if (import.meta.env.DEV) {
+          clearDemoTransition();
+        }
+        
+        // Refetch auth.me in background WITHOUT clearing cache (placeholderData keeps user during refetch)
+        // Use refetch() instead of invalidate() to avoid clearing cache
+        // Note: utils.auth.me.refetch() returns void, so we fire-and-forget
+        // The optimistic cache set above ensures UI has user immediately
+        // placeholderData will keep user visible during refetch
+        void utils.auth.me.refetch();
+        
+        // Navigate immediately after cache is set (no waiting)
+        // ProtectedRoute will see the cached user and won't redirect
+        // AuthGate will see loading=false (cache is set) and won't block
+        if (import.meta.env.DEV) {
+          console.log("[Login] DEV: Navigating immediately after optimistic cache set");
+        }
+        setLocation(redirectTo);
         return;
       }
     } catch (demoError: any) {

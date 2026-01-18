@@ -388,16 +388,12 @@ export const appRouter = router({
           console.log("[Auth] DEV: Set-Cookie app_session_id present (demo login)");
         }
 
+        // Return user payload identical to auth.me query shape (full user object)
+        // This allows client to optimistically set auth.me cache immediately
         return {
           success: true,
-          user: {
-            id: userResponse.id,
-            openId: userResponse.openId,
-            name: userResponse.name,
-            email: userResponse.email,
-            role: userResponse.role,
-          },
-        };
+          user: userResponse, // Full user object (same shape as auth.me query returns)
+        } as const;
     }),
   }),
 

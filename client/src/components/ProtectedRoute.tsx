@@ -41,6 +41,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     loading, 
     isAuthenticated, 
     isAuthReady,
+    isFetching, // Exposed from useAuth to check if auth.me is fetching
     demoSessionPresent,
     isInDemoGraceWindow,
     isInRoleSwitchWindow
@@ -120,10 +121,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     );
   }
 
-  // Auth readiness gate: NEVER redirect while auth is still resolving
+  // Auth readiness gate: NEVER redirect while auth is still resolving OR fetching
   // This prevents flicker/redirect loops when switching demo accounts
-  // Note: loading already includes isRefetching from useAuth hook
-  if (!isAuthReady || loading) {
+  // CRITICAL: Check isFetching explicitly to prevent redirects during ANY fetch (initial load OR refetch)
+  if (!isAuthReady || loading || isFetching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -152,15 +153,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   // Only redirect to login if ALL of these are true:
   // 1. Auth is ready
   // 2. Loading is false
-  // 3. User is not authenticated
-  // 4. No demo session marker exists (DEV only)
-  // 5. Not in grace window (DEV only)
-  // 6. Not in role switch window (DEV only)
-  // 7. Not just logged in (DEV only)
+  // 3. NOT fetching (isFetching is false) - CRITICAL: never redirect while fetching
+  // 4. User is not authenticated
+  // 5. No demo session marker exists (DEV only)
+  // 6. Not in grace window (DEV only)
+  // 7. Not in role switch window (DEV only)
+  // 8. Not just logged in (DEV only)
   // 8. Not in demo transition (DEV only)
   // This prevents flicker during demo account switching
   const shouldRedirect = isAuthReady && 
     !loading &&
+    !isFetching && // CRITICAL: Never redirect while auth.me is fetching
     !isAuthenticated && 
     !hasDemoSession && 
     !isInDemoGraceWindow &&
@@ -192,6 +195,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   const userRole = useMemo(() => getUserRole(user), [user]);
   if (allowedRoles && userRole) {
     const hasAccess = allowedRoles.includes(userRole);
+    
+    // CRITICAL: If fetching, show loader instead of Access Denied (prevents flicker during refetches)
+    if (!hasAccess && isFetching) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     
     // DEV-only: Never show Access Denied if demo session is present or during transition
     const demoBypass = import.meta.env.DEV && (hasDemoSession || isInDemoTransition);
