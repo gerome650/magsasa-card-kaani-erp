@@ -361,17 +361,20 @@ export const appRouter = router({
         }
 
         // Create user object for response (from DB if available, otherwise from demo data)
+        // Note: Role comes from clientRole (JWT), not demoUser.role
         const userResponse = user || {
           id: 0,
           openId: demoUser.openId,
           name: demoUser.name,
           email: demoUser.email,
-          role: demoUser.role,
+          role: clientRole as "user" | "admin", // Type assertion for response compatibility
           loginMethod: "demo",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           lastSignedIn: new Date().toISOString(),
         };
+        // Override role with client role (bypass DB schema type for response)
+        (userResponse as any).role = clientRole;
 
         // Set session cookie
         const cookieOptions = getSessionCookieOptions(ctx.req);
