@@ -125,10 +125,11 @@ export function AuthGate({ children }: AuthGateProps) {
 
   // Block rendering while:
   // - Auth is not ready (first auth.me attempt hasn't completed)
-  // - Auth is loading
+  // - Auth is loading or refetching
   // - In demo grace window (DEV only)
   // - In role switch window (DEV only)
   // - Demo session present but user not loaded yet (DEV only)
+  // Note: loading already includes isRefetching from useAuth, but we block during transitions anyway
   const shouldBlock = !isAuthReady || loading || (import.meta.env.DEV && (inGraceWindow || inRoleSwitch || (hasDemoSession && !loading && !isAuthReady)));
 
   if (shouldBlock) {

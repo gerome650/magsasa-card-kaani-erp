@@ -25,8 +25,9 @@ export function useAuth(options?: UseAuthOptions) {
   const [hasCompletedFirstAuth, setHasCompletedFirstAuth] = useState(false);
   
   useEffect(() => {
-    // Mark as completed once first query finishes (not loading and has result or error)
-    if (!meQuery.isLoading && !hasCompletedFirstAuth) {
+    // Mark as completed once first query finishes (not loading/refetching and has result or error)
+    // Don't mark ready during refetches - only on initial load completion
+    if (!meQuery.isLoading && !meQuery.isRefetching && !hasCompletedFirstAuth) {
       if (meQuery.data !== undefined || meQuery.error !== undefined) {
         setHasCompletedFirstAuth(true);
         if (import.meta.env.DEV) {
@@ -34,7 +35,7 @@ export function useAuth(options?: UseAuthOptions) {
         }
       }
     }
-  }, [meQuery.isLoading, meQuery.data, meQuery.error, hasCompletedFirstAuth]);
+  }, [meQuery.isLoading, meQuery.isRefetching, meQuery.data, meQuery.error, hasCompletedFirstAuth]);
   
   const isAuthReady = hasCompletedFirstAuth;
 
@@ -321,9 +322,10 @@ export function useAuth(options?: UseAuthOptions) {
     // DEV-only: If demo session marker exists or in grace/role switch window, treat as authenticated
     // This prevents flicker during account switching
     // Note: placeholderData keeps user from becoming undefined during refetch
+    // Don't treat as authenticated during initial load (wait for first result)
     const isAuthenticatedDev = import.meta.env.DEV && 
       (demoSessionPresent || isInDemoGraceWindow || isInRoleSwitchWindow) && 
-      !meQuery.isLoading;
+      !meQuery.isLoading && hasCompletedFirstAuth;
     
     // In DEV: authenticated if user exists OR demo marker/grace window active
     // In PROD: authenticated only if user exists
@@ -333,7 +335,8 @@ export function useAuth(options?: UseAuthOptions) {
     
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      // Include isRefetching in loading state to prevent flicker during refetches
+      loading: meQuery.isLoading || meQuery.isRefetching || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated,
     };
@@ -341,11 +344,13 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
+    meQuery.isRefetching,
     logoutMutation.error,
     logoutMutation.isPending,
     demoSessionPresent,
     isInDemoGraceWindow,
     isInRoleSwitchWindow,
+    hasCompletedFirstAuth,
   ]);
 
   useEffect(() => {

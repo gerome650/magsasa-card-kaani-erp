@@ -128,6 +128,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   // Auth readiness gate: NEVER redirect while auth is still resolving
   // This prevents flicker/redirect loops when switching demo accounts
+  // Note: loading already includes isRefetching from useAuth hook
   if (!isAuthReady || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

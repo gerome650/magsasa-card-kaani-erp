@@ -106,6 +106,13 @@ export default function Login() {
           await utils.auth.me.invalidate();
           await utils.auth.me.refetch();
           
+          // After refetch, check if we have user data and optimistically update cache
+          // This prevents any flicker during the transition
+          const currentUser = utils.auth.me.getData();
+          if (currentUser) {
+            utils.auth.me.setData(undefined, currentUser);
+          }
+          
           // Wait for auth.me to return a user OR timeout (1500ms)
           // AuthGate will hold UI steady during this transition
           const maxWait = 1500; // 1.5 second max wait
