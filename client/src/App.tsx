@@ -29,6 +29,7 @@ function DashboardRoute() {
   return <FarmList />;
 }
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./components/AuthGate";
@@ -385,15 +386,17 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <CartProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AuthGate>
-              <Router />
-            </AuthGate>
-            {import.meta.env.DEV && <DevAuthDebugBanner />}
-          </TooltipProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AuthGate>
+                <Router />
+              </AuthGate>
+              {import.meta.env.DEV && <DevAuthDebugBanner />}
+            </TooltipProvider>
+          </CartProvider>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

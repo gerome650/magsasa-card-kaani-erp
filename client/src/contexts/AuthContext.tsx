@@ -1,19 +1,23 @@
 /**
- * LEGACY AUTH CONTEXT - DEPRECATED
+ * LEGACY AUTH CONTEXT - ADAPTER OVER TRPC HOOK
  * 
- * This file is deprecated and should NOT be used.
- * All auth functionality has been migrated to the TRPC-based useAuth hook:
- * @see client/src/_core/hooks/useAuth.ts
+ * This file is now a thin adapter over the TRPC-based useAuth hook.
+ * It maintains the legacy AuthContext interface for backward compatibility
+ * while delegating all auth state to the single source of truth: TRPC useAuth hook.
  * 
- * This file remains in the codebase for reference only but is not imported anywhere.
- * It will be removed in a future cleanup.
+ * This ensures components using AuthContext share the same auth state as components
+ * using the TRPC hook directly, eliminating flicker from dual auth systems.
+ * 
+ * @see client/src/_core/hooks/useAuth.ts for the underlying implementation
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole, authenticateUser } from '@/data/usersData';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import { UserRole } from '@/data/usersData';
+import { useAuth as useTrpcAuth } from '@/_core/hooks/useAuth';
+import { getClientRole } from '@/const';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null; // User from TRPC (may be server User type)
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -35,103 +39,67 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+/**
+ * AuthProvider: Thin adapter over TRPC useAuth hook.
+ * 
+ * This provider wraps the TRPC useAuth hook and exposes the legacy AuthContext interface.
+ * All auth state comes from the TRPC hook, ensuring a single source of truth.
+ * 
+ * Field mappings:
+ * - user: Direct from trpc.user (stabilized via placeholderData in hook)
+ * - isLoading: Maps to trpc.loading (includes isRefetching to prevent flicker)
+ * - isAuthenticated: Direct from trpc.isAuthenticated
+ * - logout: Direct from trpc.logout
+ * - hasRole: Derived from trpc.user using getClientRole helper
+ * - login: Stub (Login.tsx uses trpc.auth.demoLogin directly)
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use TRPC hook as single source of truth
+  const trpcAuth = useTrpcAuth();
 
-  // Load user from localStorage on mount
-  useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        const storedUser = localStorage.getItem('magsasa_user');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          // Validate that the parsed user has required fields
-          if (parsedUser && parsedUser.id && parsedUser.email && parsedUser.role) {
-            setUser(parsedUser);
-          } else {
-            console.warn('Invalid stored user data, clearing localStorage');
-            localStorage.removeItem('magsasa_user');
-          }
-        } else {
-          // DEMO MODE: Auto-login as manager for presentation
-          const demoUser: User = {
-            id: 'demo-manager',
-            username: 'demo-manager',
-            name: 'Demo Manager',
-            email: 'demo@magsasa.com',
-            password: 'demo123',
-            role: 'manager' as UserRole,
-            phone: '',
-            createdAt: new Date().toISOString()
-          };
-          setUser(demoUser);
-          localStorage.setItem('magsasa_user', JSON.stringify(demoUser));
-        }
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('magsasa_user');
-        // DEMO MODE: Auto-login as manager for presentation
-        const demoUser: User = {
-          id: 'demo-manager',
-          username: 'demo-manager',
-          name: 'Demo Manager',
-          email: 'demo@magsasa.com',
-          password: 'demo123',
-          role: 'manager' as UserRole,
-          phone: '',
-          createdAt: new Date().toISOString()
-        };
-        setUser(demoUser);
-        localStorage.setItem('magsasa_user', JSON.stringify(demoUser));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-  }, []);
-
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const authenticatedUser = authenticateUser(email, password);
+  // Map TRPC hook fields to legacy AuthContext interface
+  const hasRole = useMemo(() => {
+    return (role: UserRole | UserRole[]): boolean => {
+      if (!trpcAuth.user) return false;
       
-      if (authenticatedUser) {
-        // Remove password before storing
-        const { password: _, ...userWithoutPassword } = authenticatedUser;
-        setUser(userWithoutPassword as User);
-        localStorage.setItem('magsasa_user', JSON.stringify(userWithoutPassword));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Invalid email or password' };
+      // Use getClientRole to map server role to client role
+      const clientRole = getClientRole(trpcAuth.user);
+      if (!clientRole) return false;
+      
+      if (Array.isArray(role)) {
+        return role.includes(clientRole);
       }
-    } catch (error) {
-      return { success: false, error: 'An error occurred during login' };
+      return clientRole === role;
+    };
+  }, [trpcAuth.user]);
+
+  // Stub login method - Login.tsx uses trpc.auth.demoLogin directly
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    if (import.meta.env.DEV) {
+      console.warn('[AuthContext] login() is deprecated. Use Login page with trpc.auth.demoLogin instead.');
     }
+    return { success: false, error: 'Please use the Login page' };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('magsasa_user');
-    window.location.href = '/login';
+  // Map logout to TRPC logout
+  const logout = async () => {
+    await trpcAuth.logout();
   };
 
-  const hasRole = (role: UserRole | UserRole[]): boolean => {
-    if (!user) return false;
-    if (Array.isArray(role)) {
-      return role.includes(user.role);
-    }
-    return user.role === role;
-  };
-
-  const value: AuthContextType = {
-    user,
+  const value: AuthContextType = useMemo(() => ({
+    user: trpcAuth.user, // Direct from TRPC (stabilized via placeholderData)
     login,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: trpcAuth.isAuthenticated, // Direct from TRPC
     hasRole,
-    isLoading
-  };
+    isLoading: trpcAuth.loading, // Maps to TRPC loading (includes isRefetching)
+  }), [
+    trpcAuth.user,
+    trpcAuth.isAuthenticated,
+    trpcAuth.loading,
+    trpcAuth.logout,
+    hasRole,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
