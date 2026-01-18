@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { KaAniAudienceToggle } from "@/features/kaani/components/KaAniAudienceToggle";
@@ -19,6 +20,8 @@ import { KaAniLoanOfficerSummary } from "@/features/kaani/components/KaAniLoanOf
 import { KaAniLoanPacket } from "@/features/kaani/components/KaAniLoanPacket";
 import { KaAniLoanSuggestion } from "@/features/kaani/components/KaAniLoanSuggestion";
 import type { KaAniArtifactBundle } from "@/features/kaani/types";
+import { IS_LITE_MODE, normalizeRole, normalizeAudience } from "@/const";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SESSION_TOKEN_KEY = 'kaani_session_token_v1';
 
@@ -29,13 +32,24 @@ interface Message {
 }
 
 export default function KaAniPublic() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth(); // May be null for public users, but check anyway
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [audience, setAudience] = useState<KaAniAudience>("loan_officer");
+  
+  // Check if user is a farmer (from auth or localStorage demo_role_override)
+  const normalizedRole = normalizeRole(user);
+  const isFarmer = normalizedRole === "farmer";
+  
+  // Force "farmer" audience for farmers, allow toggle for others
+  const [audience, setAudience] = useState<KaAniAudience>(isFarmer ? "farmer" : "loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
+  
+  // Ensure audience is always normalized and "farmer" for farmers
+  const effectiveAudience: KaAniAudience = isFarmer ? "farmer" : normalizeAudience(audience);
   const [flowState, setFlowState] = useState<{
     flowId: string;
     nextStepId: string | null;
@@ -80,8 +94,13 @@ export default function KaAniPublic() {
       // Create new session
       try {
         const utm = getUTMParams();
+        // Compute effectiveAudience at session init time
+        const currentNormalizedRole = normalizeRole(user);
+        const currentIsFarmer = currentNormalizedRole === "farmer";
+        const currentEffectiveAudience = currentIsFarmer ? "farmer" : normalizeAudience(audience);
+        
         const result = await trpcClient.kaani.startLeadSession.mutate({
-          audience,
+          audience: currentEffectiveAudience,
           dialect,
           landingPath: window.location.pathname,
           utm: Object.keys(utm).length > 0 ? utm : undefined,
@@ -107,6 +126,7 @@ export default function KaAniPublic() {
     };
 
     initSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   const scrollToBottom = () => {
@@ -167,9 +187,10 @@ export default function KaAniPublic() {
       if (sessionToken) {
         try {
           // Use trpcClient directly for dynamic sessionToken
+          // Use effectiveAudience computed from current state
           const artifactsRes = await (trpcClient.kaani as any).getLeadArtifacts.query({
             sessionToken,
-            audience,
+            audience: effectiveAudience,
             dialect,
           });
           if (artifactsRes?.bundle) {
@@ -219,7 +240,7 @@ export default function KaAniPublic() {
     }
   };
 
-  const starterPrompts = getStarterPrompts(audience);
+  const starterPrompts = getStarterPrompts(effectiveAudience);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -236,9 +257,19 @@ export default function KaAniPublic() {
         {/* Audience + Dialect toggles */}
         <div className="border-b border-gray-200 bg-white px-6 py-4">
           <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
-            <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+            {!isFarmer && (
+              <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+            )}
             <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(IS_LITE_MODE ? '/kaani' : '/')}
+              >
+                <Home className="w-4 h-4 mr-2" />
+                {IS_LITE_MODE ? 'Home' : 'Back'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

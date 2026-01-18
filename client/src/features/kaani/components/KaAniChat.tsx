@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { trpcClient } from "@/lib/trpcClient";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Send, ShoppingCart, Copy, ChevronDown, ChevronUp, Home } from "lucide-react";
+import { IS_LITE_MODE } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { KaAniAudienceToggle } from "./KaAniAudienceToggle";
 import { KaAniDialectToggle } from "./KaAniDialectToggle";
 import { KaAniPromptChips } from "./KaAniPromptChips";
@@ -12,6 +16,8 @@ import { KaAniAudience, KaAniDialect, KaAniUiMessage } from "../types";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
+import { useAuth } from "@/contexts/AuthContext";
+import { normalizeRole, normalizeAudience } from "@/const";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";
 import { KaAniLoanOfficerSummary } from "./KaAniLoanOfficerSummary";
@@ -27,6 +33,8 @@ interface Conversation {
 }
 
 export function KaAniChat() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<KaAniUiMessage[]>([]);
@@ -34,8 +42,14 @@ export function KaAniChat() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [audience, setAudience] = useState<KaAniAudience>("loan_officer");
+  // Force "farmer" audience for farmers, allow toggle for others
+  // Use normalized role for defensive role checking
+  const normalizedRole = normalizeRole(user);
+  const isFarmer = normalizedRole === "farmer";
+  const [audience, setAudience] = useState<KaAniAudience>(isFarmer ? "farmer" : "loan_officer");
   const [dialect, setDialect] = useState<KaAniDialect>("tagalog");
+  // Ensure audience is always normalized and "farmer" for farmers
+  const effectiveAudience: KaAniAudience = isFarmer ? "farmer" : normalizeAudience(audience);
   const [flowState, setFlowState] = useState<{
     flowId: string;
     nextStepId: string | null;
@@ -45,6 +59,12 @@ export function KaAniChat() {
     loanOfficerSummary?: { summaryText: string; flags: string[]; assumptions: string[]; missingCritical: string[] };
   } | null>(null);
   const [artifactBundle, setArtifactBundle] = useState<KaAniArtifactBundle | null>(null);
+  const [showUnderwritingSummary, setShowUnderwritingSummary] = useState(true);
+  const [aoMetadata, setAoMetadata] = useState({
+    branch: "",
+    center: "",
+    memberName: "",
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,6 +75,188 @@ export function KaAniChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load AO metadata from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('kaaniAoMetadata');
+    if (saved) {
+      try {
+        setAoMetadata(JSON.parse(saved));
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Save AO metadata to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('kaaniAoMetadata', JSON.stringify(aoMetadata));
+  }, [aoMetadata]);
+
+  // Extract budget amount from message content (optional, for demo)
+  const extractBudgetFromMessage = (content: string): string | null => {
+    // Look for patterns like "₱30,000", "PHP 50000", "30,000 pesos", etc.
+    const patterns = [
+      /₱\s*([\d,]+)/i,
+      /PHP\s*([\d,]+)/i,
+      /([\d,]+)\s*pesos?/i,
+      /amount[:\s]+₱?\s*([\d,]+)/i,
+      /loan[:\s]+₱?\s*([\d,]+)/i,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match && match[1]) {
+        return match[1].replace(/,/g, '');
+      }
+    }
+    return null;
+  };
+
+  // Extract field from text using multiple patterns (best-effort)
+  const extractField = (text: string, patterns: RegExp[]): string | null => {
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    return null;
+  };
+
+  // Extract peso amount (formatted)
+  const extractPesoAmount = (text: string): string => {
+    const amount = extractBudgetFromMessage(text);
+    if (amount) {
+      return `₱${parseInt(amount).toLocaleString()}`;
+    }
+    return "TBD (AO to confirm)";
+  };
+
+  // Build underwriting summary from messages and AO metadata
+  const buildUnderwritingSummary = (): string => {
+    const now = new Date();
+    const dateTime = now.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Get latest assistant message
+    const latestAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    const assistantContent = latestAssistant?.content || "";
+
+    // Get last 3 user messages for context
+    const recentUserMessages = messages
+      .filter(m => m.role === 'user')
+      .slice(-3)
+      .map(m => m.content)
+      .join(' ');
+
+    const combinedText = `${assistantContent} ${recentUserMessages}`;
+
+    // Extract fields (best-effort)
+    const loanAmount = extractPesoAmount(assistantContent);
+    const crop = extractField(combinedText, [
+      /crop[:\s]+([^,\n.]+)/i,
+      /(rice|corn|vegetables|sugarcane|coconut|banana|cassava)/i,
+    ]) || "—";
+    
+    const farmSize = extractField(combinedText, [
+      /(\d+(?:\.\d+)?)\s*hectares?/i,
+      /(\d+(?:\.\d+)?)\s*ha/i,
+      /farm\s*size[:\s]+(\d+(?:\.\d+)?)/i,
+    ]) || "—";
+    
+    const location = extractField(combinedText, [
+      /location[:\s]+([^,\n.]+)/i,
+      /(bacolod|laguna|municipality[:\s]+[^,\n.]+)/i,
+    ]) || "—";
+    
+    const cropCycle = extractField(combinedText, [
+      /crop\s*cycle[:\s]+([^,\n.]+)/i,
+      /term[:\s]+(\d+\s*(?:months?|days?))/i,
+    ]) || "—";
+
+    // Extract key points from messages (bullet list)
+    const keyPoints: string[] = [];
+    const recentMessages = messages.slice(-5);
+    recentMessages.forEach(msg => {
+      if (msg.role === 'user') {
+        // Extract meaningful phrases from user messages
+        const sentences = msg.content.split(/[.!?]/).filter(s => s.trim().length > 20);
+        sentences.slice(0, 2).forEach(s => {
+          const trimmed = s.trim().substring(0, 100);
+          if (trimmed) keyPoints.push(trimmed);
+        });
+      }
+    });
+    if (keyPoints.length === 0) {
+      keyPoints.push("—");
+    }
+
+    // Extract KaAni rationale (excerpt from assistant message)
+    const rationale = assistantContent
+      .replace(/\n+/g, ' ')
+      .substring(0, 400)
+      .trim() || "—";
+
+    // Build summary text
+    return `CARD MRI – UNDERWRITING HANDOFF (AO)
+Date/Time: ${dateTime}
+Account Officer (AO): ${aoMetadata.memberName || "—"}
+Branch: ${aoMetadata.branch || "—"}
+Center: ${aoMetadata.center || "—"}
+Member/Client: ${aoMetadata.memberName || "—"}
+
+Loan Purpose: Crop Production Inputs
+Crop / Activity: ${crop}
+Farm Size (ha): ${farmSize}
+Location: ${location}
+Crop Cycle / Term: ${cropCycle}
+
+Recommended Loan Amount: ${loanAmount} (KaAni)
+AO Proposed Amount: ₱__________
+Underwriting Approved Amount: ₱__________
+
+Basis / Key Inputs (from AO + client interview):
+${keyPoints.map(p => `- ${p}`).join('\n')}
+
+Assumptions:
+- ${flowState?.loanOfficerSummary?.assumptions?.[0] || "—"}
+
+Flags / Missing Evidence:
+- ${flowState?.loanOfficerSummary?.missingCritical?.[0] || "—"}
+
+KaAni Rationale (excerpt):
+"${rationale}"
+
+Next Step:
+- For approval / verification by Underwriting.`;
+  };
+
+  const handleCopySummary = async () => {
+    try {
+      const summary = buildUnderwritingSummary();
+      await navigator.clipboard.writeText(summary);
+      toast.success("Underwriting summary copied.");
+    } catch (error) {
+      toast.error("Copy failed. Please try again.");
+    }
+  };
+
+  const handleApproveAndProceed = (messageContent: string) => {
+    // Extract and store budget if found
+    const budget = extractBudgetFromMessage(messageContent);
+    if (budget) {
+      localStorage.setItem('kaaniApprovedBudget', budget);
+    }
+    
+    // Route to order calculator
+    setLocation('/order-calculator');
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -216,11 +418,17 @@ export function KaAniChat() {
     setIsLoading(true);
 
     try {
+      // Normalize audience to ensure valid enum value (use effectiveAudience for farmers)
+      const normalizedAudience = normalizeAudience(effectiveAudience);
+      if (import.meta.env.DEV) {
+        console.log("[KaAni] audience normalized:", normalizedAudience);
+      }
+
       // Call guided message endpoint
       const result = await (trpcClient.kaani as any).sendGuidedMessage.mutate({
         conversationId: conversationId!,
         message: textToSend,
-        audience,
+        audience: normalizedAudience,
         dialect,
       });
 
@@ -243,10 +451,12 @@ export function KaAniChat() {
       // Refresh artifacts after successful message send
       if (conversationId) {
         try {
+          // Normalize audience for artifacts query (use effectiveAudience for farmers)
+          const normalizedAudience = normalizeAudience(effectiveAudience);
           // Use trpcClient directly since we need to pass dynamic conversationId
           const artifactsRes = await (trpcClient.kaani as any).getArtifacts.query({
             conversationId,
-            audience,
+            audience: normalizedAudience,
             dialect,
           });
           if (artifactsRes?.bundle) {
@@ -271,11 +481,72 @@ export function KaAniChat() {
     }
   };
 
-  const handlePromptClick = (message: string) => {
-    handleSend(message);
+  const handlePromptClick = async (message: string) => {
+    const textToSend = normalizeUserText(message);
+    if (!textToSend || isLoading) return;
+
+    // Add user message to UI immediately
+    const userMessage: KaAniUiMessage = {
+      role: "user",
+      content: textToSend,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Use kaani.sendMessage for starter prompts - it only requires { message: string }
+      // This avoids Zod errors from undefined conversationId/audience
+      const result = await trpcClient.kaani.sendMessage.mutate({
+        message: textToSend,
+      });
+
+      // Add assistant reply to UI
+      const assistantMessage: KaAniUiMessage = {
+        role: "assistant",
+        content: result.response,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // Ensure we have a conversation for future messages
+      if (!activeConversationId) {
+        try {
+          const newConvo = await trpcClient.conversations.create.mutate({
+            title: "New Conversation",
+          });
+          const conversation = newConvo as any;
+          const conversationId = conversation.conversationId;
+          setActiveConversationId(conversationId);
+          setConversations((prev) => [
+            {
+              id: conversationId,
+              title: "New Conversation",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            ...prev,
+          ]);
+        } catch (error) {
+          console.warn("Failed to create conversation after starter prompt:", error);
+          // Don't fail the message send if conversation creation fails
+        }
+      }
+    } catch (error: any) {
+      console.error("Error sending starter prompt:", error);
+      
+      // Show user-friendly error
+      const errorMessage = error?.message || "Failed to send message. Please try again.";
+      toast.error(errorMessage);
+
+      // Remove user message from UI on error
+      setMessages((prev) => prev.filter((msg, idx) => idx < prev.length - 1));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const starterPrompts = getStarterPrompts(audience);
+  const starterPrompts = getStarterPrompts(effectiveAudience);
 
   if (isLoadingConversations) {
     return (
@@ -287,11 +558,28 @@ export function KaAniChat() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar: Audience + Dialect */}
+      {/* Top bar: Audience + Dialect + Back/Home button */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-6 flex-wrap">
-          <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+          {!isFarmer && (
+            <KaAniAudienceToggle audience={audience} onAudienceChange={setAudience} />
+          )}
           <KaAniDialectToggle dialect={dialect} onDialectChange={setDialect} />
+          <div className="ml-auto flex items-center gap-2">
+            {import.meta.env.DEV && (
+              <span className="text-xs text-gray-400 mr-2">
+                Mode: {IS_LITE_MODE ? 'Lite' : 'Full'}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation(IS_LITE_MODE ? '/kaani' : '/')}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              {IS_LITE_MODE ? 'Home' : 'Back'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -327,19 +615,33 @@ export function KaAniChat() {
                 </div>
               ) : (
                 messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
+                  <div key={idx}>
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                        msg.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      <MarkdownMessage content={msg.content} />
+                      <div
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                          msg.role === "user"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-900"
+                        }`}
+                      >
+                        <MarkdownMessage content={msg.content} />
+                      </div>
                     </div>
+                    {/* Demo CTA: Show "Approve & Proceed to Inputs" button after assistant messages */}
+                    {msg.role === "assistant" && (
+                      <div className="flex justify-start mt-2 mb-4">
+                        <Button
+                          onClick={() => handleApproveAndProceed(msg.content)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Approve & Proceed to Inputs
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -355,13 +657,92 @@ export function KaAniChat() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Underwriting Summary Panel */}
+            {messages.some(m => m.role === 'assistant') && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">
+                        Underwriting Summary (AO Copy/Paste)
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowUnderwritingSummary(!showUnderwritingSummary)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {showUnderwritingSummary ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {showUnderwritingSummary && (
+                    <CardContent className="space-y-4">
+                      {/* AO Metadata Inputs */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Branch (optional)</label>
+                          <Input
+                            value={aoMetadata.branch}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, branch: e.target.value })}
+                            placeholder="Branch"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Center (optional)</label>
+                          <Input
+                            value={aoMetadata.center}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, center: e.target.value })}
+                            placeholder="Center"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 mb-1 block">Member/Client Name (optional)</label>
+                          <Input
+                            value={aoMetadata.memberName}
+                            onChange={(e) => setAoMetadata({ ...aoMetadata, memberName: e.target.value })}
+                            placeholder="Member/Client Name"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Summary Preview */}
+                      <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Summary Preview:</label>
+                        <pre className="bg-white border border-gray-200 rounded p-3 text-xs font-mono overflow-auto max-h-64">
+                          {buildUnderwritingSummary()}
+                        </pre>
+                      </div>
+
+                      {/* Copy Button */}
+                      <Button
+                        onClick={handleCopySummary}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy Summary
+                      </Button>
+                    </CardContent>
+                  )}
+                </Card>
+              </div>
+            )}
+
             {/* What We Know Panel */}
             {flowState && flowState.whatWeKnow.length > 0 && (
               <KaAniWhatWeKnowPanel whatWeKnow={flowState.whatWeKnow} />
             )}
 
             {/* Loan Officer Summary */}
-            {flowState && flowState.loanOfficerSummary && audience === 'loan_officer' && (
+            {flowState && flowState.loanOfficerSummary && effectiveAudience === 'loan_officer' && (
               <KaAniLoanOfficerSummary summary={flowState.loanOfficerSummary} />
             )}
 
@@ -378,7 +759,7 @@ export function KaAniChat() {
 
             {/* Loan Packet: Gate rendering - only show when readiness !== "draft" */}
             {artifactBundle && artifactBundle.readiness !== "draft" && (
-              <KaAniLoanPacket bundle={artifactBundle} audience={audience} />
+              <KaAniLoanPacket bundle={artifactBundle} audience={effectiveAudience} />
             )}
 
             {/* Prompt Chips Area */}

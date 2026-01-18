@@ -39,6 +39,18 @@ export default function Login() {
       if (demoResult.success) {
         // Also update client-side auth state
         await login(username, password);
+        // Ensure demo role override persists after successful login
+        const override = localStorage.getItem("demo_role_override");
+        if (!override) {
+          // If no override set, try to infer from username
+          if (username === 'farmer') {
+            localStorage.setItem("demo_role_override", "farmer");
+          } else if (username === 'officer') {
+            localStorage.setItem("demo_role_override", "field_officer");
+          } else if (username === 'manager') {
+            localStorage.setItem("demo_role_override", "manager");
+          }
+        }
         setLocation(redirectTo);
         return;
       }
@@ -48,6 +60,18 @@ export default function Login() {
       const result = await login(username, password);
       
       if (result.success) {
+        // Ensure demo role override persists after successful login
+        const override = localStorage.getItem("demo_role_override");
+        if (!override) {
+          // If no override set, try to infer from username
+          if (username === 'farmer') {
+            localStorage.setItem("demo_role_override", "farmer");
+          } else if (username === 'officer') {
+            localStorage.setItem("demo_role_override", "field_officer");
+          } else if (username === 'manager') {
+            localStorage.setItem("demo_role_override", "manager");
+          }
+        }
         setLocation(redirectTo);
       } else {
         setError(demoError?.message || result.error || 'Invalid username or password');
@@ -58,15 +82,22 @@ export default function Login() {
   };
 
   const demoCredentials = [
-    { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz' },
-    { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos' },
-    { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia' }
+    { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz', roleKey: 'farmer' },
+    { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos', roleKey: 'field_officer' },
+    { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia', roleKey: 'manager' }
   ];
 
-  const fillDemoCredentials = (user: string, pass: string) => {
+  const fillDemoCredentials = (user: string, pass: string, roleKey: string) => {
     setUsername(user);
     setPassword(pass);
     setError('');
+    // Persist demo role override for role-based UI gating
+    try {
+      localStorage.setItem("demo_role_override", roleKey);
+    } catch (e) {
+      // localStorage may not be available
+      console.warn("Failed to set demo_role_override:", e);
+    }
   };
 
   return (
@@ -143,7 +174,7 @@ export default function Login() {
                     <button
                       key={cred.role}
                       type="button"
-                      onClick={() => fillDemoCredentials(cred.username, cred.password)}
+                      onClick={() => fillDemoCredentials(cred.username, cred.password, cred.roleKey)}
                       className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
                       disabled={isLoading}
                     >

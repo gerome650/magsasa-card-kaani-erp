@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { productsData, type SimpleProduct } from '@/services/demoData';
 
 interface CartItem extends SimpleProduct {
@@ -12,6 +13,15 @@ export default function OrderCalculator() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCardMember, setIsCardMember] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [approvedBudget, setApprovedBudget] = useState<string | null>(null);
+
+  // Load approved budget from localStorage (demo feature)
+  useEffect(() => {
+    const budget = localStorage.getItem('kaaniApprovedBudget');
+    if (budget) {
+      setApprovedBudget(budget);
+    }
+  }, []);
 
   const categories = ['all', 'fertilizer', 'seed', 'pesticide', 'equipment'];
 
@@ -69,7 +79,14 @@ export default function OrderCalculator() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Order Calculator</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Order Calculator</h1>
+            {approvedBudget && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                Approved: ₱{parseInt(approvedBudget).toLocaleString()}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground mt-1">Calculate your order total with real-time pricing</p>
         </div>
         <div className="flex items-center gap-3">

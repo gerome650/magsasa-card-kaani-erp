@@ -269,6 +269,9 @@ export function MapView({
         if (hint) {
           console.warn(`[MapView][DEV] Hint: ${hint}`);
         }
+        if (!API_KEY) {
+          console.info("[MapView][DEV] Set VITE_FRONTEND_FORGE_API_KEY to enable map tiles");
+        }
       }
 
       // Notify parent component
@@ -379,31 +382,14 @@ export function MapView({
         </div>
       )}
 
-      {/* Error state - Development */}
-      {hasError && import.meta.env.DEV && (
-        <div className="absolute inset-0 flex items-center justify-center bg-yellow-50 border-2 border-yellow-200 rounded">
-          <div className="max-w-md mx-4 p-4 bg-white rounded-md shadow-sm border border-yellow-300">
-            <h3 className="font-semibold text-yellow-900 mb-2">[DEV] Google Maps failed to load</h3>
-            <p className="text-sm text-yellow-800 mb-2">
-              Check API key, referrer restrictions, and Maps JavaScript API enablement. See docs for details.
-            </p>
-            {errorMessage && (
-              <p className="text-xs text-yellow-700 font-mono bg-yellow-50 p-2 rounded mt-2">
-                {errorMessage}
-              </p>
-            )}
-            <p className="text-xs text-yellow-600 mt-2">
-              Check browser console for <code className="bg-yellow-100 px-1 rounded">[MapView][DEV]</code> logs and diagnostic hints.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Error state - Production */}
-      {hasError && !import.meta.env.DEV && (
+      {/* Error state - Clean fallback for all environments */}
+      {hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center p-4">
-            <p className="text-sm text-muted-foreground">Map temporarily unavailable. Please try again later.</p>
+          <div className="max-w-md mx-4 p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-2">Map temporarily unavailable</h3>
+            <p className="text-sm text-gray-600">
+              Map tiles could not be loaded. Filters and farm data remain available.
+            </p>
           </div>
         </div>
       )}

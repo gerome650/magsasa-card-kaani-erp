@@ -1,8 +1,32 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
+import { IS_LITE_MODE } from "@/const";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { useEffect } from "react";
+
+// Simple redirect component
+function Redirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation(to);
+  }, [to, setLocation]);
+  return null;
+}
+
+// Dashboard route wrapper: routes farmers to scoped dashboard, others to global dashboard
+function DashboardRoute() {
+  const { user } = useAuth();
+  const normalizedRole = normalizeRole(user);
+  
+  if (normalizedRole === "farmer") {
+    return <FarmerDashboard />;
+  }
+  
+  // For staff (manager, field_officer, etc.), show the global FarmList dashboard
+  return <FarmList />;
+}
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
@@ -37,6 +61,9 @@ import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
+import { useAuth } from "./contexts/AuthContext";
+import { normalizeRole } from "./const";
+import FarmerDashboard from "./components/FarmerDashboard";
 import TRPCTest from "./pages/TRPCTest";
 import DebugFarm from "./pages/DebugFarm";
 import FarmNew from "./pages/FarmNew";
@@ -49,60 +76,58 @@ import AdminCsvUpload from "./pages/AdminCsvUpload";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
+  
+  // DEV-only: Log Lite Mode status on mount
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log("[App] Lite Mode:", IS_LITE_MODE ? "ACTIVE" : "INACTIVE");
+      console.log("[App] VITE_APP_MODE:", import.meta.env.VITE_APP_MODE || "not set");
+      if (IS_LITE_MODE) {
+        console.log("[App] Lite Mode: Only routes /kaani, /order-calculator, /price-comparison, /map are accessible");
+      }
+    }
+  }, []);
+  
   return (
     <Switch>
       {/* Public routes */}
       <Route path="/login" component={Login} />
-      <Route path="/trpc-test" component={TRPCTest} />
-      <Route path="/debug-farm" component={DebugFarm} />
-      <Route path="/trpc-client-test" component={TRPCClientTest} />
-      <Route path="/skeleton-demo" component={SkeletonDemo} />
+      {!IS_LITE_MODE && (
+        <>
+          <Route path="/trpc-test" component={TRPCTest} />
+          <Route path="/debug-farm" component={DebugFarm} />
+          <Route path="/trpc-client-test" component={TRPCClientTest} />
+          <Route path="/skeleton-demo" component={SkeletonDemo} />
+        </>
+      )}
+      
+      {/* Lite Mode: Redirect root to KaAni */}
+      {IS_LITE_MODE && (
+        <Route path="/">
+          <Redirect to="/kaani" />
+        </Route>
+      )}
       
       {/* Protected routes */}
-      <Route path="/">
+      {!IS_LITE_MODE && (
+        <Route path="/">
+          <ProtectedRoute>
+            <Layout>
+              <DashboardRoute />
+            </Layout>
+          </ProtectedRoute>
+        </Route>
+      )}
+      
+      {/* Lite Mode routes - always available */}
+      <Route path="/kaani">
+        <KaAniPublic />
+      </Route>
+      
+      <Route path="/order-calculator">
         <ProtectedRoute>
           <Layout>
-            <FarmList />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/dashboard">
-        <ProtectedRoute>
-          <Layout>
-            <Dashboard />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/farmers">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <Farmers />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/farmers/:id">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <FarmerProfile />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/harvest-tracking">
-        <ProtectedRoute>
-          <Layout>
-            <HarvestTracking />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/analytics-dashboard">
-        <ProtectedRoute>
-          <Layout>
-            <AnalyticsDashboard />
+            <OrderCalculator />
           </Layout>
         </ProtectedRoute>
       </Route>
@@ -115,196 +140,242 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/order-calculator">
-        <ProtectedRoute>
-          <Layout>
-            <OrderCalculator />
-          </Layout>
-        </ProtectedRoute>
+      {/* Map View - optional in Lite Mode */}
+      <Route path="/map">
+        <Layout>
+          <FarmMap />
+        </Layout>
       </Route>
       
-      <Route path="/erp/kaani">
-        <ProtectedRoute>
-          <Layout>
-            <KaAniChat />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/kaani">
-        <KaAniPublic />
-      </Route>
-      
-      <Route path="/marketplace">
-        <ProtectedRoute allowedRoles={['farmer']}>
-          <Layout>
-            <Marketplace />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/cart">
-        <ProtectedRoute allowedRoles={['farmer']}>
-          <Layout>
-            <ShoppingCart />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/checkout">
-        <ProtectedRoute allowedRoles={['farmer']}>
-          <Layout>
-            <Checkout />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/orders">
-        <ProtectedRoute allowedRoles={['farmer']}>
-          <Layout>
-            <OrderHistory />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      {/* Batch Orders routes - gated by feature flag */}
-      {import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' && (
+      {/* Non-Lite Mode routes */}
+      {!IS_LITE_MODE && (
         <>
-          <Route path="/batch-orders">
-            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+          <Route path="/dashboard">
+            <ProtectedRoute>
               <Layout>
-                <BatchOrdersList />
+                <Dashboard />
               </Layout>
             </ProtectedRoute>
           </Route>
           
-          <Route path="/batch-orders/new">
+          <Route path="/farmers">
             <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
               <Layout>
-                <BatchOrderCreate />
+                <Farmers />
               </Layout>
             </ProtectedRoute>
           </Route>
           
-          <Route path="/batch-orders/:id">
+          <Route path="/farmers/:id">
             <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
               <Layout>
-                <BatchOrderDetail />
+                <FarmerProfile />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/harvest-tracking">
+            <ProtectedRoute>
+              <Layout>
+                <HarvestTracking />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/analytics-dashboard">
+            <ProtectedRoute>
+              <Layout>
+                <AnalyticsDashboard />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/erp/kaani">
+            <ProtectedRoute>
+              <Layout>
+                <KaAniChat />
               </Layout>
             </ProtectedRoute>
           </Route>
         </>
       )}
       
-      <Route path="/supplier">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <SupplierDashboard />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/supplier/inventory">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <SupplierInventory />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/supplier/deliveries">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <SupplierDeliveries />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/supplier/audit-log">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <AuditLog />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/supplier/audit-archive">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <AuditArchive />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/supplier/retention-settings">
-        <ProtectedRoute allowedRoles={['manager']}>
-          <Layout>
-            <RetentionSettings />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/role-permissions">
-        <Layout>
-          <RolePermissions />
-        </Layout>
-      </Route>
-      
-      <Route path="/permission-approval">
-        <ProtectedRoute allowedRoles={['manager']}>
-          <Layout>
-            <PermissionApproval />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/admin/csv-upload">
-        <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
-          <Layout>
-            <AdminCsvUpload />
-          </Layout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/my-requests">
-        <Layout>
-          <MyRequests />
-        </Layout>
-      </Route>
+      {/* Non-Lite Mode routes - continued */}
+      {!IS_LITE_MODE && (
+        <>
+          <Route path="/marketplace">
+            <ProtectedRoute allowedRoles={['farmer']}>
+              <Layout>
+                <Marketplace />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/cart">
+            <ProtectedRoute allowedRoles={['farmer']}>
+              <Layout>
+                <ShoppingCart />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/checkout">
+            <ProtectedRoute allowedRoles={['farmer']}>
+              <Layout>
+                <Checkout />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/orders">
+            <ProtectedRoute allowedRoles={['farmer']}>
+              <Layout>
+                <OrderHistory />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          {/* Batch Orders routes - gated by feature flag */}
+          {import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' && (
+            <>
+              <Route path="/batch-orders">
+                <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+                  <Layout>
+                    <BatchOrdersList />
+                  </Layout>
+                </ProtectedRoute>
+              </Route>
+              
+              <Route path="/batch-orders/new">
+                <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+                  <Layout>
+                    <BatchOrderCreate />
+                  </Layout>
+                </ProtectedRoute>
+              </Route>
+              
+              <Route path="/batch-orders/:id">
+                <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+                  <Layout>
+                    <BatchOrderDetail />
+                  </Layout>
+                </ProtectedRoute>
+              </Route>
+            </>
+          )}
+          
+          <Route path="/supplier">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <SupplierDashboard />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/supplier/inventory">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <SupplierInventory />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/supplier/deliveries">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <SupplierDeliveries />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/supplier/audit-log">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <AuditLog />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/supplier/audit-archive">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <AuditArchive />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/supplier/retention-settings">
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <RetentionSettings />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/role-permissions">
+            <Layout>
+              <RolePermissions />
+            </Layout>
+          </Route>
+          
+          <Route path="/permission-approval">
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <PermissionApproval />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/admin/csv-upload">
+            <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
+              <Layout>
+                <AdminCsvUpload />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/my-requests">
+            <Layout>
+              <MyRequests />
+            </Layout>
+          </Route>
 
-      {/* Analytics Route */}
-      <Route path="/analytics">
-        <Layout>
-          <Analytics />
-        </Layout>
-      </Route>
+          {/* Analytics Route */}
+          <Route path="/analytics">
+            <Layout>
+              <Analytics />
+            </Layout>
+          </Route>
 
-      {/* Farm Map Route */}
-      <Route path="/map">
-        <Layout>
-          <FarmMap />
-        </Layout>
-      </Route>
-
-      {/* Farms Routes */}
-      <Route path="/farms">
-        <Layout>
-          <Farms />
-        </Layout>
-      </Route>
-      <Route path="/farms/new">
-        <Layout>
-          <FarmNew />
-        </Layout>
-      </Route>
-      <Route path="/farms/:id">
-        <Layout>
-          <FarmDetail />
-        </Layout>
-      </Route>
+          {/* Farms Routes */}
+          <Route path="/farms">
+            <Layout>
+              <Farms />
+            </Layout>
+          </Route>
+          <Route path="/farms/new">
+            <Layout>
+              <FarmNew />
+            </Layout>
+          </Route>
+          <Route path="/farms/:id">
+            <Layout>
+              <FarmDetail />
+            </Layout>
+          </Route>
+        </>
+      )}
       
       <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
+      
+      {/* Catch-all route: redirect to /kaani in Lite Mode, 404 in Full Mode */}
+      {IS_LITE_MODE ? (
+        <Route>
+          <Redirect to="/kaani" />
+        </Route>
+      ) : (
+        <Route component={NotFound} />
+      )}
     </Switch>
   );
 }

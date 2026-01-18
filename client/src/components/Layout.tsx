@@ -1,5 +1,6 @@
 import { useState, ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
+import { IS_LITE_MODE } from '@/const';
 import {
   LayoutDashboard,
   Users,
@@ -64,7 +65,16 @@ export default function Layout({ children }: LayoutProps) {
       .slice(0, 2);
   };
 
-  const navigation = [
+  // Lite Mode navigation - reduced set for Account Officers
+  const liteNavigation = [
+    { name: 'Ask KaAni AI', href: '/kaani', icon: MessageCircle, roles: undefined },
+    { name: 'Inputs Marketplace', href: '/order-calculator', icon: ShoppingCart, roles: undefined },
+    { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: undefined },
+    { name: 'Map View', href: '/map', icon: Map, roles: undefined },
+  ];
+
+  // Full navigation - all items
+  const fullNavigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['manager', 'field_officer'] },
     { name: 'Map View', href: '/map', icon: Map, roles: ['manager', 'field_officer'] },
@@ -79,11 +89,13 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Harvest Tracking', href: '/harvest-tracking', icon: Wheat, roles: ['manager', 'field_officer'] },
     { name: 'Price Comparison', href: '/price-comparison', icon: TrendingDown, roles: ['farmer', 'manager', 'field_officer'] },
     { name: 'Order Calculator', href: '/order-calculator', icon: ShoppingCart, roles: ['farmer', 'manager', 'field_officer'] },
-    { name: 'Batch Orders', href: '/batch-orders', icon: Package, roles: ['manager', 'field_officer'] },
+    ...(import.meta.env.VITE_BATCH_ORDERS_ENABLED === 'true' ? [{ name: 'Batch Orders', href: '/batch-orders', icon: Package, roles: ['manager', 'field_officer'] }] : []),
     { name: 'Marketplace', href: '/marketplace', icon: ShoppingCart, roles: ['farmer'] },
     { name: 'Order History', href: '/orders', icon: Package, roles: ['farmer'] },
     { name: 'Ask KaAni', href: '/kaani', icon: MessageCircle },
   ];
+
+  const navigation = IS_LITE_MODE ? liteNavigation : fullNavigation;
 
   const isActive = (href: string) => {
     if (href === '/') return location === '/';
@@ -234,6 +246,26 @@ export default function Layout({ children }: LayoutProps) {
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
+            {/* Dev-only indicators: App Mode + Demo Role */}
+            {import.meta.env.DEV && (() => {
+              try {
+                const override = localStorage.getItem("demo_role_override");
+                const appMode = import.meta.env.VITE_APP_MODE || 'full';
+                return (
+                  <div className="mt-2 space-y-1 text-xs text-gray-500 text-center">
+                    <div>App Mode: {appMode === 'lite' ? 'Lite' : 'Full'}</div>
+                    {override && <div>Demo Role: {override}</div>}
+                  </div>
+                );
+              } catch (e) {
+                // localStorage not available
+                return import.meta.env.DEV ? (
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    App Mode: {import.meta.env.VITE_APP_MODE === 'lite' ? 'Lite' : 'Full'}
+                  </div>
+                ) : null;
+              }
+            })()}
           </div>
         </div>
       </div>
