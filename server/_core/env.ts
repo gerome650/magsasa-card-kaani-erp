@@ -7,4 +7,6 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // DEV-only: Auth bypass for demos (must be DEV + DEMO_BYPASS_AUTH=1)
+  demoBypassAuth: process.env.NODE_ENV === "development" && process.env.DEMO_BYPASS_AUTH === "1",
 };

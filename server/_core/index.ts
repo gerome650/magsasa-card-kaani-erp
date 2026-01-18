@@ -35,6 +35,29 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
+  // DEV-only: Demo auth bypass route
+  if (process.env.NODE_ENV === "development" && process.env.DEMO_BYPASS_AUTH === "1") {
+    const { setDemoRole } = await import("./demoBypass");
+    
+    app.get("/__demo/login/:role", (req, res) => {
+      const role = req.params.role;
+      
+      // Validate role
+      if (!["farmer", "field_officer", "manager", "supplier"].includes(role)) {
+        res.status(400).json({ error: `Invalid role: ${role}. Must be one of: farmer, field_officer, manager, supplier` });
+        return;
+      }
+      
+      // Store role in memory
+      setDemoRole(role as "farmer" | "field_officer" | "manager" | "supplier");
+      
+      console.log(`[DEMO_BYPASS] Role set to: ${role}, redirecting to dashboard`);
+      
+      // Redirect to root (will route to appropriate dashboard)
+      res.redirect("/");
+    });
+  }
+  
   // DEV-only: Session probe endpoint for debugging auth issues
   if (process.env.NODE_ENV === "development") {
     app.get("/__debug/session", async (req, res) => {
