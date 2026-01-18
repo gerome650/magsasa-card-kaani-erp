@@ -54,18 +54,16 @@ export default function Login() {
         // auth.me query shape: returns user object directly (not wrapped)
         utils.auth.me.setData(undefined, demoResult.user);
         
-        if (import.meta.env.DEV) {
-          console.log("[Login] DEV: Optimistically set auth.me cache with user from demoLogin");
-        }
-        
-        // Set demo session marker and grace window in localStorage (useAuth will read them)
+        // Set demo session markers in localStorage
         // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
         const graceWindowEnd = Date.now() + 3000; // 3 second grace window
         try {
           localStorage.setItem('demo_session_present', '1');
           localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
-          if (import.meta.env.DEV) {
-            console.log("[Login] DEV: Demo session marker set, grace window until", new Date(graceWindowEnd).toISOString());
+          // Set demo_role_override for backward compatibility (if other parts still use it)
+          if (role) {
+            const roleKey = role === 'field_officer' ? 'field_officer' : role;
+            localStorage.setItem('demo_role_override', roleKey);
           }
         } catch (e) {
           // localStorage not available
@@ -77,25 +75,32 @@ export default function Login() {
           clearDemoTransition();
         }
         
-        // Refetch auth.me in background WITHOUT clearing cache (placeholderData keeps user during refetch)
-        // Use refetch() instead of invalidate() to avoid clearing cache
-        // Note: utils.auth.me.refetch() returns void, so we fire-and-forget
-        // The optimistic cache set above ensures UI has user immediately
-        // placeholderData will keep user visible during refetch
-        void utils.auth.me.refetch();
+        // Invalidate and refetch auth.me to sync with server session cookie
+        // This ensures the client auth state matches the server session
+        await utils.auth.me.invalidate();
+        await utils.auth.me.refetch();
         
-        // Navigate immediately after cache is set (no waiting)
-        // ProtectedRoute will see the cached user and won't redirect
-        // AuthGate will see loading=false (cache is set) and won't block
+        // DEV-only: Log successful demo login
         if (import.meta.env.DEV) {
-          console.log("[Login] DEV: Navigating immediately after optimistic cache set");
+          console.info("[DEMO] demoLogin success -> refetching auth.me -> navigate", { username, redirectTo });
         }
+        
+        // Navigate after auth.me is synced
         setLocation(redirectTo);
         return;
       }
     } catch (demoError: any) {
       // Demo login failed - show error
+      // Note: Legacy AuthContext.login() is deprecated (stub only)
+      // If demoLogin fails, user must fix credentials and retry
       setError(demoError?.message || 'Invalid username or password. Please try again.');
+      
+      // If we had a fallback login method, we could try it here:
+      // const fallbackResult = await login(username, password);
+      // if (fallbackResult.success) {
+      //   // Set demo markers and navigate
+      // }
+      // But AuthContext.login() is deprecated, so we just show error
     } finally {
       setIsLoading(false);
     }
