@@ -7,7 +7,7 @@ import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
-// Plugin to conditionally inject analytics script
+// Plugin to conditionally inject analytics script and handle env var placeholders
 // Runs early to prevent Vite from processing undefined env var placeholders
 // Analytics is completely disabled in development mode
 function conditionalAnalyticsPlugin(): Plugin {
@@ -15,6 +15,22 @@ function conditionalAnalyticsPlugin(): Plugin {
     name: "conditional-analytics",
     enforce: "pre", // Run before other plugins to handle placeholders early
     transformIndexHtml(html, ctx) {
+      // Handle VITE_APP_TITLE and VITE_APP_LOGO placeholders first (demo-safe fallbacks)
+      const appTitle = process.env.VITE_APP_TITLE || "MAGSASA-CARD";
+      const appLogo = process.env.VITE_APP_LOGO || "/sunray-logo.png";
+      
+      // Replace title placeholder with safe default
+      html = html.replace(
+        /%VITE_APP_TITLE%/g,
+        appTitle
+      );
+      
+      // Replace logo placeholder with safe default
+      html = html.replace(
+        /%VITE_APP_LOGO%/g,
+        appLogo
+      );
+      
       // Skip analytics entirely in development mode
       const isDevelopment = 
         process.env.NODE_ENV === "development" || 
