@@ -246,21 +246,25 @@ export default function Layout({ children }: LayoutProps) {
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
-            {/* Dev-only demo role indicator */}
+            {/* Dev-only indicators: App Mode + Demo Role */}
             {import.meta.env.DEV && (() => {
               try {
                 const override = localStorage.getItem("demo_role_override");
-                if (override) {
-                  return (
-                    <div className="mt-2 text-xs text-gray-500 text-center">
-                      Demo Role: {override}
-                    </div>
-                  );
-                }
+                const appMode = import.meta.env.VITE_APP_MODE || 'full';
+                return (
+                  <div className="mt-2 space-y-1 text-xs text-gray-500 text-center">
+                    <div>App Mode: {appMode === 'lite' ? 'Lite' : 'Full'}</div>
+                    {override && <div>Demo Role: {override}</div>}
+                  </div>
+                );
               } catch (e) {
                 // localStorage not available
+                return import.meta.env.DEV ? (
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    App Mode: {import.meta.env.VITE_APP_MODE === 'lite' ? 'Lite' : 'Full'}
+                  </div>
+                ) : null;
               }
-              return null;
             })()}
           </div>
         </div>

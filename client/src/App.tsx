@@ -76,6 +76,18 @@ import AdminCsvUpload from "./pages/AdminCsvUpload";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
+  
+  // DEV-only: Log Lite Mode status on mount
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log("[App] Lite Mode:", IS_LITE_MODE ? "ACTIVE" : "INACTIVE");
+      console.log("[App] VITE_APP_MODE:", import.meta.env.VITE_APP_MODE || "not set");
+      if (IS_LITE_MODE) {
+        console.log("[App] Lite Mode: Only routes /kaani, /order-calculator, /price-comparison, /map are accessible");
+      }
+    }
+  }, []);
+  
   return (
     <Switch>
       {/* Public routes */}
@@ -354,15 +366,16 @@ function Router() {
         </>
       )}
       
-      {/* Lite Mode: Redirect unknown routes to KaAni */}
-      {IS_LITE_MODE && (
-        <Route path="/:rest*">
+      <Route path="/404" component={NotFound} />
+      
+      {/* Catch-all route: redirect to /kaani in Lite Mode, 404 in Full Mode */}
+      {IS_LITE_MODE ? (
+        <Route>
           <Redirect to="/kaani" />
         </Route>
+      ) : (
+        <Route component={NotFound} />
       )}
-      
-      <Route path="/404" component={NotFound} />
-      {!IS_LITE_MODE && <Route component={NotFound} />}
     </Switch>
   );
 }
