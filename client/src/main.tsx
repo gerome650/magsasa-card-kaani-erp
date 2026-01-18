@@ -10,7 +10,13 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
+// DEV-only: Mount counter to verify provider stability
+if (import.meta.env.DEV && typeof window !== "undefined") {
+  (window as any).__providersMountedCount = ((window as any).__providersMountedCount || 0);
+}
+
 // Configure QueryClient with retry logic and error handling
+// CRITICAL: Created at module scope to ensure it's created exactly once
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -111,6 +117,7 @@ queryClient.getMutationCache().subscribe(event => {
 });
 
 // Create tRPC client with enhanced configuration
+// CRITICAL: Created at module scope to ensure it's created exactly once
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
@@ -136,24 +143,38 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-// Conditionally wrap with StrictMode only in PROD to prevent DEV double-mount flicker
-const Root = import.meta.env.DEV
-  ? (
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <App />
-          {/* React Query DevTools - only shows in development */}
+// Provider root component - ensures providers are stable and never remount
+function ProviderRoot() {
+  // DEV-only: Log provider mount (should only happen once per session)
+  React.useEffect(() => {
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      (window as any).__providersMountedCount = ((window as any).__providersMountedCount || 0) + 1;
+      console.log("[DEV] Providers mounted, count:", (window as any).__providersMountedCount);
+      console.log("[DEV] QueryClient identity:", queryClient);
+      console.log("[DEV] TRPC client identity:", trpcClient);
+    }
+  }, []);
+
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        {/* React Query DevTools - only shows in development */}
+        {import.meta.env.DEV && (
           <ReactQueryDevtools initialIsOpen={false} position={"bottom-right" as any} />
-        </QueryClientProvider>
-      </trpc.Provider>
-    )
+        )}
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+}
+
+// Conditionally wrap with StrictMode only in PROD to prevent DEV double-mount flicker
+// CRITICAL: ProviderRoot is always rendered - only StrictMode wrapper changes
+const Root = import.meta.env.DEV
+  ? <ProviderRoot />
   : (
       <StrictMode>
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <QueryClientProvider client={queryClient}>
-            <App />
-          </QueryClientProvider>
-        </trpc.Provider>
+        <ProviderRoot />
       </StrictMode>
     );
 
