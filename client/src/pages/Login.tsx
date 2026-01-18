@@ -196,6 +196,13 @@ export default function Login() {
     setUsername(user);
     setPassword(pass);
     setError('');
+    
+    // DEV-ONLY: Start demo transition BEFORE setting role override
+    // This prevents flicker by blocking UI rendering during the switch
+    if (import.meta.env.DEV) {
+      startDemoTransition(2000); // 2 second transition window
+    }
+    
     // Persist demo role override for role-based UI gating
     try {
       const currentOverride = localStorage.getItem("demo_role_override");
