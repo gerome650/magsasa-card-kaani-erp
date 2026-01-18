@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import { retentionPolicy } from "@/data/auditArchiveData";
 import { auditLogs } from "@/data/auditLogData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -82,10 +83,12 @@ export default function RetentionSettings() {
   const handleSave = () => {
     if (!canEdit) {
       // Log unauthorized access attempt
+      // Use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'farmer';
       addAuditLog({
-        userId: user?.id || 'unknown',
+        userId: user?.id ? String(user.id) : 'unknown',
         userName: user?.name || 'Unknown User',
-        userRole: user?.role || 'farmer',
+        userRole: clientRole,
         actionType: 'single_order_decline',
         actionDescription: `Attempted to modify retention settings without permission`,
         affectedItemsCount: 0,
@@ -109,10 +112,12 @@ export default function RetentionSettings() {
 
   const handleDisableAutoArchive = (checked: boolean) => {
     if (!canEdit) {
+      // Use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'farmer';
       addAuditLog({
-        userId: user?.id || 'unknown',
+        userId: user?.id ? String(user.id) : 'unknown',
         userName: user?.name || 'Unknown User',
-        userRole: user?.role || 'farmer',
+        userRole: clientRole,
         actionType: 'single_order_decline',
         actionDescription: `Attempted to toggle auto-archive without permission`,
         affectedItemsCount: 0,
@@ -136,10 +141,12 @@ export default function RetentionSettings() {
 
   const handleReset = () => {
     if (!canEdit) {
+      // Use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'farmer';
       addAuditLog({
-        userId: user?.id || 'unknown',
+        userId: user?.id ? String(user.id) : 'unknown',
         userName: user?.name || 'Unknown User',
-        userRole: user?.role || 'farmer',
+        userRole: clientRole,
         actionType: 'single_order_decline',
         actionDescription: `Attempted to reset retention settings without permission`,
         affectedItemsCount: 0,
@@ -167,11 +174,12 @@ export default function RetentionSettings() {
       retentionPolicy.retentionDays = retentionDays;
       retentionPolicy.autoArchiveEnabled = autoArchiveEnabled;
 
-      // Add audit log
+      // Add audit log - use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'manager';
       addAuditLog({
-        userId: user?.id || 'admin-001',
+        userId: user?.id ? String(user.id) : 'admin-001',
         userName: user?.name || 'Administrator',
-        userRole: user?.role || 'manager',
+        userRole: clientRole,
         actionType: 'single_inventory_update',
         actionDescription: `Updated retention settings: ${retentionDays} days, auto-archive ${autoArchiveEnabled ? 'enabled' : 'disabled'}`,
         affectedItemsCount: 1,
@@ -208,10 +216,11 @@ export default function RetentionSettings() {
 
   const presetDays = [30, 60, 90, 180];
 
-  // Check permissions
-  const canView = canViewRetentionSettings(user?.role);
-  const canEdit = canModifyRetentionSettings(user?.role);
-  const canDelete = canEnablePermanentDeletion(user?.role);
+  // Check permissions - use getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const canView = canViewRetentionSettings(clientRole || undefined);
+  const canEdit = canModifyRetentionSettings(clientRole || undefined);
+  const canDelete = canEnablePermanentDeletion(clientRole || undefined);
 
   if (!canView) {
     return (
@@ -227,7 +236,7 @@ export default function RetentionSettings() {
               Required permission: <strong>retention_settings:view</strong>
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Your role: <strong>{user?.role ? getRoleDisplayName(user.role) : 'Unknown'}</strong>
+              Your role: <strong>{getClientRole(user) ? getRoleDisplayName(getClientRole(user)!) : 'Unknown'}</strong>
             </p>
             <Button onClick={() => setRequestDialogOpen(true)}>
               Request Access
@@ -250,8 +259,8 @@ export default function RetentionSettings() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold">Retention Settings</h1>
-            <Badge className={`${getRoleBadgeColor(user?.role || 'farmer')} text-white`}>
-              {getRoleDisplayName(user?.role || 'farmer')}
+            <Badge className={`${getRoleBadgeColor(getClientRole(user) || 'farmer')} text-white`}>
+              {getRoleDisplayName(getClientRole(user) || 'farmer')}
             </Badge>
             {!canEdit && (
               <Badge 

@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import { IS_LITE_MODE } from "@/const";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useEffect } from "react";
+import React from "react";
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
@@ -28,9 +29,9 @@ function DashboardRoute() {
   return <FarmList />;
 }
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AuthGate } from "./components/AuthGate";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
@@ -61,7 +62,7 @@ import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { normalizeRole } from "./const";
 import FarmerDashboard from "./components/FarmerDashboard";
 import TRPCTest from "./pages/TRPCTest";
@@ -384,16 +385,73 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <AuthProvider>
-          <CartProvider>
-            <TooltipProvider>
-              <Toaster />
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AuthGate>
               <Router />
-            </TooltipProvider>
-          </CartProvider>
-        </AuthProvider>
+            </AuthGate>
+            {import.meta.env.DEV && <DevAuthDebugBanner />}
+          </TooltipProvider>
+        </CartProvider>
       </ThemeProvider>
     </ErrorBoundary>
+  );
+}
+
+// DEV-only: Debug banner showing auth state
+function DevAuthDebugBanner() {
+  if (import.meta.env.PROD) return null;
+  
+  const [authState, setAuthState] = React.useState({
+    isAuthReady: false,
+    loading: true,
+    isAuthenticated: false,
+    demoSessionPresent: false,
+    isInDemoGraceWindow: false,
+    isInRoleSwitchWindow: false,
+    demoRoleOverride: null as string | null,
+  });
+
+  React.useEffect(() => {
+    const updateState = () => {
+      try {
+        setAuthState({
+          isAuthReady: true, // Simplified for display
+          loading: false, // Simplified for display
+          isAuthenticated: false, // Simplified for display
+          demoSessionPresent: localStorage.getItem('demo_session_present') === '1',
+          isInDemoGraceWindow: (() => {
+            const stored = localStorage.getItem('demo_grace_window_end');
+            return stored ? Date.now() < parseInt(stored, 10) : false;
+          })(),
+          isInRoleSwitchWindow: (() => {
+            const stored = localStorage.getItem('demo_role_switch_end');
+            return stored ? Date.now() < parseInt(stored, 10) : false;
+          })(),
+          demoRoleOverride: localStorage.getItem('demo_role_override'),
+        });
+      } catch (e) {
+        // localStorage not available
+      }
+    };
+
+    updateState();
+    const interval = setInterval(updateState, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed bottom-2 right-2 z-50 bg-black/80 text-white text-xs p-2 rounded font-mono max-w-xs">
+      <div className="font-bold mb-1">[DEV] Auth State</div>
+      <div>ready: {authState.isAuthReady ? '✓' : '✗'}</div>
+      <div>loading: {authState.loading ? '✓' : '✗'}</div>
+      <div>auth: {authState.isAuthenticated ? '✓' : '✗'}</div>
+      <div>demo: {authState.demoSessionPresent ? '✓' : '✗'}</div>
+      <div>grace: {authState.isInDemoGraceWindow ? '✓' : '✗'}</div>
+      <div>roleSwitch: {authState.isInRoleSwitchWindow ? '✓' : '✗'}</div>
+      <div>role: {authState.demoRoleOverride || '—'}</div>
+    </div>
   );
 }
 

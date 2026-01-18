@@ -1,4 +1,5 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,7 +38,9 @@ export default function RolePermissions() {
     );
   }
 
-  const userPermissions = getRolePermissions(user.role);
+  // Use getClientRole to map server role to client role
+  const clientRole = getClientRole(user) || 'farmer';
+  const userPermissions = getRolePermissions(clientRole);
   const groupedPermissions = groupPermissionsByCategory(userPermissions);
   const allRoles: UserRole[] = ['farmer', 'field_officer', 'manager', 'supplier', 'admin'];
 
@@ -52,40 +55,46 @@ export default function RolePermissions() {
       </div>
 
       {/* Current Role Card */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <div className={`w-12 h-12 rounded-full ${getRoleBadgeColor(user.role)} flex items-center justify-center flex-shrink-0`}>
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-2xl font-bold">{getRoleDisplayName(user.role)}</h3>
-                <Badge className={`${getRoleBadgeColor(user.role)} text-white`}>
-                  Level {ROLE_HIERARCHY[user.role]}
-                </Badge>
+      {(() => {
+        // Use getClientRole to map server role to client role
+        const clientRole = getClientRole(user) || 'farmer';
+        return (
+          <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-full ${getRoleBadgeColor(clientRole)} flex items-center justify-center flex-shrink-0`}>
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-2xl font-bold">{getRoleDisplayName(clientRole)}</h3>
+                    <Badge className={`${getRoleBadgeColor(clientRole)} text-white`}>
+                      Level {ROLE_HIERARCHY[clientRole]}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground mb-4">
+                    Your current role in the MAGSASA-CARD system
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">User Name</p>
+                      <p className="font-medium">{user?.name || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Email</p>
+                      <p className="font-medium">{user?.email || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total Permissions</p>
+                      <p className="font-medium">{userPermissions.length}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-muted-foreground mb-4">
-                Your current role in the MAGSASA-CARD system
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">User Name</p>
-                  <p className="font-medium">{user.name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Email</p>
-                  <p className="font-medium">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Total Permissions</p>
-                  <p className="font-medium">{userPermissions.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Your Permissions */}
       <Card>

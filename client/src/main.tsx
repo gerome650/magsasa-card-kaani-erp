@@ -59,6 +59,28 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  // DEV-only: Never redirect if demo session is present or in grace/role switch window
+  // This prevents flicker during demo account switching
+  if (import.meta.env.DEV) {
+    try {
+      const demoSessionPresent = localStorage.getItem('demo_session_present') === '1';
+      const graceWindowEnd = localStorage.getItem('demo_grace_window_end');
+      const roleSwitchEnd = localStorage.getItem('demo_role_switch_end');
+      
+      const inGraceWindow = graceWindowEnd ? Date.now() < parseInt(graceWindowEnd, 10) : false;
+      const inRoleSwitch = roleSwitchEnd ? Date.now() < parseInt(roleSwitchEnd, 10) : false;
+      
+      if (demoSessionPresent || inGraceWindow || inRoleSwitch) {
+        if (import.meta.env.DEV) {
+          console.log("[Auth] DEV: Blocking redirect - demo session/grace/role switch active");
+        }
+        return; // Do not redirect in DEV demo mode
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+  }
+
   // Check if user is using demo authentication (stored in localStorage)
   const demoUser = localStorage.getItem('magsasa_user');
   if (demoUser) {

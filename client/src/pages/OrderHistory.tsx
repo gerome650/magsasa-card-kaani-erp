@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/_core/hooks/useAuth';
 import { useCart } from '@/contexts/CartContext';
 import { useLocation } from 'wouter';
 import {
@@ -34,7 +34,8 @@ export default function OrderHistory() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   // Get orders for current farmer
-  const orders = user ? getOrdersByFarmerId(user.id) : [];
+  // Convert user.id to string for compatibility
+  const orders = user ? getOrdersByFarmerId(String(user.id)) : [];
 
   const handleReorder = (order: Order) => {
     // Add all items from the order to the cart

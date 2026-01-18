@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   batchOrders,
   getActiveBatchOrders,
@@ -83,8 +84,9 @@ export default function BatchOrders() {
     // TODO: Implement export functionality
   };
 
-  // Check permissions
-  const canManageBatches = user?.role === 'manager' || user?.role === 'field_officer';
+  // Check permissions using getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const canManageBatches = clientRole === 'manager' || clientRole === 'field_officer';
 
   if (!canManageBatches) {
     return (

@@ -21,7 +21,7 @@ import { KaAniLoanPacket } from "@/features/kaani/components/KaAniLoanPacket";
 import { KaAniLoanSuggestion } from "@/features/kaani/components/KaAniLoanSuggestion";
 import type { KaAniArtifactBundle } from "@/features/kaani/types";
 import { IS_LITE_MODE, normalizeRole, normalizeAudience } from "@/const";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const SESSION_TOKEN_KEY = 'kaani_session_token_v1';
 

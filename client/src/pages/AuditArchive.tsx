@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   archivedBatches,
   getArchivedBatches,
@@ -66,7 +67,8 @@ export default function AuditArchive() {
   };
 
   // Check if user is supplier
-  const isSupplier = user?.role === 'supplier';
+  const clientRole = getClientRole(user);
+  const isSupplier = clientRole === 'supplier';
 
   if (!isSupplier) {
     return (

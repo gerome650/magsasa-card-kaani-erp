@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   auditLogs,
   getAuditLogs,
@@ -100,8 +101,9 @@ export default function AuditLog() {
     setDateRange({ start: "", end: "" });
   };
 
-  // Check if user is supplier
-  const isSupplier = user?.role === 'supplier';
+  // Check if user is supplier using getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const isSupplier = clientRole === 'supplier';
 
   if (!isSupplier) {
     return (

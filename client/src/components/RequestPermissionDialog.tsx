@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +49,9 @@ export default function RequestPermissionDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get all available permissions (permissions user doesn't have)
-  const userPermissions = user ? getRolePermissions(user.role) : [];
+  // Use getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const userPermissions = clientRole ? getRolePermissions(clientRole) : [];
   const allPermissions: Permission[] = [
     'retention_settings:view',
     'retention_settings:edit',
@@ -98,11 +101,13 @@ export default function RequestPermissionDialog({
     setIsSubmitting(true);
 
     // Create permission request
+    // Convert user.id to string and use getClientRole for role
+    const clientRole = getClientRole(user) || 'farmer';
     const request = createPermissionRequest(
-      user.id,
-      user.name,
-      user.email,
-      user.role,
+      String(user.id),
+      user.name || 'Unknown',
+      user.email || '',
+      clientRole,
       selectedPermissions,
       reason.trim(),
       urgency
@@ -110,9 +115,9 @@ export default function RequestPermissionDialog({
 
     // Log to audit
     addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      userRole: user.role,
+      userId: String(user.id),
+      userName: user.name || 'Unknown',
+      userRole: clientRole,
       actionType: 'single_order_confirm' as AuditActionType,
       actionDescription: `Requested ${selectedPermissions.length} additional permissions`,
       affectedItemsCount: selectedPermissions.length,

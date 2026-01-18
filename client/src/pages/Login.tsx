@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/contexts/AuthContext';
+// Note: Login.tsx uses trpc.auth.demoLogin mutation directly, no useAuth hook needed
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const [, setLocation] = useLocation();
   const [location] = useLocation();
 
@@ -38,9 +37,36 @@ export default function Login() {
       });
 
       if (demoResult.success) {
-        // Ensure demo role override persists after successful login
-        const override = localStorage.getItem("demo_role_override");
-        if (!override) {
+        // Get current override to detect role change
+        const currentOverride = localStorage.getItem("demo_role_override");
+        let newOverride: string | null = null;
+        
+        // Determine new override from username
+        if (username === 'farmer') {
+          newOverride = "farmer";
+        } else if (username === 'officer') {
+          newOverride = "field_officer";
+        } else if (username === 'manager') {
+          newOverride = "manager";
+        }
+        
+        // Set new override
+        if (newOverride) {
+          localStorage.setItem("demo_role_override", newOverride);
+          
+          // If role changed, start role switch window
+          if (currentOverride && currentOverride !== newOverride) {
+            const roleSwitchEnd = Date.now() + 2000; // 2 second role switch window
+            try {
+              localStorage.setItem('demo_role_switch_end', roleSwitchEnd.toString());
+              if (import.meta.env.DEV) {
+                console.log("[Login] DEV: Role override changed -> starting role switch window until", new Date(roleSwitchEnd).toISOString());
+              }
+            } catch (e) {
+              // localStorage not available
+            }
+          }
+        } else if (!currentOverride) {
           // If no override set, try to infer from username
           if (username === 'farmer') {
             localStorage.setItem("demo_role_override", "farmer");
@@ -54,48 +80,99 @@ export default function Login() {
         // Force refetch auth.me to ensure user state is updated before navigating
         // This prevents flicker/redirect loops when switching accounts
         try {
+          // Set demo session marker and grace window in localStorage (useAuth will read them)
+          // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
+          // Increased grace window to 3000ms for more stability
+          const graceWindowEnd = Date.now() + 3000; // 3 second grace window
+          try {
+            localStorage.setItem('demo_session_present', '1');
+            localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
+            if (import.meta.env.DEV) {
+              console.log("[Login] DEV: Demo session marker set, grace window until", new Date(graceWindowEnd).toISOString());
+            }
+          } catch (e) {
+            // localStorage not available
+          }
+          
+          // CRITICAL: Wait for state to propagate before navigating
+          // This ensures AuthGate and ProtectedRoute see the demo session marker
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Small delay to ensure cookie is set by server
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // Invalidate and refetch auth.me
+          // placeholderData will preserve previous user data during refetch
           await utils.auth.me.invalidate();
           await utils.auth.me.refetch();
           
-          // Wait a small delay for cookie to propagate and auth.me to complete
-          // Grace window in useAuth will handle any temporary auth gaps
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Wait for auth.me to return a user OR timeout (1500ms)
+          // AuthGate will hold UI steady during this transition
+          const maxWait = 1500; // 1.5 second max wait
+          const startTime = Date.now();
           
-          // Navigate - grace window in useAuth will prevent redirect loops
+          while (Date.now() - startTime < maxWait) {
+            // Check current auth.me data from query cache (refetch updates the cache)
+            // placeholderData ensures this won't be undefined during refetch
+            const currentUser = utils.auth.me.getData();
+            
+            // If we have a user, wait a bit more for state to propagate, then navigate
+            if (currentUser) {
+              if (import.meta.env.DEV) {
+                console.log("[Login] DEV: User confirmed, waiting for state propagation before navigating");
+              }
+              // Small delay to ensure all reactive state has updated
+              await new Promise(resolve => setTimeout(resolve, 100));
+              setLocation(redirectTo);
+              return;
+            }
+            
+            // Wait a bit and check again
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Try refetching again and check cache
+            try {
+              await utils.auth.me.refetch();
+              const retryUser = utils.auth.me.getData();
+              if (retryUser) {
+                if (import.meta.env.DEV) {
+                  console.log("[Login] DEV: auth.me returned user after retry, waiting for state propagation before navigating");
+                }
+                // Small delay to ensure all reactive state has updated
+                await new Promise(resolve => setTimeout(resolve, 100));
+                setLocation(redirectTo);
+                return;
+              }
+            } catch (e) {
+              // Ignore refetch errors, continue checking
+            }
+          }
+          
+          // Timeout reached - wait a bit more for state propagation, then navigate
+          // AuthGate will hold UI steady, grace window is active, so ProtectedRoute won't redirect
+          if (import.meta.env.DEV) {
+            console.log("[Login] DEV: Timeout reached, waiting for state propagation before navigating");
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
           setLocation(redirectTo);
         } catch (error) {
-          // If refetch fails but cookie exists, navigate anyway (grace window will handle it)
-          if (document.cookie.includes('app_session_id=')) {
+          // If refetch fails but demo marker exists, navigate anyway (AuthGate will handle stability)
+          const hasDemoMarker = localStorage.getItem('demo_session_present') === '1';
+          if (hasDemoMarker) {
+            if (import.meta.env.DEV) {
+              console.log("[Login] DEV: Demo session marker present, navigating despite refetch error");
+            }
             setLocation(redirectTo);
           } else {
-            console.warn("[Login] auth.me refetch failed, but proceeding with navigation");
-            setLocation(redirectTo);
+            console.error("[Login] auth.me refetch failed and no demo session marker found", error);
+            setError("Login succeeded but could not verify session. Please try again.");
           }
         }
         return;
       }
     } catch (demoError: any) {
-      // If demo login fails, fall back to client-side auth
-      // (for backwards compatibility or if server is unavailable)
-      const result = await login(username, password);
-      
-      if (result.success) {
-        // Ensure demo role override persists after successful login
-        const override = localStorage.getItem("demo_role_override");
-        if (!override) {
-          // If no override set, try to infer from username
-          if (username === 'farmer') {
-            localStorage.setItem("demo_role_override", "farmer");
-          } else if (username === 'officer') {
-            localStorage.setItem("demo_role_override", "field_officer");
-          } else if (username === 'manager') {
-            localStorage.setItem("demo_role_override", "manager");
-          }
-        }
-        setLocation(redirectTo);
-      } else {
-        setError(demoError?.message || result.error || 'Invalid username or password');
-      }
+      // Demo login failed - show error
+      setError(demoError?.message || 'Invalid username or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +190,17 @@ export default function Login() {
     setError('');
     // Persist demo role override for role-based UI gating
     try {
+      const currentOverride = localStorage.getItem("demo_role_override");
       localStorage.setItem("demo_role_override", roleKey);
+      
+      // If role changed, start role switch window (DEV only)
+      if (import.meta.env.DEV && currentOverride && currentOverride !== roleKey) {
+        const roleSwitchEnd = Date.now() + 2000; // 2 second role switch window
+        localStorage.setItem('demo_role_switch_end', roleSwitchEnd.toString());
+        if (import.meta.env.DEV) {
+          console.log("[Login] DEV: Role override changed in fillDemoCredentials -> starting role switch window until", new Date(roleSwitchEnd).toISOString());
+        }
+      }
     } catch (e) {
       // localStorage may not be available
       console.warn("Failed to set demo_role_override:", e);

@@ -1,8 +1,8 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import FarmerDashboard from "@/components/FarmerDashboard";
 import FieldOfficerDashboard from "@/components/FieldOfficerDashboard";
 import ManagerDashboard from "@/components/ManagerDashboard";
-import { normalizeRole } from "@/const";
+import { normalizeRole, getClientRole } from "@/const";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -22,17 +22,19 @@ export default function Dashboard() {
     return <FarmerDashboard />;
   }
 
-  // For staff roles, use original role for specific dashboard routing
-  switch (user.role) {
-    case 'field_officer':
-      return <FieldOfficerDashboard />;
-    case 'manager':
-      return <ManagerDashboard />;
-    default:
-      return (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Unknown user role</p>
-        </div>
-      );
+  // For staff roles, use getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  if (clientRole === 'field_officer') {
+    return <FieldOfficerDashboard />;
   }
+  if (clientRole === 'manager') {
+    return <ManagerDashboard />;
+  }
+  
+  // Default fallback
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <p className="text-muted-foreground">Unknown user role</p>
+    </div>
+  );
 }

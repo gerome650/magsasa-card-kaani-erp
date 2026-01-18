@@ -85,6 +85,49 @@ export function normalizeRole(user: any): NormalizedRole {
 }
 
 /**
+ * Maps server role ('user' | 'admin') to client UserRole.
+ * Uses localStorage demo_role_override if available (for demo account switching).
+ * This is the same logic as getClientRole in ProtectedRoute.tsx, but exported for reuse.
+ */
+export function getClientRole(user: any): import("@/data/usersData").UserRole | null {
+  if (!user) return null;
+  
+  // Check localStorage demo role override first (for demo account switching)
+  try {
+    const override = localStorage.getItem("demo_role_override");
+    if (override) {
+      const overrideLower = override.trim().toLowerCase();
+      if (overrideLower.includes("farmer")) return "farmer";
+      if (overrideLower.includes("field_officer") || overrideLower.includes("officer")) return "field_officer";
+      if (overrideLower.includes("manager")) return "manager";
+      if (overrideLower.includes("supplier")) return "supplier";
+      if (overrideLower.includes("admin")) return "admin";
+    }
+  } catch (e) {
+    // localStorage may not be available
+  }
+  
+  // Map server role to client role
+  // Server has 'user' | 'admin', client has 'farmer' | 'manager' | 'field_officer' | 'supplier' | 'admin'
+  const serverRole = user.role?.toLowerCase();
+  if (serverRole === "admin") return "manager"; // admin maps to manager
+  if (serverRole === "user") {
+    // For 'user', check email or other hints to determine if farmer or field_officer
+    // Default to field_officer for staff users
+    return "field_officer";
+  }
+  
+  // Fallback: try to extract from user object directly
+  const roleStr = String(user.role || "").toLowerCase();
+  if (roleStr.includes("farmer")) return "farmer";
+  if (roleStr.includes("manager") || roleStr.includes("admin")) return "manager";
+  if (roleStr.includes("officer")) return "field_officer";
+  if (roleStr.includes("supplier")) return "supplier";
+  
+  return null;
+}
+
+/**
  * Normalizes audience value to backend enum values (snake_case).
  * Defensive fix for Zod validation errors.
  * 

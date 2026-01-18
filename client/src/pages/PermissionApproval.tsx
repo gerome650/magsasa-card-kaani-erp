@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +55,9 @@ export default function PermissionApproval() {
   const approvedRequests = getRequestsByStatus('approved');
   const rejectedRequests = getRequestsByStatus('rejected');
 
-  // Check if user is manager/admin
-  const canReview = user?.role === 'manager' || user?.role === 'admin';
+  // Check if user is manager/admin using getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const canReview = clientRole === 'manager' || clientRole === 'admin';
 
   const handleReviewClick = (request: PermissionRequest, action: 'approve' | 'reject') => {
     setSelectedRequest(request);
@@ -73,20 +75,22 @@ export default function PermissionApproval() {
     }
 
     if (reviewAction === 'approve') {
+      // Use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'manager';
       const approved = approveRequest(
         selectedRequest.id,
-        user.id,
-        user.name,
-        user.role,
+        String(user.id),
+        user.name || 'Unknown',
+        clientRole,
         reviewReason.trim() || undefined
       );
 
       if (approved) {
         // Log to audit
         addAuditLog({
-          userId: user.id,
-          userName: user.name,
-          userRole: user.role,
+          userId: String(user.id),
+          userName: user.name || 'Unknown',
+          userRole: clientRole,
           actionType: 'permission_request_approved',
           actionDescription: `Approved permission request from ${selectedRequest.requesterName}`,
           affectedItemsCount: selectedRequest.requestedPermissions.length,
@@ -105,20 +109,22 @@ export default function PermissionApproval() {
         });
       }
     } else if (reviewAction === 'reject') {
+      // Use getClientRole to map server role to client role, convert id to string
+      const clientRole = getClientRole(user) || 'manager';
       const rejected = rejectRequest(
         selectedRequest.id,
-        user.id,
-        user.name,
-        user.role,
+        String(user.id),
+        user.name || 'Unknown',
+        clientRole,
         reviewReason.trim()
       );
 
       if (rejected) {
         // Log to audit
         addAuditLog({
-          userId: user.id,
-          userName: user.name,
-          userRole: user.role,
+          userId: String(user.id),
+          userName: user.name || 'Unknown',
+          userRole: clientRole,
           actionType: 'permission_request_rejected',
           actionDescription: `Rejected permission request from ${selectedRequest.requesterName}`,
           affectedItemsCount: selectedRequest.requestedPermissions.length,

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Users, CheckCircle, AlertCircle, TrendingUp, MapPin, Phone, Plus, Filter, Check, X, Edit, Trash2, Award } from "lucide-react";
 import { useState } from "react";
 import FarmerQuickView from "@/components/FarmerQuickView";

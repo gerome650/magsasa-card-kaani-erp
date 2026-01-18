@@ -40,5 +40,6 @@ export function getSessionCookieOptions(
     secure,
     // Don't set domain for localhost (browser handles it automatically)
     // Explicitly undefined ensures no domain is set
+    domain: undefined,
   };
 }

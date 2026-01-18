@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Users, TrendingUp, DollarSign, Award, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
 import { agScoreData, getAgScoreByFarmerId, getAgScoreDistribution } from "@/data/agScoreData";
 import AgScoreBadge from "@/components/AgScoreBadge";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { farmersData } from "@/data/farmersData";
 import { harvestData } from "@/data/harvestData";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { TrendingUp, Sprout, DollarSign, Award, Calendar, MapPin, Phone, Mail, CheckCircle } from "lucide-react";
 import AddHarvestDialog from "@/components/AddHarvestDialog";
 import { ImageLightbox } from "@/components/ImageLightbox";

@@ -1,7 +1,7 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -16,11 +16,27 @@ export function useAuth(options?: UseAuthOptions) {
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: 5000, // Keep data fresh for 5 seconds
+    placeholderData: (prev) => prev, // Preserve previous data during refetch to prevent flicker
   });
 
-  // Auth readiness: true after first auth.me attempt completes (success or failure)
-  // Use a simple check: if not loading, we've attempted the query
-  const isAuthReady = !meQuery.isLoading && (meQuery.data !== undefined || meQuery.error !== undefined);
+  // Auth readiness: true after FIRST auth.me attempt completes (success or failure)
+  // Once ready, stays ready even if refetches happen
+  const [hasCompletedFirstAuth, setHasCompletedFirstAuth] = useState(false);
+  
+  useEffect(() => {
+    // Mark as completed once first query finishes (not loading and has result or error)
+    if (!meQuery.isLoading && !hasCompletedFirstAuth) {
+      if (meQuery.data !== undefined || meQuery.error !== undefined) {
+        setHasCompletedFirstAuth(true);
+        if (import.meta.env.DEV) {
+          console.log("[Auth] DEV: First auth.me completed → isAuthReady = true");
+        }
+      }
+    }
+  }, [meQuery.isLoading, meQuery.data, meQuery.error, hasCompletedFirstAuth]);
+  
+  const isAuthReady = hasCompletedFirstAuth;
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -40,58 +56,261 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
+      // Clear demo session markers on logout
+      if (import.meta.env.DEV && typeof window !== "undefined") {
+        try {
+          localStorage.removeItem('demo_session_present');
+          localStorage.removeItem('demo_grace_window_end');
+          localStorage.removeItem('demo_role_switch_end');
+        } catch (e) {
+          // localStorage not available
+        }
+      }
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
   }, [logoutMutation, utils]);
 
-  // DEV-only: Check for demo session cookie for logging and state
-  const hasSessionCookie = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    if (import.meta.env.PROD) return false;
+  // DEV-only: Check for demo session marker in localStorage
+  // Note: HttpOnly cookies cannot be read from JS, so we use localStorage marker
+  // Make this reactive so it updates when localStorage changes
+  const [demoSessionPresent, setDemoSessionPresent] = useState(() => {
+    if (typeof window === "undefined" || import.meta.env.PROD) return false;
+    try {
+      return localStorage.getItem('demo_session_present') === '1';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // Poll localStorage for demo_session_present changes (DEV only)
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof window === "undefined") return;
     
-    const cookies = document.cookie.split(';').map(c => c.trim());
-    return cookies.some(c => c.startsWith('app_session_id='));
+    const checkDemoSession = () => {
+      try {
+        const present = localStorage.getItem('demo_session_present') === '1';
+        setDemoSessionPresent(present);
+      } catch (e) {
+        // localStorage not available
+      }
+    };
+
+    // Check immediately
+    checkDemoSession();
+
+    // Poll every 100ms to catch changes quickly
+    const interval = setInterval(checkDemoSession, 100);
+
+    // Also listen for storage events (cross-tab)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'demo_session_present') {
+        checkDemoSession();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  // Grace window: after demo login, prevent redirects for 2 seconds
-  const [graceWindowEnd, setGraceWindowEnd] = useState<number | null>(null);
+  // Grace window: after demo login, prevent redirects for 2000ms
+  // Store grace window end timestamp in localStorage (survives page reloads)
+  const [graceWindowEnd, setGraceWindowEnd] = useState<number | null>(() => {
+    if (typeof window === "undefined" || import.meta.env.PROD) return null;
+    try {
+      const stored = localStorage.getItem('demo_grace_window_end');
+      if (stored) {
+        const timestamp = parseInt(stored, 10);
+        // Only use if still valid (not expired)
+        if (Date.now() < timestamp) {
+          return timestamp;
+        } else {
+          localStorage.removeItem('demo_grace_window_end');
+        }
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+    return null;
+  });
   
+  // Update grace window when demo session marker appears
   useEffect(() => {
-    if (hasSessionCookie && !meQuery.data && isAuthReady) {
-      // If cookie exists but auth.me hasn't returned user yet, extend grace window
+    if (!import.meta.env.DEV || typeof window === "undefined") return;
+    
+    // If demo session marker exists but auth.me hasn't returned user yet, set/extend grace window
+    if (demoSessionPresent && !meQuery.data) {
       const now = Date.now();
-      if (!graceWindowEnd || now < graceWindowEnd) {
-        const newEnd = now + 2000; // 2 second grace window
-        if (!graceWindowEnd || newEnd > graceWindowEnd) {
-          setGraceWindowEnd(newEnd);
+      const newEnd = now + 2000; // 2 second grace window
+      
+      if (!graceWindowEnd || newEnd > graceWindowEnd) {
+        setGraceWindowEnd(newEnd);
+        try {
+          localStorage.setItem('demo_grace_window_end', newEnd.toString());
+        } catch (e) {
+          // localStorage not available
+        }
+        
+        if (import.meta.env.DEV) {
+          console.log("[Auth] DEV: Grace window activated until", new Date(newEnd).toISOString());
         }
       }
     }
-  }, [hasSessionCookie, meQuery.data, isAuthReady, graceWindowEnd]);
+  }, [demoSessionPresent, meQuery.data, graceWindowEnd]);
 
-  const isInGraceWindow = useMemo(() => {
+  const isInDemoGraceWindow = useMemo(() => {
     if (!import.meta.env.DEV) return false;
     if (!graceWindowEnd) return false;
-    return Date.now() < graceWindowEnd;
+    const isActive = Date.now() < graceWindowEnd;
+    
+    // Clean up if expired
+    if (!isActive && graceWindowEnd) {
+      try {
+        localStorage.removeItem('demo_grace_window_end');
+      } catch (e) {
+        // localStorage not available
+      }
+    }
+    
+    return isActive;
   }, [graceWindowEnd]);
+
+  // DEV-only: Role switch window - prevents flicker when demo_role_override changes
+  const [roleSwitchWindowEnd, setRoleSwitchWindowEnd] = useState<number | null>(() => {
+    if (typeof window === "undefined" || import.meta.env.PROD) return null;
+    try {
+      const stored = localStorage.getItem('demo_role_switch_end');
+      if (stored) {
+        const timestamp = parseInt(stored, 10);
+        if (Date.now() < timestamp) {
+          return timestamp;
+        } else {
+          localStorage.removeItem('demo_role_switch_end');
+        }
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+    return null;
+  });
+
+  // Track last demo_role_override value to detect changes
+  const lastDemoRoleOverrideRef = useRef<string | null>(null);
+
+  // Monitor demo_role_override changes (same-tab polling + cross-tab storage event)
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof window === "undefined") return;
+
+    const checkRoleOverride = () => {
+      try {
+        const currentOverride = localStorage.getItem('demo_role_override');
+        const lastOverride = lastDemoRoleOverrideRef.current;
+
+        // If override changed, start role switch window
+        if (currentOverride !== lastOverride && lastOverride !== null) {
+          const switchEnd = Date.now() + 2000; // 2 second role switch window
+          setRoleSwitchWindowEnd(switchEnd);
+          try {
+            localStorage.setItem('demo_role_switch_end', switchEnd.toString());
+            if (import.meta.env.DEV) {
+              console.log("[Auth] DEV: role override changed -> starting role switch window until", new Date(switchEnd).toISOString());
+            }
+            
+            // Trigger auth.me refetch to get updated user
+            utils.auth.me.invalidate();
+            utils.auth.me.refetch();
+          } catch (e) {
+            // localStorage not available
+          }
+        }
+
+        lastDemoRoleOverrideRef.current = currentOverride;
+      } catch (e) {
+        // localStorage not available
+      }
+    };
+
+    // Initial check
+    checkRoleOverride();
+
+    // Poll every 200ms for same-tab changes (storage event only fires cross-tab)
+    const pollInterval = setInterval(checkRoleOverride, 200);
+
+    // Listen for cross-tab changes
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'demo_role_override') {
+        checkRoleOverride();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [utils]);
+
+  const isInRoleSwitchWindow = useMemo(() => {
+    if (!import.meta.env.DEV) return false;
+    if (!roleSwitchWindowEnd) {
+      // Also check localStorage directly (in case state hasn't updated)
+      try {
+        const stored = localStorage.getItem('demo_role_switch_end');
+        if (stored) {
+          const timestamp = parseInt(stored, 10);
+          const isActive = Date.now() < timestamp;
+          if (!isActive) {
+            localStorage.removeItem('demo_role_switch_end');
+          }
+          return isActive;
+        }
+      } catch (e) {
+        // localStorage not available
+      }
+      return false;
+    }
+    const isActive = Date.now() < roleSwitchWindowEnd;
+    
+    // Clean up if expired
+    if (!isActive && roleSwitchWindowEnd) {
+      try {
+        localStorage.removeItem('demo_role_switch_end');
+      } catch (e) {
+        // localStorage not available
+      }
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log("[Auth] DEV: isInRoleSwitchWindow =", isActive);
+    }
+    
+    return isActive;
+  }, [roleSwitchWindowEnd]);
 
   // DEV-only: Log auth state changes
   useEffect(() => {
     if (import.meta.env.DEV && typeof window !== "undefined") {
-      if (hasSessionCookie && !meQuery.data && !meQuery.isLoading) {
-        console.log("[Auth] DEV: Session cookie present but auth.me query returned no user");
+      if (demoSessionPresent && !meQuery.data && !meQuery.isLoading) {
+        console.log("[Auth] DEV: Demo session marker present but auth.me query returned no user");
       }
       
       if (meQuery.data) {
         console.log("[Auth] DEV: auth.me succeeded, user:", meQuery.data.email || meQuery.data.name);
       }
       
-      if (meQuery.error && hasSessionCookie) {
-        console.warn("[Auth] DEV: auth.me failed but session cookie exists - treating as authenticated");
+      if (meQuery.error && demoSessionPresent) {
+        console.warn("[Auth] DEV: auth.me failed but demo session marker exists - treating as authenticated");
+      }
+      
+      // Log demo session and grace window status
+      if (import.meta.env.DEV) {
+        console.log("[Auth] DEV: demo_session_present =", demoSessionPresent, "grace_window =", isInDemoGraceWindow);
       }
     }
-  }, [meQuery.data, meQuery.error, meQuery.isLoading, hasSessionCookie]);
+  }, [meQuery.data, meQuery.error, meQuery.isLoading, demoSessionPresent, isInDemoGraceWindow]);
 
   const state = useMemo(() => {
     localStorage.setItem(
@@ -99,14 +318,24 @@ export function useAuth(options?: UseAuthOptions) {
       JSON.stringify(meQuery.data)
     );
     
-    // DEV-only: If auth.me fails but session cookie exists, treat as authenticated
-    const isAuthenticatedDev = import.meta.env.DEV && hasSessionCookie && !meQuery.data && !meQuery.isLoading;
+    // DEV-only: If demo session marker exists or in grace/role switch window, treat as authenticated
+    // This prevents flicker during account switching
+    // Note: placeholderData keeps user from becoming undefined during refetch
+    const isAuthenticatedDev = import.meta.env.DEV && 
+      (demoSessionPresent || isInDemoGraceWindow || isInRoleSwitchWindow) && 
+      !meQuery.isLoading;
+    
+    // In DEV: authenticated if user exists OR demo marker/grace window active
+    // In PROD: authenticated only if user exists
+    const isAuthenticated = import.meta.env.DEV 
+      ? (Boolean(meQuery.data) || isAuthenticatedDev)
+      : Boolean(meQuery.data);
     
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data) || isAuthenticatedDev,
+      isAuthenticated,
     };
   }, [
     meQuery.data,
@@ -114,7 +343,9 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.isLoading,
     logoutMutation.error,
     logoutMutation.isPending,
-    hasSessionCookie,
+    demoSessionPresent,
+    isInDemoGraceWindow,
+    isInRoleSwitchWindow,
   ]);
 
   useEffect(() => {
@@ -131,16 +362,59 @@ export function useAuth(options?: UseAuthOptions) {
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
     
-    // DEV-only: Don't redirect if demo session cookie exists or in grace window
-    if (import.meta.env.DEV && (hasSessionCookie || isInGraceWindow)) {
+    // DEV-only: Don't redirect if demo session marker exists, in grace window, or in role switch window
+    // Also check localStorage directly as fallback (in case state hasn't updated)
+    const demoSessionPresentFallback = import.meta.env.DEV && typeof window !== "undefined"
+      ? (() => {
+          try {
+            return localStorage.getItem('demo_session_present') === '1';
+          } catch (e) {
+            return false;
+          }
+        })()
+      : false;
+    
+    const isInDemoGraceWindowFallback = import.meta.env.DEV && typeof window !== "undefined"
+      ? (() => {
+          try {
+            const stored = localStorage.getItem('demo_grace_window_end');
+            if (stored) {
+              return Date.now() < parseInt(stored, 10);
+            }
+          } catch (e) {
+            // localStorage not available
+          }
+          return false;
+        })()
+      : false;
+    
+    const isInRoleSwitchWindowFallback = import.meta.env.DEV && typeof window !== "undefined"
+      ? (() => {
+          try {
+            const stored = localStorage.getItem('demo_role_switch_end');
+            if (stored) {
+              return Date.now() < parseInt(stored, 10);
+            }
+          } catch (e) {
+            // localStorage not available
+          }
+          return false;
+        })()
+      : false;
+    
+    const hasDemoProtection = demoSessionPresent || demoSessionPresentFallback || 
+                               isInDemoGraceWindow || isInDemoGraceWindowFallback ||
+                               isInRoleSwitchWindow || isInRoleSwitchWindowFallback;
+    
+    if (import.meta.env.DEV && hasDemoProtection) {
       if (import.meta.env.DEV) {
-        console.log("[Auth] DEV: Keeping route - cookie present or in grace window");
+        console.log("[Auth] DEV: Keeping route - demo session/grace/role switch active");
       }
       return;
     }
 
     if (import.meta.env.DEV) {
-      console.log("[Auth] Redirecting to login - no user and no session cookie");
+      console.log("[Auth] Redirecting to login - no user and no demo session marker");
     }
     window.location.href = redirectPath
   }, [
@@ -149,13 +423,24 @@ export function useAuth(options?: UseAuthOptions) {
     logoutMutation.isPending,
     isAuthReady,
     state.user,
-    hasSessionCookie,
-    isInGraceWindow,
+    demoSessionPresent,
+    isInDemoGraceWindow,
+    isInRoleSwitchWindow,
   ]);
+
+  // Log when placeholderData preserves user during refetch (DEV only)
+  useEffect(() => {
+    if (import.meta.env.DEV && meQuery.isRefetching && meQuery.data) {
+      console.log("[Auth] DEV: placeholderData keeping user during refetch (no flicker)");
+    }
+  }, [meQuery.isRefetching, meQuery.data]);
 
   return {
     ...state,
     isAuthReady, // Expose readiness state for route guards
+    demoSessionPresent: import.meta.env.DEV ? demoSessionPresent : false, // DEV only (replaces hasSessionCookie)
+    isInDemoGraceWindow: import.meta.env.DEV ? isInDemoGraceWindow : false, // DEV only
+    isInRoleSwitchWindow: import.meta.env.DEV ? isInRoleSwitchWindow : false, // DEV only
     refresh: () => meQuery.refetch(),
     logout,
   };

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   suppliers,
   supplierProducts,
@@ -119,8 +120,9 @@ export default function SupplierInventory() {
     return products.filter(p => selectedProducts.has(p.id));
   };
 
-  // Check if user is supplier
-  const isSupplier = user?.role === 'supplier';
+  // Check if user is supplier using getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const isSupplier = clientRole === 'supplier';
 
   if (!isSupplier) {
     return (
@@ -478,10 +480,12 @@ export default function SupplierInventory() {
           const count = selectedProducts.size;
           const selectedProductsList = Array.from(selectedProducts);
           
+          // Use getClientRole to map server role to client role, convert id to string
+          const clientRole = getClientRole(user) || 'supplier';
           addAuditLog({
-            userId: user?.id || 'supplier-001',
+            userId: user?.id ? String(user.id) : 'supplier-001',
             userName: user?.name || 'Maria Santos',
-            userRole: user?.role || 'supplier',
+            userRole: clientRole,
             actionType: 'bulk_inventory_update',
             actionDescription: `${updateType === 'set' ? 'Set stock to' : updateType === 'increase' ? 'Increased stock by' : 'Decreased stock by'} ${value}${unit === 'percentage' ? '%' : ' units'} for ${count} products`,
             affectedItemsCount: count,

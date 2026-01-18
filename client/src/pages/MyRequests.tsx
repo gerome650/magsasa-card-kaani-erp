@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,19 +52,22 @@ export default function MyRequests() {
     );
   }
 
-  const myRequests = getUserRequests(user.id);
+  // Convert user.id to string for compatibility
+  const userIdStr = String(user.id);
+  const myRequests = getUserRequests(userIdStr);
   const pendingRequests = myRequests.filter(r => r.status === 'pending');
   const completedRequests = myRequests.filter(r => r.status !== 'pending');
 
   const handleCancelRequest = (request: PermissionRequest) => {
-    const cancelled = cancelRequest(request.id, user.id);
+    const cancelled = cancelRequest(request.id, userIdStr);
     
     if (cancelled) {
-      // Log to audit
+      // Log to audit - use getClientRole to map server role to client role
+      const clientRole = getClientRole(user) || 'farmer';
       addAuditLog({
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
+        userId: userIdStr,
+        userName: user.name || 'Unknown',
+        userRole: clientRole,
         actionType: 'permission_request_cancelled',
         actionDescription: `Cancelled permission request`,
         affectedItemsCount: request.requestedPermissions.length,
@@ -315,8 +319,8 @@ export default function MyRequests() {
             <div>
               <p className="font-medium">Your Current Role</p>
               <div className="flex items-center gap-2 mt-1">
-                <Badge className={`${getRoleBadgeColor(user.role)} text-white`}>
-                  {getRoleDisplayName(user.role)}
+                <Badge className={`${getRoleBadgeColor(getClientRole(user) || 'farmer')} text-white`}>
+                  {getRoleDisplayName(getClientRole(user) || 'farmer')}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
                   Request additional permissions to expand your access

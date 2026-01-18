@@ -16,7 +16,7 @@ import { KaAniAudience, KaAniDialect, KaAniUiMessage } from "../types";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ConversationManager } from "@/components/ConversationManager";
 import TypingIndicator from "@/components/TypingIndicator";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { normalizeRole, normalizeAudience } from "@/const";
 import { KaAniProgressBar } from "./KaAniProgressBar";
 import { KaAniWhatWeKnowPanel } from "./KaAniWhatWeKnowPanel";

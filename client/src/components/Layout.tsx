@@ -21,7 +21,7 @@ import {
   BarChart3,
   Map
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getPendingRequestsCount } from '@/data/permissionRequestsData';
@@ -227,7 +227,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                 <span className="text-sm font-bold text-green-600">
-                  {user ? getUserInitials(user.name) : 'U'}
+                  {user?.name ? getUserInitials(user.name) : 'U'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">

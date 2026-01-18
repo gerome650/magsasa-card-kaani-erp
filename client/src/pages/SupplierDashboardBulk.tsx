@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getClientRole } from "@/const";
 import {
   suppliers,
   supplierOrders,
@@ -82,11 +83,12 @@ export default function SupplierDashboardBulk() {
     const count = selectedOrders.size;
     const selectedOrdersList = Array.from(selectedOrders);
     
-    // Add audit log
+    // Add audit log - use getClientRole to map server role to client role, convert id to string
+    const clientRole = getClientRole(user) || 'supplier';
     addAuditLog({
-      userId: user?.id || 'supplier-001',
+      userId: user?.id ? String(user.id) : 'supplier-001',
       userName: user?.name || 'Maria Santos',
-      userRole: user?.role || 'supplier',
+      userRole: clientRole,
       actionType: 'bulk_confirm_orders',
       actionDescription: `Confirmed ${count} pending orders`,
       affectedItemsCount: count,
@@ -105,11 +107,12 @@ export default function SupplierDashboardBulk() {
     const count = selectedOrders.size;
     const selectedOrdersList = Array.from(selectedOrders);
     
-    // Add audit log
+    // Add audit log - use getClientRole to map server role to client role, convert id to string
+    const clientRole = getClientRole(user) || 'supplier';
     addAuditLog({
-      userId: user?.id || 'supplier-001',
+      userId: user?.id ? String(user.id) : 'supplier-001',
       userName: user?.name || 'Maria Santos',
-      userRole: user?.role || 'supplier',
+      userRole: clientRole,
       actionType: 'bulk_decline_orders',
       actionDescription: `Declined ${count} orders`,
       affectedItemsCount: count,
@@ -126,11 +129,12 @@ export default function SupplierDashboardBulk() {
     const count = selectedOrders.size;
     const selectedOrdersList = Array.from(selectedOrders);
     
-    // Add audit log
+    // Add audit log - use getClientRole to map server role to client role, convert id to string
+    const clientRole = getClientRole(user) || 'supplier';
     addAuditLog({
-      userId: user?.id || 'supplier-001',
+      userId: user?.id ? String(user.id) : 'supplier-001',
       userName: user?.name || 'Maria Santos',
-      userRole: user?.role || 'supplier',
+      userRole: clientRole,
       actionType: 'bulk_mark_preparing',
       actionDescription: `Marked ${count} confirmed orders as preparing`,
       affectedItemsCount: count,
@@ -153,8 +157,9 @@ export default function SupplierDashboardBulk() {
     cancelled: { label: 'Cancelled', color: 'bg-red-500', icon: AlertCircle }
   };
 
-  // Check if user is supplier
-  const isSupplier = user?.role === 'supplier';
+  // Check if user is supplier using getClientRole to map server role to client role
+  const clientRole = getClientRole(user);
+  const isSupplier = clientRole === 'supplier';
 
   if (!isSupplier) {
     return (
