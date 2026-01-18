@@ -1,3 +1,14 @@
+/**
+ * LEGACY AUTH CONTEXT - DEPRECATED
+ * 
+ * This file is deprecated and should NOT be used.
+ * All auth functionality has been migrated to the TRPC-based useAuth hook:
+ * @see client/src/_core/hooks/useAuth.ts
+ * 
+ * This file remains in the codebase for reference only but is not imported anywhere.
+ * It will be removed in a future cleanup.
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, authenticateUser } from '@/data/usersData';
 
