@@ -14,6 +14,19 @@ function Redirect({ to }: { to: string }) {
   }, [to, setLocation]);
   return null;
 }
+
+// Dashboard route wrapper: routes farmers to scoped dashboard, others to global dashboard
+function DashboardRoute() {
+  const { user } = useAuth();
+  const normalizedRole = normalizeRole(user);
+  
+  if (normalizedRole === "farmer") {
+    return <FarmerDashboard />;
+  }
+  
+  // For staff (manager, field_officer, etc.), show the global FarmList dashboard
+  return <FarmList />;
+}
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
@@ -48,6 +61,9 @@ import RetentionSettings from "./pages/RetentionSettings";
 import RolePermissions from "./pages/RolePermissions";
 import PermissionApproval from "./pages/PermissionApproval";
 import MyRequests from "./pages/MyRequests";
+import { useAuth } from "./contexts/AuthContext";
+import { normalizeRole } from "./const";
+import FarmerDashboard from "./components/FarmerDashboard";
 import TRPCTest from "./pages/TRPCTest";
 import DebugFarm from "./pages/DebugFarm";
 import FarmNew from "./pages/FarmNew";
@@ -85,7 +101,7 @@ function Router() {
         <Route path="/">
           <ProtectedRoute>
             <Layout>
-              <FarmList />
+              <DashboardRoute />
             </Layout>
           </ProtectedRoute>
         </Route>
