@@ -6,6 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { z } from "zod";
+import { trpcDbg } from "./_core/trpcDebug";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -279,7 +280,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(async opts => {
-      // DEV-only: Log auth.me query with cookie and role info (no sensitive cookie values logged)
+      // DEV-only: Log auth.me query with cookie and role info (no sensitive cookie values logged, gated by TRPC_DEBUG=1)
       if (process.env.NODE_ENV === "development") {
         const { parse: parseCookie } = await import("cookie");
         const cookieHeader = opts.ctx.req.headers.cookie || "";
@@ -287,7 +288,7 @@ export const appRouter = router({
         const hasCookie = !!cookies[COOKIE_NAME];
         const user = opts.ctx.user;
         // DEV-only diagnostic logging - no cookie values or tokens logged
-        console.log("[AUTH_ME] query", {
+        trpcDbg("[AUTH_ME] query", {
           hasCookie,
           cookieName: COOKIE_NAME,
           cookieHeaderPresent: !!cookieHeader,
@@ -480,9 +481,9 @@ export const appRouter = router({
           ? setCookieValue.substring(0, 50) + (setCookieValue.length > 50 ? "..." : "") 
           : null;
         
-        // DEV-only: Hard proof logging
+        // DEV-only: Hard proof logging (gated by TRPC_DEBUG=1)
         if (process.env.NODE_ENV === "development") {
-          console.log("[DEMO_LOGIN] HARD PROOF — cookie set", {
+          trpcDbg("[DEMO_LOGIN] HARD PROOF — cookie set", {
             host: ctx.req.headers.host || null,
             origin: ctx.req.headers.origin || null,
             cookieName: COOKIE_NAME,
@@ -502,7 +503,7 @@ export const appRouter = router({
             username: input.username,
           });
           
-          // ERROR if Set-Cookie header is missing
+          // ERROR if Set-Cookie header is missing (always log errors, not gated)
           if (!hasSetCookieHeader) {
             console.error("[DEMO_LOGIN] ERROR: Set-Cookie header is MISSING after setting cookie!");
             console.error("[DEMO_LOGIN] ctx.res type:", typeof ctx.res);

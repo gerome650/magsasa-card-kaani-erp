@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { trpcDbg } from "./trpcDebug";
 // superjson transformer removed - not supported in current tRPC version
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -205,7 +206,7 @@ async function startServer() {
         }
       }
       
-      // DEV-only: Log normalized input for auth.demoLogin to confirm unwrapping worked
+      // DEV-only: Log normalized input for auth.demoLogin to confirm unwrapping worked (gated by TRPC_DEBUG=1)
       if (process.env.NODE_ENV === "development") {
         const path = req.url?.split("?")[0] || "";
         const isDemoLogin = path.includes("auth.demoLogin");
@@ -216,8 +217,8 @@ async function startServer() {
         if (isDemoLogin || bodyHasDemoFields) {
           const inputToLog = Array.isArray(req.body) ? req.body[0] : req.body;
           if (inputToLog && typeof inputToLog === "object") {
-            console.log("[demoLogin] normalized input keys:", Object.keys(inputToLog));
-            console.log("[demoLogin] input shape:", {
+            trpcDbg("[demoLogin] normalized input keys:", Object.keys(inputToLog));
+            trpcDbg("[demoLogin] input shape:", {
               hasUsername: "username" in inputToLog,
               hasPassword: "password" in inputToLog,
               hasRole: "role" in inputToLog,
@@ -227,7 +228,7 @@ async function startServer() {
             });
             // Log if unwrapping occurred
             if (originalBody !== req.body && "json" in (Array.isArray(originalBody) ? originalBody[0] : originalBody)) {
-              console.log("[demoLogin] unwrapped { json } format");
+              trpcDbg("[demoLogin] unwrapped { json } format");
             }
           }
         }
