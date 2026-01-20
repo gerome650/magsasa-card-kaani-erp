@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
+import { trpc } from "@/lib/trpc";
 
 // DEV-only: Auth debugging overlay
 export function DevAuthOverlay() {
@@ -10,6 +11,7 @@ export function DevAuthOverlay() {
   const [location] = useLocation();
   const { user, isAuthenticated, loading, isFetching } = useAuth();
   const [sessionProbe, setSessionProbe] = useState<any>(null);
+  const logoutMutation = trpc.auth.logout.useMutation();
 
   const probeSession = async () => {
     try {
@@ -20,6 +22,18 @@ export function DevAuthOverlay() {
     } catch (error) {
       console.error("[DEV] Session probe failed:", error);
       setSessionProbe({ error: String(error) });
+    }
+  };
+
+  const handleResetDemoSession = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      // Reload page after logout to clear all state
+      window.location.reload();
+    } catch (error) {
+      console.error("[DEV] Reset demo session failed:", error);
+      // Still reload even if logout fails (cookie might be cleared client-side)
+      window.location.reload();
     }
   };
 
@@ -57,13 +71,21 @@ export function DevAuthOverlay() {
         <div>
           <span className="text-gray-400">User ID:</span> {user?.id || "—"}
         </div>
-        <div className="mt-2 pt-2 border-t border-gray-700">
+        <div className="mt-2 pt-2 border-t border-gray-700 space-y-2">
           <Button
             onClick={probeSession}
             className="w-full text-xs py-1 h-auto"
             size="sm"
           >
             Probe Session
+          </Button>
+          <Button
+            onClick={handleResetDemoSession}
+            className="w-full text-xs py-1 h-auto bg-red-600 hover:bg-red-700"
+            size="sm"
+            disabled={logoutMutation.isPending}
+          >
+            {logoutMutation.isPending ? "Resetting..." : "Reset Demo Session"}
           </Button>
           {sessionProbe && (
             <div className="mt-2 text-xs">
