@@ -39,7 +39,9 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
+    // Note: OAuth baseURL is for external OAuth server, not local dev server
+    // In DEV, demo auth is used instead of OAuth, so this baseURL is only for production OAuth flows
+    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl || "(not set - demo auth will be used in DEV)");
     // Only log error in production; in dev mode, demo auth will be used
     if (!ENV.oAuthServerUrl && ENV.isProduction) {
       console.error(
@@ -47,6 +49,8 @@ class OAuthService {
       );
     } else if (!ENV.oAuthServerUrl) {
       console.log("[OAuth] OAUTH_SERVER_URL not set - demo auth fallback will be used");
+    } else if (process.env.NODE_ENV === "development") {
+      console.log("[OAuth] baseURL resolved: Using external OAuth server (demo auth also available)");
     }
   }
 

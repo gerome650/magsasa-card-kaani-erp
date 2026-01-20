@@ -58,6 +58,58 @@ async function startServer() {
     });
   }
   
+  // DEV-only: Cookie validation endpoint
+  if (process.env.NODE_ENV === "development") {
+    app.get("/__debug/cookies", async (req, res) => {
+      try {
+        const { COOKIE_NAME } = await import("@shared/const");
+        const cookieHeader = req.headers.cookie || "";
+        const { parse } = await import("cookie");
+        const cookies = parse(cookieHeader);
+        const cookieNames = Object.keys(cookies);
+        const cookieNamePresent = !!cookies[COOKIE_NAME];
+        
+        res.json({
+          host: req.headers.host || null,
+          cookieHeaderPresent: !!cookieHeader,
+          cookieHeaderLength: cookieHeader.length,
+          cookieNames,
+          cookieNamePresent,
+          cookieName: COOKIE_NAME,
+        });
+      } catch (error) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  }
+  
+  // DEV-only: Cookie check endpoint for debugging cookie issues (legacy, kept for compatibility)
+  if (process.env.NODE_ENV === "development") {
+    app.get("/__demo/cookie-check", async (req, res) => {
+      try {
+        const { COOKIE_NAME } = await import("@shared/const");
+        const cookieHeader = req.headers.cookie || "";
+        const { parse } = await import("cookie");
+        const cookies = parse(cookieHeader);
+        const cookieNamePresent = !!cookies[COOKIE_NAME];
+        
+        res.json({
+          host: req.headers.host || null,
+          cookieHeaderPresent: !!cookieHeader,
+          cookieHeaderLength: cookieHeader.length,
+          cookieNamePresent,
+          cookieName: COOKIE_NAME,
+        });
+      } catch (error) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  }
+  
   // DEV-only: Session probe endpoint for debugging auth issues
   if (process.env.NODE_ENV === "development") {
     app.get("/__debug/session", async (req, res) => {
@@ -116,6 +168,74 @@ async function startServer() {
   
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
+  // tRPC wire format unwrapper: unwraps { json, meta } to just the input object
+  // This middleware runs AFTER express.json() but BEFORE createExpressMiddleware
+  // tRPC sends data in { json: {...}, meta: {...} } format, but procedures expect just {...}
+  app.use("/api/trpc", (req, res, next) => {
+    // Only process POST requests with parsed JSON body
+    if (req.method === "POST" && req.body && typeof req.body === "object") {
+      // Unwrap function: if object has "json" key, extract it (ignore meta)
+      const unwrapWire = (x: any): any => {
+        if (!x || typeof x !== "object") return x;
+        if ("json" in x) return (x as any).json;
+        return x;
+      };
+      
+      const originalBody = req.body;
+      
+      // Handle batch array: [{ json: {...} }, ...]
+      if (Array.isArray(req.body)) {
+        req.body = req.body.map(unwrapWire);
+      } 
+      // Handle keyed batch object: { "0": { json: {...} }, "1": { json: {...} } }
+      else if (typeof req.body === "object") {
+        const keys = Object.keys(req.body);
+        // Only treat as keyed batch if keys look numeric (e.g., "0", "1", "2")
+        const isKeyedBatch = keys.length > 0 && keys.every(k => String(Number(k)) === k);
+        if (isKeyedBatch) {
+          const unwrapped: any = {};
+          for (const k of keys) {
+            unwrapped[k] = unwrapWire(req.body[k]);
+          }
+          req.body = unwrapped;
+        } else {
+          // Single object input: { json: {...} } -> {...}
+          req.body = unwrapWire(req.body);
+        }
+      }
+      
+      // DEV-only: Log normalized input for auth.demoLogin to confirm unwrapping worked
+      if (process.env.NODE_ENV === "development") {
+        const path = req.url?.split("?")[0] || "";
+        const isDemoLogin = path.includes("auth.demoLogin");
+        const bodyHasDemoFields = Array.isArray(req.body) 
+          ? req.body.some((item: any) => item && typeof item === "object" && ("username" in item || "password" in item))
+          : req.body && typeof req.body === "object" && ("username" in req.body || "password" in req.body);
+        
+        if (isDemoLogin || bodyHasDemoFields) {
+          const inputToLog = Array.isArray(req.body) ? req.body[0] : req.body;
+          if (inputToLog && typeof inputToLog === "object") {
+            console.log("[demoLogin] normalized input keys:", Object.keys(inputToLog));
+            console.log("[demoLogin] input shape:", {
+              hasUsername: "username" in inputToLog,
+              hasPassword: "password" in inputToLog,
+              hasRole: "role" in inputToLog,
+              usernameType: typeof inputToLog.username,
+              passwordType: typeof inputToLog.password,
+              roleType: typeof inputToLog.role,
+            });
+            // Log if unwrapping occurred
+            if (originalBody !== req.body && "json" in (Array.isArray(originalBody) ? originalBody[0] : originalBody)) {
+              console.log("[demoLogin] unwrapped { json } format");
+            }
+          }
+        }
+      }
+    }
+    next();
+  });
+  
   // tRPC API
   app.use(
     "/api/trpc",

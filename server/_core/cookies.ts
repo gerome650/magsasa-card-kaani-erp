@@ -43,3 +43,24 @@ export function getSessionCookieOptions(
     domain: undefined,
   };
 }
+
+/**
+ * DEV-only: Get base URL from request (handles port drift automatically).
+ * Use this for any redirects or URLs that need to match the current server port.
+ * 
+ * @param req - Express request object
+ * @returns Base URL (e.g., "http://localhost:3001" or "http://localhost:3000")
+ */
+export function getDevBaseUrl(req: Request): string {
+  if (process.env.NODE_ENV !== "development") {
+    // In production, derive from request
+    const protocol = req.protocol || "https";
+    const host = req.headers.host || "localhost";
+    return `${protocol}://${host}`;
+  }
+  
+  // In DEV, use request headers to handle port drift (3000 → 3001)
+  const protocol = req.protocol || "http";
+  const host = req.headers.host || "localhost:3000";
+  return `${protocol}://${host}`;
+}

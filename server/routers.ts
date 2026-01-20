@@ -279,21 +279,50 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(async opts => {
-      // DEV-only: Log auth.me query with cookie and role info
+      // DEV-only: Log auth.me query with cookie and role info (no sensitive cookie values logged)
       if (process.env.NODE_ENV === "development") {
         const { parse: parseCookie } = await import("cookie");
-        const cookies = parseCookie(opts.ctx.req.headers.cookie || "");
+        const cookieHeader = opts.ctx.req.headers.cookie || "";
+        const cookies = parseCookie(cookieHeader);
         const hasCookie = !!cookies[COOKIE_NAME];
         const user = opts.ctx.user;
-        console.log("[Auth] DEV: auth.me query", {
+        // DEV-only diagnostic logging - no cookie values or tokens logged
+        console.log("[AUTH_ME] query", {
           hasCookie,
+          cookieName: COOKIE_NAME,
+          cookieHeaderPresent: !!cookieHeader,
+          cookieHeaderLength: cookieHeader.length,
+          cookiePresent: hasCookie ? "yes" : "no",
+          host: opts.ctx.req.headers.host || null,
+          origin: opts.ctx.req.headers.origin || null,
           userRole: user?.role || null,
           userId: user?.id || null,
           userEmail: user?.email || null,
           loginMethod: user?.loginMethod || null,
         });
       }
-      return opts.ctx.user;
+      
+      // Normalize legacy roles: ensure client never receives role="user"
+      // For demo accounts, role comes from JWT (farmer/field_officer/manager/supplier)
+      // For legacy accounts, normalize "user" -> "field_officer" and "admin" -> "manager"
+      const user = opts.ctx.user;
+      if (user && user.role === "user") {
+        // Normalize legacy "user" role to "field_officer" for consistency
+        // This prevents role="user" leakage to client
+        return {
+          ...user,
+          role: "field_officer" as const,
+        };
+      }
+      if (user && user.role === "admin") {
+        // Normalize legacy "admin" role to "manager" for consistency
+        return {
+          ...user,
+          role: "manager" as const,
+        };
+      }
+      
+      return user;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -306,14 +335,25 @@ export const appRouter = router({
     // Creates a session cookie for demo users without OAuth
     demoLogin: publicProcedure
       .input(z.object({
-        username: z.string(),
-        password: z.string(),
+        username: z.string().min(1, "Username is required"),
+        password: z.string().min(1, "Password is required"),
         role: z.enum(["farmer", "field_officer", "manager", "supplier"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         // Only allow in development mode
         if (process.env.NODE_ENV === "production") {
           throw new Error("Demo login is not available in production");
+        }
+        
+        // Harden input validation: ensure non-empty strings after trimming
+        const usernameValue = input.username.trim();
+        const passwordValue = input.password.trim();
+        
+        if (!usernameValue || !passwordValue) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Username and password are required",
+          });
         }
 
         // Demo user credentials (matches client-side demoUsers)
@@ -324,7 +364,7 @@ export const appRouter = router({
         ];
 
         const demoUser = demoUsers.find(
-          (u) => u.username === input.username && u.password === input.password
+          (u) => u.username === usernameValue && u.password === passwordValue
         );
 
         if (!demoUser) {
@@ -394,20 +434,80 @@ export const appRouter = router({
 
         // Set session cookie
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, {
-          ...cookieOptions,
-          maxAge: ONE_YEAR_MS,
-        });
         
-        // DEV-only: Log cookie setting with role and loginMethod
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Auth] DEV: demoLogin - Setting cookie", {
-            role: clientRole,
-            loginMethod: "demo",
-            username: input.username,
-            hasSetCookie: true,
-            cookieName: COOKIE_NAME,
+        // HARD PROOF: Verify ctx.res exists before setting cookie
+        if (!ctx.res) {
+          console.error("[demoLogin] ctx.res missing — cannot set cookie");
+          throw new Error("ctx.res is undefined - cannot set cookie");
+        }
+        
+        // Try Express res.cookie first (if available)
+        if (typeof (ctx.res as any).cookie === "function") {
+          (ctx.res as any).cookie(COOKIE_NAME, sessionToken, {
+            ...cookieOptions,
+            maxAge: ONE_YEAR_MS,
           });
+        } else {
+          // Fallback: Set cookie header directly using cookie.serialize
+          const cookieModule = await import("cookie");
+          const serialize = (cookieModule as any).serialize;
+          if (!serialize || typeof serialize !== "function") {
+            throw new Error("cookie.serialize is not available");
+          }
+          const cookieString = serialize(COOKIE_NAME, sessionToken, {
+            httpOnly: cookieOptions.httpOnly ?? true,
+            secure: cookieOptions.secure ?? false,
+            sameSite: cookieOptions.sameSite ?? "lax",
+            path: cookieOptions.path ?? "/",
+            domain: cookieOptions.domain,
+            maxAge: Math.floor(ONE_YEAR_MS / 1000), // maxAge in seconds for serialize
+          });
+          ctx.res.setHeader("Set-Cookie", cookieString);
+        }
+        
+        // HARD PROOF LOGGING: Immediately after setting cookie, verify Set-Cookie header
+        const setCookieHeader = ctx.res.getHeader("set-cookie");
+        const setCookieArray = Array.isArray(setCookieHeader) 
+          ? setCookieHeader 
+          : setCookieHeader 
+            ? [String(setCookieHeader)] 
+            : [];
+        const hasSetCookieHeader = setCookieArray.length > 0;
+        const setCookieValue = hasSetCookieHeader ? String(setCookieArray[0]) : null;
+        const setCookieHeaderCount = setCookieArray.length;
+        const setCookieHeaderLength = setCookieValue ? setCookieValue.length : 0;
+        const setCookiePreview = setCookieValue 
+          ? setCookieValue.substring(0, 50) + (setCookieValue.length > 50 ? "..." : "") 
+          : null;
+        
+        // DEV-only: Hard proof logging
+        if (process.env.NODE_ENV === "development") {
+          console.log("[DEMO_LOGIN] HARD PROOF — cookie set", {
+            host: ctx.req.headers.host || null,
+            origin: ctx.req.headers.origin || null,
+            cookieName: COOKIE_NAME,
+            hasSetCookieHeader,
+            setCookieHeaderCount,
+            setCookieHeaderLength,
+            setCookieHeaderPreview: setCookiePreview,
+            cookieOptions: {
+              httpOnly: cookieOptions.httpOnly,
+              secure: cookieOptions.secure,
+              sameSite: cookieOptions.sameSite,
+              path: cookieOptions.path,
+              domain: cookieOptions.domain,
+              maxAge: ONE_YEAR_MS,
+            },
+            role: clientRole,
+            username: input.username,
+          });
+          
+          // ERROR if Set-Cookie header is missing
+          if (!hasSetCookieHeader) {
+            console.error("[DEMO_LOGIN] ERROR: Set-Cookie header is MISSING after setting cookie!");
+            console.error("[DEMO_LOGIN] ctx.res type:", typeof ctx.res);
+            console.error("[DEMO_LOGIN] ctx.res.cookie available:", typeof (ctx.res as any).cookie === "function");
+          }
         }
 
         // Return user payload identical to auth.me query shape (full user object)

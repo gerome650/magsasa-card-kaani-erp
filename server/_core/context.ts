@@ -16,12 +16,26 @@ export type TrpcContext = {
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
+  // CRITICAL: Ensure req and res are passed through from Express
+  // createExpressMiddleware provides { req, res } from Express
+  const { req, res } = opts;
+  
+  // DEV-only: Verify req/res are present
+  if (process.env.NODE_ENV === "development") {
+    if (!req) {
+      console.error("[createContext] ERROR: req is missing!");
+    }
+    if (!res) {
+      console.error("[createContext] ERROR: res is missing!");
+    }
+  }
+  
   let user: User | null = null;
 
   // DEV-only: Auth bypass - inject demo user if enabled
   if (ENV.demoBypassAuth) {
     // Check for role in query param first (for direct requests)
-    const urlParams = new URLSearchParams(opts.req.url?.split("?")[1] || "");
+    const urlParams = new URLSearchParams(req.url?.split("?")[1] || "");
     const queryRole = urlParams.get("role");
     
     // Get role from query param or in-memory override
@@ -36,8 +50,8 @@ export async function createContext(
         console.log(`[DEMO_BYPASS] Injected demo user: ${demoRole} (${user.email})`);
       }
       return {
-        req: opts.req,
-        res: opts.res,
+        req,
+        res,
         user,
       };
     }
@@ -45,15 +59,15 @@ export async function createContext(
 
   // Normal authentication flow
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    user = await sdk.authenticateRequest(req);
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;
   }
 
   return {
-    req: opts.req,
-    res: opts.res,
+    req,
+    res,
     user,
   };
 }
