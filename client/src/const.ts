@@ -145,18 +145,108 @@ export function normalizeAudience(value: unknown): "loan_officer" | "farmer" {
   return "loan_officer";
 }
 
-// Generate login URL at runtime so redirect URI reflects the current origin.
-export const getLoginUrl = () => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
+// Module-level flag to prevent warning spam
+let warnedInvalidLoginUrl = false;
 
-  const url = new URL(`${oauthPortalUrl}/app-auth`);
-  url.searchParams.set("appId", appId);
-  url.searchParams.set("redirectUri", redirectUri);
-  url.searchParams.set("state", state);
-  url.searchParams.set("type", "signIn");
+/**
+ * Check if a string is an absolute HTTP(S) URL.
+ */
+function isAbsoluteHttpUrl(s: string): boolean {
+  return /^https?:\/\//i.test(s);
+}
 
-  return url.toString();
-};
+/**
+ * Get the current origin in DEV, fallback to localhost:3000.
+ * Uses window.location.origin to automatically handle port changes (3000 → 3001).
+ */
+function getDevOrigin(): string {
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
+  }
+  return "http://localhost:3000";
+}
+
+/**
+ * Safely join origin and path, ensuring no double slashes.
+ */
+function safeJoin(origin: string, path: string): string {
+  const cleanOrigin = origin.replace(/\/+$/, ""); // Remove trailing slashes
+  const cleanPath = path.startsWith("/") ? path : `/${path}`; // Ensure leading slash
+  return `${cleanOrigin}${cleanPath}`;
+}
+
+/**
+ * Generate login URL at runtime so redirect URI reflects the current origin.
+ * NEVER throws - always returns a valid string (either the configured URL or "/login" fallback).
+ * 
+ * In DEV, uses window.location.origin to automatically handle port changes (3000 → 3001).
+ * 
+ * @returns OAuth login URL or "/login" fallback if configuration is invalid
+ */
+export function getLoginUrl(): string {
+  // Read candidate from environment variables
+  const oauthPortalUrl = String(import.meta.env.VITE_OAUTH_PORTAL_URL ?? "").trim();
+  const appId = String(import.meta.env.VITE_APP_ID ?? "").trim();
+
+  // If oauthPortalUrl is empty or not a string, return safe fallback
+  if (!oauthPortalUrl) {
+    if (import.meta.env.DEV && !warnedInvalidLoginUrl) {
+      warnedInvalidLoginUrl = true;
+      console.warn("[auth] VITE_OAUTH_PORTAL_URL not set, falling back to /login");
+    }
+    return "/login";
+  }
+
+  // If candidate starts with "/", it's a relative path - return as-is (do NOT call new URL)
+  if (oauthPortalUrl.startsWith("/")) {
+    return oauthPortalUrl;
+  }
+
+  // If candidate is absolute HTTP(S) URL, validate and construct
+  if (isAbsoluteHttpUrl(oauthPortalUrl)) {
+    try {
+      // Get dynamic origin (handles port changes automatically in DEV)
+      // In DEV: uses window.location.origin (auto-detects port 3000 → 3001)
+      // In PROD: uses window.location.origin (should always be available client-side)
+      const origin = typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : (import.meta.env.DEV ? "http://localhost:3000" : "");
+      
+      if (!origin) {
+        throw new Error("Cannot determine origin");
+      }
+      
+      const redirectUri = `${origin}/api/oauth/callback`;
+      const state = btoa(redirectUri);
+
+      const url = new URL(`${oauthPortalUrl}/app-auth`);
+      url.searchParams.set("appId", appId);
+      url.searchParams.set("redirectUri", redirectUri);
+      url.searchParams.set("state", state);
+      url.searchParams.set("type", "signIn");
+
+      return url.toString();
+    } catch (error) {
+      // URL construction failed - return safe fallback
+      if (import.meta.env.DEV && !warnedInvalidLoginUrl) {
+        warnedInvalidLoginUrl = true;
+        console.warn("[auth] Failed to construct OAuth URL, falling back to /login", {
+          oauthPortalUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return "/login";
+    }
+  }
+
+  // Candidate is not empty, not relative, and not absolute HTTP(S) - treat as invalid
+  // Examples: "localhost:3000/login", "invalid-url", etc.
+  if (import.meta.env.DEV && !warnedInvalidLoginUrl) {
+    warnedInvalidLoginUrl = true;
+    console.warn("[auth] Invalid OAuth portal URL format, falling back to /login", {
+      oauthPortalUrl,
+      hint: "Expected absolute URL (https://...) or relative path (/login)",
+    });
+  }
+  return "/login";
+}

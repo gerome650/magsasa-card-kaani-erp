@@ -97,7 +97,17 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   }
 
   // Otherwise use OAuth login
-  window.location.href = getLoginUrl();
+  // Safely get login URL with fallback - never throw
+  try {
+    const loginUrl = getLoginUrl();
+    window.location.href = loginUrl || "/login";
+  } catch (error) {
+    // getLoginUrl should never throw after our fix, but guard anyway
+    if (import.meta.env.DEV) {
+      console.warn("[main] getLoginUrl threw (should not happen), using /login fallback", error);
+    }
+    window.location.href = "/login";
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {

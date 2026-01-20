@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 // Note: Login.tsx uses trpc.auth.demoLogin mutation directly, no useAuth hook needed
 import { trpc } from '@/lib/trpc';
-import { startDemoTransition, clearDemoTransition } from '@/_core/demo/demoTransitionStore';
+import { startDemoTransition, clearDemoTransition, getCurrentTransitionId } from '@/_core/demo/demoTransitionStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,51 +28,231 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Harden input validation: ensure username and password are non-empty strings
+    const usernameValue = String(username || '').trim();
+    const passwordValue = String(password || '').trim();
+    
+    if (!usernameValue || !passwordValue) {
+      setError('Username and password are required');
+      return;
+    }
+    
     setIsLoading(true);
+
+    // Start demo transition and capture transition ID to prevent stale overwrites
+    const transitionId = import.meta.env.DEV ? startDemoTransition(3000) : 0;
+    
+    // Fail-safe: Auto-clear transition after max timeout (prevents infinite hang)
+    // This ensures transition ALWAYS ends, even if something goes wrong
+    let transitionTimeoutId: NodeJS.Timeout | null = null;
+    if (import.meta.env.DEV) {
+      transitionTimeoutId = setTimeout(() => {
+        if (getCurrentTransitionId() === transitionId) {
+          console.warn("[DEMO_SWITCH] fail-safe timeout - clearing transition", { transitionId });
+          clearDemoTransition();
+        }
+      }, 5000); // 5 second max timeout
+    }
+    
+    // DEV-only: Get cached user before invalidation
+    let cachedUserBefore: any = null;
+    if (import.meta.env.DEV) {
+      try {
+        const cached = utils.auth.me.getData();
+        cachedUserBefore = cached || null;
+      } catch (e) {
+        // Ignore - cache access may fail
+      }
+    }
+
+    // DEV-only: Structured logging at start
+    if (import.meta.env.DEV) {
+      console.log("[DEMO_SWITCH] start", {
+        transitionId,
+        currentTransitionId: getCurrentTransitionId(),
+        location: location,
+        username,
+        role: username === 'farmer' ? 'farmer' : username === 'officer' ? 'field_officer' : username === 'manager' ? 'manager' : undefined,
+        cachedUserBefore: cachedUserBefore ? { id: cachedUserBefore.id, role: cachedUserBefore.role } : null,
+      });
+    }
 
     try {
       // Determine role from username (server will use this to set JWT role)
+      // usernameValue and passwordValue are already validated and trimmed above
       let role: 'farmer' | 'field_officer' | 'manager' | undefined;
-      if (username === 'farmer') {
+      if (usernameValue === 'farmer') {
         role = 'farmer';
-      } else if (username === 'officer') {
+      } else if (usernameValue === 'officer') {
         role = 'field_officer';
-      } else if (username === 'manager') {
+      } else if (usernameValue === 'manager') {
         role = 'manager';
       }
 
-      // First try demo login (creates server session cookie with role embedded in JWT)
+      // DEV-only: Log input values before mutation
+      if (import.meta.env.DEV) {
+        console.log("[LOGIN SUBMIT]", { 
+          username: usernameValue, 
+          password: passwordValue ? '***' : '', 
+          role 
+        });
+      }
+
+      // Step 1: Call demoLogin mutation (creates server session cookie with role embedded in JWT)
       const demoResult = await demoLoginMutation.mutateAsync({
-        username,
-        password,
+        username: usernameValue,
+        password: passwordValue,
         role, // Send role explicitly - server will embed it in JWT
       });
 
-      if (demoResult.success === true) {
-        // Set demo session markers in localStorage (for useAuth grace window logic)
-        // Note: HttpOnly cookies cannot be read from JS, so we use localStorage markers
-        const graceWindowEnd = Date.now() + 3000; // 3 second grace window
+      // DEV-only: Log demoLogin success
+      if (import.meta.env.DEV) {
+        console.log("[DEMO_SWITCH] demoLogin success", {
+          transitionId,
+          currentTransitionId: getCurrentTransitionId(),
+          demoUser: demoResult.user ? { id: demoResult.user.id, role: demoResult.user.role, email: demoResult.user.email } : null,
+        });
+      }
+
+      if (demoResult.success === true && demoResult.user) {
+        // Step 2: Verify transition is still current (prevent stale overwrites)
+        if (import.meta.env.DEV && getCurrentTransitionId() !== transitionId) {
+          // A newer transition started - abort silently
+          if (import.meta.env.DEV) {
+            console.log("[DEMO_SWITCH] aborted - newer transition started", { transitionId, current: getCurrentTransitionId() });
+          }
+          return;
+        }
+
+        // Step 3: Optimistically set auth.me cache BEFORE refetch to prevent flicker
+        // This ensures user never becomes null during refetch, preventing unauthenticated render
+        utils.auth.me.setData(undefined, demoResult.user);
+        
+        if (import.meta.env.DEV) {
+          console.log("[DEMO_SWITCH] optimistic cache set", {
+            transitionId,
+            cachedUser: { id: demoResult.user.id, role: demoResult.user.role, email: demoResult.user.email },
+          });
+        }
+
+        // Step 4: Refetch auth.me to confirm cookie (without invalidate to avoid clearing cache)
+        // Use refetch() instead of invalidate() + query() to avoid cache clearing
+        // This refetch will update the cache with server response, but won't clear it first
+        let authMeUser: any = null;
         try {
-          localStorage.setItem('demo_session_present', '1');
-          localStorage.setItem('demo_grace_window_end', graceWindowEnd.toString());
-        } catch (e) {
-          // localStorage not available
+          // Refetch without invalidating (keeps optimistic data until server responds)
+          const refetchResult = await Promise.race([
+            utils.auth.me.refetch(),
+            new Promise<any>((_, reject) => 
+              setTimeout(() => reject(new Error("auth.me refetch timeout after 3s")), 3000)
+            ),
+          ]);
+          authMeUser = refetchResult?.data;
+          
+          // If refetch didn't return data, query directly
+          if (!authMeUser) {
+            authMeUser = await utils.client.auth.me.query();
+          }
+        } catch (timeoutError: any) {
+          if (import.meta.env.DEV) {
+            console.warn("[DEMO_SWITCH] auth.me refetch timeout", {
+              transitionId,
+              error: timeoutError?.message || String(timeoutError),
+            });
+          }
+          // On timeout, try one more time without timeout (let TRPC handle it)
+          authMeUser = await utils.client.auth.me.query();
         }
         
-        // CRITICAL: Clear demo transition BEFORE refetch (synchronous, no delay)
+        // DEV-only: Log first refetch result
+        if (import.meta.env.DEV) {
+          console.log("[DEMO_SWITCH] me refetch #1", {
+            transitionId,
+            currentTransitionId: getCurrentTransitionId(),
+            returnedUser: authMeUser ? { id: authMeUser.id, role: authMeUser.role, email: authMeUser.email } : null,
+            expectedUser: { id: demoResult.user.id, role: demoResult.user.role, email: demoResult.user.email },
+            matches: authMeUser && (authMeUser.id === demoResult.user.id || authMeUser.email === demoResult.user.email),
+          });
+        }
+        
+        // Step 5: Verify user matches demoLogin result (cookie race check)
+        // If user doesn't match after first refetch, retry once after 150ms
+        if (!authMeUser || 
+            (authMeUser.id !== demoResult.user.id && 
+             authMeUser.email !== demoResult.user.email)) {
+          // Cookie might not be applied yet - retry once after short delay
+          if (import.meta.env.DEV) {
+            console.log("[DEMO_SWITCH] mismatch -> retry scheduled", {
+              transitionId,
+              currentTransitionId: getCurrentTransitionId(),
+            });
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          // Verify transition is still current before retry
+          if (import.meta.env.DEV && getCurrentTransitionId() !== transitionId) {
+            // A newer transition started - abort silently
+            if (import.meta.env.DEV) {
+              console.log("[DEMO_SWITCH] aborted during retry - newer transition started", { transitionId, current: getCurrentTransitionId() });
+            }
+            return;
+          }
+          
+          // Retry with timeout protection
+          try {
+            authMeUser = await Promise.race([
+              utils.client.auth.me.query(),
+              new Promise<any>((_, reject) => 
+                setTimeout(() => reject(new Error("auth.me retry timeout after 2s")), 2000)
+              ),
+            ]);
+          } catch (timeoutError: any) {
+            if (import.meta.env.DEV) {
+              console.warn("[DEMO_SWITCH] auth.me retry timeout", {
+                transitionId,
+                error: timeoutError?.message || String(timeoutError),
+              });
+            }
+            // On timeout, try one final time without timeout
+            authMeUser = await utils.client.auth.me.query();
+          }
+          
+          // DEV-only: Log retry result
+          if (import.meta.env.DEV) {
+            console.log("[DEMO_SWITCH] me refetch #2", {
+              transitionId,
+              currentTransitionId: getCurrentTransitionId(),
+              returnedUser: authMeUser ? { id: authMeUser.id, role: authMeUser.role, email: authMeUser.email } : null,
+              expectedUser: { id: demoResult.user.id, role: demoResult.user.role, email: demoResult.user.email },
+              matches: authMeUser && (authMeUser.id === demoResult.user.id || authMeUser.email === demoResult.user.email),
+            });
+          }
+        }
+
+        // Step 6: Verify transition is still current before navigating
+        if (import.meta.env.DEV && getCurrentTransitionId() !== transitionId) {
+          // A newer transition started - abort silently
+          if (import.meta.env.DEV) {
+            console.log("[DEMO_SWITCH] aborted before navigation - newer transition started", { transitionId, current: getCurrentTransitionId() });
+          }
+          return;
+        }
+
+        // Step 7: Clear demo transition and navigate
         if (import.meta.env.DEV) {
           clearDemoTransition();
         }
         
-        // Invalidate and refetch auth.me to sync with server session cookie
-        // This ensures the client auth state matches the server session
-        // DO NOT call legacy login() - rely solely on server session cookie + TRPC auth.me
-        await utils.auth.me.invalidate();
-        await utils.auth.me.refetch();
-        
-        // DEV-only: Log successful demo login
+        // DEV-only: Log successful completion
         if (import.meta.env.DEV) {
-          console.log("[DEMO] demoLogin success; refetching auth.me and navigating", { username, redirectTo });
+          console.log("[DEMO_SWITCH] done (navigating)", {
+            transitionId,
+            currentTransitionId: getCurrentTransitionId(),
+            redirectTo,
+            finalUser: authMeUser ? { id: authMeUser.id, role: authMeUser.role } : null,
+          });
         }
         
         // Navigate after auth.me is synced
@@ -81,15 +261,30 @@ export default function Login() {
       }
     } catch (demoError: any) {
       // Demo login failed - show error
-      // Note: Legacy AuthContext.login() fallback is kept for backwards compatibility ONLY
-      // but demo_role_override writes are removed (obsolete, cause role mismatch flicker)
       setError(demoError?.message || 'Invalid username or password. Please try again.');
       
-      // Fallback legacy login (backwards compatibility only)
-      // Note: AuthContext.login() is deprecated stub, but kept for compatibility
-      // DO NOT write demo_role_override here - it causes role mismatch flicker
-      // If fallback needed in future, use trpc.auth.demoLogin with different credentials
+      if (import.meta.env.DEV) {
+        console.error("[DEMO_SWITCH] error", {
+          transitionId,
+          currentTransitionId: getCurrentTransitionId(),
+          error: demoError?.message || String(demoError),
+        });
+      }
     } finally {
+      // Always clear transition and loading state
+      if (import.meta.env.DEV) {
+        // Clear fail-safe timeout
+        if (transitionTimeoutId) {
+          clearTimeout(transitionTimeoutId);
+          transitionTimeoutId = null;
+        }
+        
+        console.log("[DEMO_SWITCH] finally (clearing transition)", {
+          transitionId,
+          currentTransitionId: getCurrentTransitionId(),
+        });
+        clearDemoTransition();
+      }
       setIsLoading(false);
     }
   };
@@ -101,17 +296,20 @@ export default function Login() {
   ];
 
   const fillDemoCredentials = (user: string, pass: string, roleKey: 'farmer' | 'field_officer' | 'manager') => {
-    // DEV-ONLY: Start demo transition SYNCHRONOUSLY at the very top, BEFORE any other operations
-    // This prevents flicker by blocking UI rendering immediately on click (no delay)
-    if (import.meta.env.DEV) {
-      startDemoTransition(2000); // 2 second transition window
-    }
-    
+    // Fill credentials and immediately submit to avoid race conditions
+    // This ensures state is set before submit runs
     setUsername(user);
     setPassword(pass);
     setError('');
     
-    // NO MORE localStorage role override - role is now server-driven via JWT
+    // Submit immediately after state is set (React will batch the state updates)
+    // Use setTimeout to ensure state updates are applied before submit
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.requestSubmit();
+      }
+    }, 0);
   };
 
   return (
@@ -209,7 +407,7 @@ export default function Login() {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isLoading}
+                disabled={isLoading || !username.trim() || !password.trim()}
               >
                 {isLoading ? (
                   <>

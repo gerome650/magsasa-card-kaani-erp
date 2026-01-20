@@ -10,17 +10,34 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
+  // Safely get login URL with fallback - never throw during render
+  let defaultRedirectPath = "/login";
+  try {
+    const loginUrl = getLoginUrl();
+    if (loginUrl && typeof loginUrl === "string") {
+      defaultRedirectPath = loginUrl;
+    }
+  } catch (error) {
+    // getLoginUrl should never throw after our fix, but guard anyway
+    if (import.meta.env.DEV) {
+      console.warn("[useAuth] getLoginUrl threw (should not happen), using /login fallback", error);
+    }
+  }
+
+  const { redirectOnUnauthenticated = false, redirectPath = defaultRedirectPath } =
     options ?? {};
   const utils = trpc.useUtils();
 
+  // Stable query key - never changes, prevents query recreation
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
+    retry: 0, // No retries to avoid long hangs
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    staleTime: 30000, // Keep data fresh for 30 seconds
+    staleTime: 5000, // Keep data fresh for 5 seconds (reduced from 30s to reduce churn)
     gcTime: 300000, // Keep in cache for 5 minutes
     placeholderData: (prev) => prev, // CRITICAL: Preserve previous user data during refetches to prevent flicker
+    // Ensure data is not cleared on refetch (keepPreviousData equivalent)
+    refetchOnMount: true,
   });
 
   // Auth readiness: true after FIRST auth.me attempt completes (success or failure)
@@ -322,6 +339,18 @@ export function useAuth(options?: UseAuthOptions) {
       JSON.stringify(meQuery.data)
     );
     
+    // Get current user data (may be placeholder data during refetch)
+    // placeholderData: (prev) => prev ensures data never becomes null during refetch
+    const currentUser = meQuery.data;
+    const hasUser = Boolean(currentUser);
+    
+    // Stable authentication status: treat as authenticated if:
+    // 1. User exists (current data), OR
+    // 2. Query is fetching AND we have previous data (placeholderData preserves it)
+    // This prevents flicker during refetches - auth state never drops to unauthenticated
+    const hasPreviousData = meQuery.isFetching && currentUser !== undefined;
+    const isAuthenticatedStable = hasUser || (hasPreviousData && Boolean(currentUser));
+    
     // DEV-only: If demo session marker exists or in grace window, treat as authenticated
     // This prevents flicker during account switching
     // Note: placeholderData keeps user from becoming undefined during refetch
@@ -331,12 +360,13 @@ export function useAuth(options?: UseAuthOptions) {
       (demoSessionPresent || isInDemoGraceWindow) && 
       !meQuery.isLoading && hasCompletedFirstAuth;
     
-    // In DEV: authenticated if user exists OR demo marker/grace window active
-    // In PROD: authenticated only if user exists
+    // In DEV: authenticated if user exists OR demo marker/grace window active OR stable auth
+    // In PROD: authenticated only if stable auth (user exists or fetching with previous data)
     // IMPORTANT: meQuery.data is the user object directly (from auth.me query)
+    // Use stable auth status to prevent flicker during refetches
     const isAuthenticated = import.meta.env.DEV 
-      ? (Boolean(meQuery.data) || isAuthenticatedDev)
-      : Boolean(meQuery.data);
+      ? (isAuthenticatedStable || isAuthenticatedDev)
+      : isAuthenticatedStable;
     
     // DEV-ONLY: During demo transitions, treat as loading to prevent Access Denied flashes
     const isInDemoTransition = import.meta.env.DEV && isDemoTransitionActive();
@@ -350,6 +380,7 @@ export function useAuth(options?: UseAuthOptions) {
       loading: meQuery.isLoading || meQuery.isFetching || meQuery.isRefetching || logoutMutation.isPending || isInDemoTransition,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated,
+      isAuthenticatedStable, // Expose stable auth status for ProtectedRoute
     };
   }, [
     meQuery.data,

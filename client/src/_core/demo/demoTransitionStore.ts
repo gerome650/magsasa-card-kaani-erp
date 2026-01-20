@@ -11,6 +11,7 @@ const DEMO_TRANSITION_KEY = "demo_transition_until";
 
 // In-memory state
 let activeUntil = 0;
+let currentTransitionId = 0; // Incrementing ID to prevent stale overwrites
 const listeners = new Set<() => void>();
 
 /**
@@ -33,17 +34,21 @@ function notify(): void {
  * During this window, the app should show a full-screen loader.
  * 
  * @param ms - Duration of transition window in milliseconds (default: 2000ms)
+ * @returns Transition ID that can be used to verify the transition is still current
  */
-export function startDemoTransition(ms: number = 2000): void {
-  if (typeof window === "undefined" || import.meta.env.PROD) return;
+export function startDemoTransition(ms: number = 2000): number {
+  if (typeof window === "undefined" || import.meta.env.PROD) return 0;
   
+  // Increment transition ID to prevent stale overwrites
+  currentTransitionId += 1;
+  const transitionId = currentTransitionId;
   activeUntil = Date.now() + ms;
   
   // Persist to localStorage for hydration across page reloads
   try {
     localStorage.setItem(DEMO_TRANSITION_KEY, String(activeUntil));
     if (import.meta.env.DEV) {
-      console.log("[DemoTransitionStore] Started transition window until", new Date(activeUntil).toISOString());
+      console.log("[DemoTransitionStore] Started transition window until", new Date(activeUntil).toISOString(), "id:", transitionId);
     }
   } catch (e) {
     // localStorage not available (private mode, etc.)
@@ -54,6 +59,19 @@ export function startDemoTransition(ms: number = 2000): void {
   
   // Notify subscribers synchronously (no delay)
   notify();
+  
+  return transitionId;
+}
+
+/**
+ * Get the current transition ID.
+ * Use this to verify a transition is still current before applying results.
+ * 
+ * @returns Current transition ID, or 0 if no transition is active
+ */
+export function getCurrentTransitionId(): number {
+  if (typeof window === "undefined" || import.meta.env.PROD) return 0;
+  return currentTransitionId;
 }
 
 /**
