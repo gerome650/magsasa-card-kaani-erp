@@ -26,12 +26,10 @@ import {
   Map as MapIcon,
   Satellite,
   Layers,
-<<<<<<< HEAD
   X,
   Ruler,
   Calculator,
   FileDown,
-<<<<<<< HEAD
   Sprout,
   Trash2,
   Coins,
@@ -39,8 +37,6 @@ import {
   Undo2,
   Redo2,
   DollarSign,
-=======
->>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { MapView } from "@/components/Map";
@@ -498,7 +494,6 @@ export default function FarmDetail() {
   const [calculatedArea, setCalculatedArea] = useState<number | null>(null);
   const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid'>('roadmap');
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-<<<<<<< HEAD
   const [terrainEnabled, setTerrainEnabled] = useState(false);
   const [terrainLayer, setTerrainLayer] = useState<google.maps.ImageMapType | null>(null);
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -812,8 +807,6 @@ export default function FarmDetail() {
       </div>
     );
   }
-=======
->>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
 
   if (!farm) {
     return (
@@ -1222,8 +1215,8 @@ ${placemarks}
                           variant="secondary"
                           size="sm"
                           onClick={() => {
-                            if (drawnBoundary) {
-                              const path = drawnBoundary.getPath();
+                            if (drawnBoundaries.length > 0) {
+                              const path = drawnBoundaries[0].getPath();
                               const coordinates: { lat: number; lng: number }[] = [];
                               for (let i = 0; i < path.getLength(); i++) {
                                 const point = path.getAt(i);
@@ -1360,7 +1353,6 @@ ${placemarks}
                             pdf.setFontSize(10);
                             pdf.text(`Farm Name: ${farm.name}`, 20, yPos);
                             yPos += 6;
-<<<<<<< HEAD
                             pdf.text(`Farmer: ${farm.farmerName}`, 20, yPos);
                             yPos += 6;
                             pdf.text(`Location: ${farm.location.barangay}, ${farm.location.municipality}`, 20, yPos);
@@ -1526,7 +1518,6 @@ ${placemarks}
                     })()}
                   </div>
                 )}
-<<<<<<< HEAD
                 {tempCalculatedArea !== null && (
                   <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="flex items-center gap-2">
@@ -1724,62 +1715,8 @@ ${placemarks}
                       <span>Show Terrain</span>
                     </label>
                   </div>
-=======
-                
-                {/* Map Type Switcher */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Map View</span>
->>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
-                  <div className="flex gap-1 bg-muted rounded-lg p-1">
-                    <Button
-                      type="button"
-                      variant={mapType === 'roadmap' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="h-8 px-3"
-                      onClick={() => {
-                        setMapType('roadmap');
-                        if (mapInstance) {
-                          mapInstance.setMapTypeId('roadmap');
-                        }
-                      }}
-                    >
-                      <MapIcon className="w-4 h-4 mr-1" />
-                      Roadmap
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={mapType === 'satellite' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="h-8 px-3"
-                      onClick={() => {
-                        setMapType('satellite');
-                        if (mapInstance) {
-                          mapInstance.setMapTypeId('satellite');
-                        }
-                      }}
-                    >
-                      <Satellite className="w-4 h-4 mr-1" />
-                      Satellite
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={mapType === 'hybrid' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="h-8 px-3"
-                      onClick={() => {
-                        setMapType('hybrid');
-                        if (mapInstance) {
-                          mapInstance.setMapTypeId('hybrid');
-                        }
-                      }}
-                    >
-                      <Layers className="w-4 h-4 mr-1" />
-                      Hybrid
-                    </Button>
-                  </div>
                 </div>
                 
-<<<<<<< HEAD
                 <div className="h-96 rounded-lg overflow-hidden border relative">
                   {isMapLoading && (
                     <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
@@ -1794,17 +1731,6 @@ ${placemarks}
                       // Hide loading overlay
                       setIsMapLoading(false);
                       
-=======
-                <div className="h-96 rounded-lg overflow-hidden border">
-                  <MapView
-                    onMapReady={(map, google) => {
->>>>>>> 95e426a (Checkpoint: Checkpoint saved: Implemented Map Type Switcher with Roadmap, Satellite, and Hybrid views for farm boundary verification)
-                      // Store map instance for map type switching
-                      setMapInstance(map);
-                      
-                      // Set initial map type
-                      map.setMapTypeId(mapType);
-                      
                       // Center map on farm location
                       const position = {
                         lat: farm.location.coordinates.lat,
@@ -1812,8 +1738,7 @@ ${placemarks}
                       };
                       map.setCenter(position);
                       map.setZoom(15);
-
-                      // Add marker for farm
+                      
                       new google.maps.Marker({
                         position,
                         map,
