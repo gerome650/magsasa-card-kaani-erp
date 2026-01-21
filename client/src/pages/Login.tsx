@@ -25,17 +25,41 @@ export default function Login() {
   const demoLoginMutation = trpc.auth.demoLogin.useMutation();
   const utils = trpc.useUtils();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Single submission function that ALWAYS receives a concrete payload object
+  // This prevents race conditions where state might not be committed yet
+  const submitDemoLogin = async (payload: { username: string; password: string; role?: 'farmer' | 'field_officer' | 'manager' }) => {
     setError('');
     
-    // Harden input validation: ensure username and password are non-empty strings
-    const usernameValue = String(username || '').trim();
-    const passwordValue = String(password || '').trim();
+    // Trim and validate inputs
+    const usernameValue = String(payload.username || '').trim();
+    const passwordValue = String(payload.password || '').trim();
     
     if (!usernameValue || !passwordValue) {
       setError('Username and password are required');
       return;
+    }
+    
+    // Determine role from username if not provided
+    let role: 'farmer' | 'field_officer' | 'manager' | undefined = payload.role;
+    if (!role) {
+      if (usernameValue === 'farmer') {
+        role = 'farmer';
+      } else if (usernameValue === 'officer') {
+        role = 'field_officer';
+      } else if (usernameValue === 'manager') {
+        role = 'manager';
+      }
+    }
+    
+    // DEV-only: Log input validation before mutation
+    if (import.meta.env.DEV) {
+      console.log("[LOGIN SUBMIT] payload validation", {
+        hasUsername: Boolean(usernameValue),
+        hasPassword: Boolean(passwordValue),
+        role,
+        usernameLength: usernameValue.length,
+        passwordLength: passwordValue.length,
+      });
     }
     
     setIsLoading(true);
@@ -72,39 +96,31 @@ export default function Login() {
         transitionId,
         currentTransitionId: getCurrentTransitionId(),
         location: location,
-        username,
-        role: username === 'farmer' ? 'farmer' : username === 'officer' ? 'field_officer' : username === 'manager' ? 'manager' : undefined,
+        username: usernameValue,
+        role,
         cachedUserBefore: cachedUserBefore ? { id: cachedUserBefore.id, role: cachedUserBefore.role } : null,
       });
     }
 
     try {
-      // Determine role from username (server will use this to set JWT role)
-      // usernameValue and passwordValue are already validated and trimmed above
-      let role: 'farmer' | 'field_officer' | 'manager' | undefined;
-      if (usernameValue === 'farmer') {
-        role = 'farmer';
-      } else if (usernameValue === 'officer') {
-        role = 'field_officer';
-      } else if (usernameValue === 'manager') {
-        role = 'manager';
-      }
-
-      // DEV-only: Log input values before mutation
-      if (import.meta.env.DEV) {
-        console.log("[LOGIN SUBMIT]", { 
-          username: usernameValue, 
-          password: passwordValue ? '***' : '', 
-          role 
-        });
-      }
-
-      // Step 1: Call demoLogin mutation (creates server session cookie with role embedded in JWT)
-      const demoResult = await demoLoginMutation.mutateAsync({
+      // Step 1: Call demoLogin mutation with concrete payload object
+      // This payload is guaranteed to be non-undefined because we validate above
+      const mutationPayload = {
         username: usernameValue,
         password: passwordValue,
         role, // Send role explicitly - server will embed it in JWT
-      });
+      };
+      
+      // DEV-only: Final log before mutation to confirm payload is valid
+      if (import.meta.env.DEV) {
+        console.log("[LOGIN SUBMIT] calling mutateAsync", {
+          hasUsername: Boolean(mutationPayload.username),
+          hasPassword: Boolean(mutationPayload.password),
+          role: mutationPayload.role,
+        });
+      }
+      
+      const demoResult = await demoLoginMutation.mutateAsync(mutationPayload);
 
       // DEV-only: Log demoLogin success
       if (import.meta.env.DEV) {
@@ -289,27 +305,40 @@ export default function Login() {
     }
   };
 
+  // Form submit handler - builds payload from current state and calls submitDemoLogin
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Build payload from current state at click time
+    // This ensures we always have the latest values
+    const payload = {
+      username: username,
+      password: password,
+    };
+    
+    await submitDemoLogin(payload);
+  };
+
   const demoCredentials = [
     { role: 'Farmer', username: 'farmer', password: 'demo123', name: 'Juan dela Cruz', roleKey: 'farmer' as const },
     { role: 'Field Officer', username: 'officer', password: 'demo123', name: 'Maria Santos', roleKey: 'field_officer' as const },
     { role: 'Manager', username: 'manager', password: 'demo123', name: 'Roberto Garcia', roleKey: 'manager' as const }
   ];
 
-  const fillDemoCredentials = (user: string, pass: string, roleKey: 'farmer' | 'field_officer' | 'manager') => {
-    // Fill credentials and immediately submit to avoid race conditions
-    // This ensures state is set before submit runs
-    setUsername(user);
-    setPassword(pass);
+  // Demo button handler - calls submitDemoLogin directly with hardcoded credentials
+  // This avoids race conditions from state updates + form submission
+  const handleDemoClick = (cred: typeof demoCredentials[0]) => {
+    // Update UI state for display (optional, but keeps form fields in sync)
+    setUsername(cred.username);
+    setPassword(cred.password);
     setError('');
     
-    // Submit immediately after state is set (React will batch the state updates)
-    // Use setTimeout to ensure state updates are applied before submit
-    setTimeout(() => {
-      const form = document.querySelector('form');
-      if (form) {
-        form.requestSubmit();
-      }
-    }, 0);
+    // Call submitDemoLogin directly with concrete payload - no form submission needed
+    submitDemoLogin({
+      username: cred.username,
+      password: cred.password,
+      role: cred.roleKey,
+    });
   };
 
   return (
@@ -386,7 +415,7 @@ export default function Login() {
                     <button
                       key={cred.role}
                       type="button"
-                      onClick={() => fillDemoCredentials(cred.username, cred.password, cred.roleKey)}
+                      onClick={() => handleDemoClick(cred)}
                       className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
                       disabled={isLoading}
                     >

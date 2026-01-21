@@ -73,9 +73,19 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Map View', href: '/map', icon: Map, roles: undefined },
   ];
 
+  // Helper: Compute Dashboard href based on role (AO farmer snapshot workflow)
+  // Farmers land on "/" (FarmerDashboard), staff land on "/dashboard"
+  const getDashboardHref = () => {
+    // Defensive check: if role string includes "farmer", route to farmer dashboard
+    const roleStr = String(user?.role || '').toLowerCase();
+    return roleStr.includes('farmer') ? '/' : '/dashboard';
+  };
+
   // Full navigation - all items
+  // Note: Dashboard href is computed dynamically via getDashboardHref() when rendering
   const fullNavigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'] },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['farmer', 'manager', 'field_officer'], isDashboard: true },
+    { name: 'Manager Overview', href: '/manager/overview', icon: BarChart3, roles: ['manager'] },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['manager', 'field_officer'] },
     { name: 'Map View', href: '/map', icon: Map, roles: ['manager', 'field_officer'] },
     { name: 'Orders', href: '/supplier', icon: Package, roles: ['supplier'] },
@@ -97,7 +107,12 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = IS_LITE_MODE ? liteNavigation : fullNavigation;
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, isDashboardItem = false) => {
+    // For Dashboard, use role-aware href for comparison
+    if (isDashboardItem) {
+      const dashboardHref = getDashboardHref();
+      return location === dashboardHref || (dashboardHref === '/' && location === '/');
+    }
     if (href === '/') return location === '/';
     return location.startsWith(href);
   };
@@ -143,13 +158,16 @@ export default function Layout({ children }: LayoutProps) {
             {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
               const showBadge = item.href === '/permission-approval' && pendingRequestsCount > 0;
+              // AO farmer snapshot: Dashboard href is role-aware
+              const isDashboard = (item as any).isDashboard;
+              const href = isDashboard ? getDashboardHref() : item.href;
               return (
                 <Link
                   key={item.name}
-                  href={item.href}
+                  href={href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 border-b ${
-                    isActive(item.href)
+                    isActive(href, isDashboard)
                       ? 'bg-green-50 text-green-600 border-l-4 border-l-green-600'
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
@@ -200,12 +218,15 @@ export default function Layout({ children }: LayoutProps) {
             {navigation.filter(item => !item.roles || item.roles.includes(user?.role || '')).map((item) => {
               const Icon = item.icon;
               const showBadge = item.href === '/permission-approval' && pendingRequestsCount > 0;
+              // AO farmer snapshot: Dashboard href is role-aware
+              const isDashboard = (item as any).isDashboard;
+              const href = isDashboard ? getDashboardHref() : item.href;
               return (
                 <Link
                   key={item.name}
-                  href={item.href}
+                  href={href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive(item.href)
+                    isActive(href, isDashboard)
                       ? 'bg-green-600 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}

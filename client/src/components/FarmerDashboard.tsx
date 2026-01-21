@@ -6,9 +6,16 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { TrendingUp, Sprout, DollarSign, Award, Calendar, MapPin, Phone, Mail, CheckCircle } from "lucide-react";
 import AddHarvestDialog from "@/components/AddHarvestDialog";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { normalizeRole } from "@/const";
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
+
+  // UI-only hardening: this page is only for farmer role.
+  if (normalizeRole(user) !== "farmer") {
+    return <div>Access Denied</div>;
+  }
+
   const [isAddHarvestOpen, setIsAddHarvestOpen] = useState(false);
   const [harvests, setHarvests] = useState(harvestData);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);

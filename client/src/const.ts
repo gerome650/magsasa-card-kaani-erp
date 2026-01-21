@@ -18,10 +18,25 @@ export type NormalizedRole = "farmer" | "staff";
  * @returns "farmer" if user is a farmer, "staff" otherwise
  */
 export function normalizeRole(user: any): NormalizedRole {
-  // Check localStorage demo role override first (for demo account switching)
+  // Check localStorage demo role override ONLY when demo session is active (for demo account switching)
   try {
+    const demoSessionPresent = localStorage.getItem("demo_session_present") === "1";
     const override = localStorage.getItem("demo_role_override");
-    if (override) {
+    
+    // Auto-heal: Remove stale demo_role_override if demo_session_present is not "1"
+    if (override && !demoSessionPresent) {
+      localStorage.removeItem("demo_role_override");
+      localStorage.removeItem("demo_role_switch_end");
+      localStorage.removeItem("demo_grace_window_end");
+      if (import.meta.env.DEV) {
+        console.log("[auth] Auto-healed: Removed stale demo_role_override (demo_session_present !== '1')");
+      }
+    }
+    
+    // Only honor demo_role_override when:
+    // 1. DEV mode is enabled, AND
+    // 2. demo_session_present === "1"
+    if (override && import.meta.env.DEV && demoSessionPresent) {
       const overrideLower = override.trim().toLowerCase();
       // If override includes "farmer", treat as farmer
       if (overrideLower.includes("farmer")) {
@@ -92,10 +107,25 @@ export function normalizeRole(user: any): NormalizedRole {
 export function getClientRole(user: any): import("@/data/usersData").UserRole | null {
   if (!user) return null;
   
-  // Check localStorage demo role override first (for demo account switching)
+  // Check localStorage demo role override ONLY when demo session is active (for demo account switching)
   try {
+    const demoSessionPresent = localStorage.getItem("demo_session_present") === "1";
     const override = localStorage.getItem("demo_role_override");
-    if (override) {
+    
+    // Auto-heal: Remove stale demo_role_override if demo_session_present is not "1"
+    if (override && !demoSessionPresent) {
+      localStorage.removeItem("demo_role_override");
+      localStorage.removeItem("demo_role_switch_end");
+      localStorage.removeItem("demo_grace_window_end");
+      if (import.meta.env.DEV) {
+        console.log("[auth] Auto-healed: Removed stale demo_role_override (demo_session_present !== '1')");
+      }
+    }
+    
+    // Only honor demo_role_override when:
+    // 1. DEV mode is enabled, AND
+    // 2. demo_session_present === "1"
+    if (override && import.meta.env.DEV && demoSessionPresent) {
       const overrideLower = override.trim().toLowerCase();
       if (overrideLower.includes("farmer")) return "farmer";
       if (overrideLower.includes("field_officer") || overrideLower.includes("officer")) return "field_officer";

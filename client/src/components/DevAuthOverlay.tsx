@@ -28,11 +28,20 @@ export function DevAuthOverlay() {
   const handleResetDemoSession = async () => {
     try {
       await logoutMutation.mutateAsync();
+      // Clear demo-related localStorage keys
+      localStorage.removeItem("demo_session_present");
+      localStorage.removeItem("demo_role_override");
+      localStorage.removeItem("demo_role_switch_end");
+      localStorage.removeItem("demo_grace_window_end");
       // Reload page after logout to clear all state
       window.location.reload();
     } catch (error) {
       console.error("[DEV] Reset demo session failed:", error);
-      // Still reload even if logout fails (cookie might be cleared client-side)
+      // Still clear localStorage and reload even if logout fails
+      localStorage.removeItem("demo_session_present");
+      localStorage.removeItem("demo_role_override");
+      localStorage.removeItem("demo_role_switch_end");
+      localStorage.removeItem("demo_grace_window_end");
       window.location.reload();
     }
   };

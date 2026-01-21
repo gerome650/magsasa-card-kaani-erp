@@ -8,7 +8,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { trpcDbg } from "./trpcDebug";
-// superjson transformer removed - not supported in current tRPC version
+// Note: superjson transformer IS used (configured in server/_core/trpc.ts)
+// The unwrapper below handles legacy { json: {...} } format but passes through superjson format
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -170,79 +171,69 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   
-  // tRPC wire format unwrapper: unwraps { json, meta } to just the input object
+  // TRPC_DEBUG: Read-only logger for tRPC requests (NEVER mutates req.body)
   // This middleware runs AFTER express.json() but BEFORE createExpressMiddleware
-  // tRPC sends data in { json: {...}, meta: {...} } format, but procedures expect just {...}
+  // With superjson transformer, tRPC handles deserialization automatically - no unwrapping needed
   app.use("/api/trpc", (req, res, next) => {
-    // Only process POST requests with parsed JSON body
-    if (req.method === "POST" && req.body && typeof req.body === "object") {
-      // Unwrap function: if object has "json" key, extract it (ignore meta)
-      const unwrapWire = (x: any): any => {
-        if (!x || typeof x !== "object") return x;
-        if ("json" in x) return (x as any).json;
-        return x;
-      };
-      
-      const originalBody = req.body;
-      
-      // Handle batch array: [{ json: {...} }, ...]
-      if (Array.isArray(req.body)) {
-        req.body = req.body.map(unwrapWire);
-      } 
-      // Handle keyed batch object: { "0": { json: {...} }, "1": { json: {...} } }
-      else if (typeof req.body === "object") {
-        const keys = Object.keys(req.body);
-        // Only treat as keyed batch if keys look numeric (e.g., "0", "1", "2")
-        const isKeyedBatch = keys.length > 0 && keys.every(k => String(Number(k)) === k);
-        if (isKeyedBatch) {
-          const unwrapped: any = {};
-          for (const k of keys) {
-            unwrapped[k] = unwrapWire(req.body[k]);
-          }
-          req.body = unwrapped;
-        } else {
-          // Single object input: { json: {...} } -> {...}
-          req.body = unwrapWire(req.body);
-        }
-      }
-      
-      // DEV-only: Log normalized input for auth.demoLogin to confirm unwrapping worked (gated by TRPC_DEBUG=1)
-      if (process.env.NODE_ENV === "development") {
-        const path = req.url?.split("?")[0] || "";
-        const isDemoLogin = path.includes("auth.demoLogin");
-        const bodyHasDemoFields = Array.isArray(req.body) 
-          ? req.body.some((item: any) => item && typeof item === "object" && ("username" in item || "password" in item))
-          : req.body && typeof req.body === "object" && ("username" in req.body || "password" in req.body);
-        
-        if (isDemoLogin || bodyHasDemoFields) {
-          const inputToLog = Array.isArray(req.body) ? req.body[0] : req.body;
-          if (inputToLog && typeof inputToLog === "object") {
-            trpcDbg("[demoLogin] normalized input keys:", Object.keys(inputToLog));
-            trpcDbg("[demoLogin] input shape:", {
-              hasUsername: "username" in inputToLog,
-              hasPassword: "password" in inputToLog,
-              hasRole: "role" in inputToLog,
-              usernameType: typeof inputToLog.username,
-              passwordType: typeof inputToLog.password,
-              roleType: typeof inputToLog.role,
-            });
-            // Log if unwrapping occurred
-            if (originalBody !== req.body && "json" in (Array.isArray(originalBody) ? originalBody[0] : originalBody)) {
-              trpcDbg("[demoLogin] unwrapped { json } format");
+    // TRPC_DEBUG: Log request body structure (read-only, never modify)
+    if (process.env.TRPC_DEBUG === "1" && process.env.NODE_ENV === "development" && req.method === "POST") {
+      const path = req.url?.split("?")[0] || "";
+      const isDemoLogin = path.includes("auth.demoLogin");
+      if (isDemoLogin) {
+        trpcDbg("[demoLogin] REQUEST DEBUG (read-only):");
+        trpcDbg("  - typeof req.body:", typeof req.body);
+        trpcDbg("  - req.body is null/undefined:", req.body == null);
+        if (req.body && typeof req.body === "object") {
+          trpcDbg("  - Object.keys(req.body):", Object.keys(req.body));
+          trpcDbg("  - Array.isArray(req.body):", Array.isArray(req.body));
+          
+          // Check for keyed batch format: { "0": {...} }
+          const keys = Object.keys(req.body);
+          const isKeyedBatch = !Array.isArray(req.body) && keys.length > 0 && 
+            keys.every(k => String(Number(k)) === k);
+          trpcDbg("  - isKeyedBatch:", isKeyedBatch);
+          
+          if (Array.isArray(req.body)) {
+            trpcDbg("  - req.body[0] keys:", req.body[0] ? Object.keys(req.body[0]) : "no [0]");
+          } else if (isKeyedBatch && keys.length > 0) {
+            const firstKey = keys[0];
+            const firstValue = req.body[firstKey];
+            trpcDbg("  - req.body[firstKey] keys:", firstValue ? Object.keys(firstValue) : "no firstValue");
+            if (firstValue && typeof firstValue === "object") {
+              trpcDbg("  - firstValue has 'json':", "json" in firstValue);
+              trpcDbg("  - firstValue has 'id':", "id" in firstValue);
+              trpcDbg("  - firstValue has 'meta':", "meta" in firstValue);
+              // Log extracted input from envelope for visibility (read-only)
+              if ("json" in firstValue) {
+                const extracted = firstValue.json;
+                if (extracted && typeof extracted === "object") {
+                  trpcDbg("  - extracted.json keys:", Object.keys(extracted));
+                  trpcDbg("  - extracted.json shape:", {
+                    hasUsername: "username" in extracted,
+                    hasPassword: "password" in extracted,
+                    hasRole: "role" in extracted,
+                  });
+                }
+              }
             }
           }
         }
+        trpcDbg("  - Content-Type:", req.headers["content-type"]);
       }
     }
+    // Pass through unchanged - let tRPC handle deserialization
     next();
   });
   
   // tRPC API
+  // Note: superjson transformer is configured in server/_core/trpc.ts
+  // createExpressMiddleware will automatically use the transformer from the router
   app.use(
     "/api/trpc",
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      // Don't pass transformer here - it's already configured in the router via initTRPC
     })
   );
   // development mode uses Vite, production mode uses static files

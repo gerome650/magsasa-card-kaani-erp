@@ -12,32 +12,11 @@ import { CartProvider } from "./contexts/CartContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthGate } from "./components/AuthGate";
 import { isDemoTransitionActive, subscribeDemoTransition, getRemainingTransitionTime } from "./_core/demo/demoTransitionStore";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { DevAuthOverlay } from "./components/DevAuthOverlay";
+import { Button } from "./components/ui/button";
 import { DevAutoLogin } from "./_core/dev/DevAutoLogin";
-
-// Simple redirect component
-function Redirect({ to }: { to: string }) {
-  const [, setLocation] = useLocation();
-  useEffect(() => {
-    setLocation(to);
-  }, [to, setLocation]);
-  return null;
-}
-
-// Dashboard route wrapper: routes farmers to scoped dashboard, others to global dashboard
-function DashboardRoute() {
-  const { user } = useAuth();
-  const normalizedRole = normalizeRole(user);
-  
-  if (normalizedRole === "farmer") {
-    return <FarmerDashboard />;
-  }
-  
-  // For staff (manager, field_officer, etc.), show the global FarmList dashboard
-  return <FarmList />;
-}
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Farmers from "./pages/Farmers";
@@ -64,13 +43,6 @@ import AuditArchive from "./pages/AuditArchive";
 import Farms from "./pages/Farms";
 import FarmDetail from "./pages/FarmDetail";
 import FarmList from "./pages/FarmList";
-import RetentionSettings from "./pages/RetentionSettings";
-import RolePermissions from "./pages/RolePermissions";
-import PermissionApproval from "./pages/PermissionApproval";
-import MyRequests from "./pages/MyRequests";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { normalizeRole } from "./const";
-import FarmerDashboard from "./components/FarmerDashboard";
 import TRPCTest from "./pages/TRPCTest";
 import DebugFarm from "./pages/DebugFarm";
 import FarmNew from "./pages/FarmNew";
@@ -80,6 +52,38 @@ import Analytics from "./pages/Analytics";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import FarmMap from "./pages/FarmMap";
 import AdminCsvUpload from "./pages/AdminCsvUpload";
+import RetentionSettings from "./pages/RetentionSettings";
+import RolePermissions from "./pages/RolePermissions";
+import PermissionApproval from "./pages/PermissionApproval";
+import MyRequests from "./pages/MyRequests";
+import ManagerOverview from "./pages/ManagerOverview";
+import FieldOfficerDetail from "./pages/FieldOfficerDetail";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { normalizeRole } from "./const";
+import FarmerDashboard from "./components/FarmerDashboard";
+
+// Simple redirect component
+function Redirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation(to);
+  }, [to, setLocation]);
+  return null;
+}
+
+// Dashboard route wrapper: routes farmers to scoped dashboard (AO farmer snapshot), others to global dashboard
+function DashboardRoute() {
+  const { user } = useAuth();
+  const normalizedRole = normalizeRole(user);
+  
+  // AO farmer snapshot workflow: route farmers to their scoped dashboard
+  if (normalizedRole === "farmer") {
+    return <FarmerDashboard />;
+  }
+  
+  // For staff (manager, field_officer, etc.), show the global FarmList dashboard
+  return <FarmList />;
+}
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -333,6 +337,22 @@ function Router() {
             </ProtectedRoute>
           </Route>
           
+          <Route path="/manager/overview">
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <ManagerOverview />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
+          <Route path="/manager/officers/:id">
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <FieldOfficerDetail />
+              </Layout>
+            </ProtectedRoute>
+          </Route>
+          
           <Route path="/admin/csv-upload">
             <ProtectedRoute allowedRoles={['manager', 'field_officer']}>
               <Layout>
@@ -388,6 +408,46 @@ function Router() {
 }
 
 function App() {
+  // DEV-ONLY: Toggle state for hiding/showing auth debug panels
+  const [hideAuthDebug, setHideAuthDebug] = React.useState(() => {
+    if (!import.meta.env.DEV) return false;
+    try {
+      return localStorage.getItem("dev_hide_auth_debug") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  // DEV-ONLY: Toggle function that persists to localStorage
+  const toggleAuthDebug = React.useCallback(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      const newValue = hideAuthDebug ? "0" : "1";
+      localStorage.setItem("dev_hide_auth_debug", newValue);
+      setHideAuthDebug(newValue === "1");
+    } catch {
+      // localStorage not available
+    }
+  }, [hideAuthDebug]);
+
+  // DEV-ONLY: Keyboard shortcut (Ctrl+Shift+D / Cmd+Shift+D)
+  React.useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+      
+      if (modifier && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        toggleAuthDebug();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleAuthDebug]);
+
   // DEV-ONLY: Reactive demo transition gate - prevents UI rendering during account switches
   // Uses useSyncExternalStore for immediate synchronous updates (no polling delay)
   const isInDemoTransition = useSyncExternalStore(
@@ -438,11 +498,31 @@ function App() {
               {/* DEV-only: Auto-login bypass (runs before ProtectedRoute redirects) */}
               {import.meta.env.DEV && <DevAutoLogin />}
               {/* DEV-only: Auth debugging overlay (mounted inside providers for access to useAuth) */}
-              {import.meta.env.DEV && <DevAuthOverlay />}
+              {import.meta.env.DEV && !hideAuthDebug && <DevAuthOverlay />}
+              {/* DEV-only: Toggle button for auth debug panels */}
+              {import.meta.env.DEV && (
+                <button
+                  onClick={toggleAuthDebug}
+                  className="fixed top-2 right-2 z-[10000] bg-black/80 hover:bg-black/90 text-white text-xs px-2 py-1.5 rounded font-mono flex items-center gap-1.5 transition-colors"
+                  title={`Toggle DEV Auth Debug Panels (${navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "Cmd" : "Ctrl"}+Shift+D)`}
+                >
+                  {hideAuthDebug ? (
+                    <>
+                      <EyeOff className="w-3 h-3" />
+                      <span>DEV HUD: OFF</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3 h-3" />
+                      <span>DEV HUD: ON</span>
+                    </>
+                  )}
+                </button>
+              )}
               <AuthGate>
                 <Router />
               </AuthGate>
-              {import.meta.env.DEV && <DevAuthDebugBanner />}
+              {import.meta.env.DEV && !hideAuthDebug && <DevAuthDebugBanner />}
             </TooltipProvider>
           </CartProvider>
         </AuthProvider>

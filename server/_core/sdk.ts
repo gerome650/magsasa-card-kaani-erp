@@ -10,6 +10,7 @@ import { users } from "../../drizzle/schema";
 type User = InferSelectModel<typeof users>;
 import * as db from "../db";
 import { ENV } from "./env";
+import { trpcDbg } from "./trpcDebug";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -309,6 +310,14 @@ class SDKServer {
     const isDemoUser = session.email && session.role && session.loginMethod === "demo";
     const isDatabaseAvailable = !!ENV.databaseUrl;
     
+    // Helper: Check if session role is a client role (not server role)
+    const isClientRole = session.role && (
+      session.role === "farmer" || 
+      session.role === "field_officer" || 
+      session.role === "manager" || 
+      session.role === "supplier"
+    );
+    
     if (isDemoUser && !isDatabaseAvailable && session.role) {
       // Create User object from JWT payload (no DB required)
       const clientRole = session.role;
@@ -334,6 +343,22 @@ class SDKServer {
     if (isDatabaseAvailable) {
       try {
         user = (await db.getUserByOpenId(sessionUserId)) || null;
+        
+        // DEMO ROLE OVERRIDE: For demo sessions, override DB user role with session client role
+        // This ensures demo users see the correct UI even when DB has "user" or "admin" role
+        if (user && isDemoUser && isClientRole && session.role) {
+          const dbUserRole = (user as any).role;
+          (user as any).role = session.role;
+          (user as any).loginMethod = session.loginMethod || "demo";
+          
+          // TRPC_DEBUG: Log role override for demo sessions
+          trpcDbg("[authenticateRequest] Demo role override:", {
+            openId: session.openId,
+            sessionRole: session.role,
+            dbUserRole: dbUserRole,
+            finalRole: (user as any).role,
+          });
+        }
       } catch (error) {
         // Database error - fall back to demo user if available
         if (isDemoUser && session.role) {
@@ -370,6 +395,22 @@ class SDKServer {
           lastSignedIn: signedInAt,
         });
         user = (await db.getUserByOpenId(userInfo.openId)) || null;
+        
+        // DEMO ROLE OVERRIDE: For demo sessions, override DB user role with session client role
+        // This ensures demo users see the correct UI even when DB has "user" or "admin" role
+        if (user && isDemoUser && isClientRole && session.role) {
+          const dbUserRole = (user as any).role;
+          (user as any).role = session.role;
+          (user as any).loginMethod = session.loginMethod || "demo";
+          
+          // TRPC_DEBUG: Log role override for demo sessions
+          trpcDbg("[authenticateRequest] Demo role override (OAuth sync):", {
+            openId: session.openId,
+            sessionRole: session.role,
+            dbUserRole: dbUserRole,
+            finalRole: (user as any).role,
+          });
+        }
       } catch (error) {
         // OAuth sync failed - if demo user, return demo user object
         if (isDemoUser && session.role) {
